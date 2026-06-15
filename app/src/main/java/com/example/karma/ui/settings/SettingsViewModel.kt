@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.repository.KarmaRepository
+import java.util.Calendar
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -117,7 +118,29 @@ class SettingsViewModel(
 
     // ★ 业力衰减
     fun updateDecayEnabled(v: Boolean) {
-        setDraft(_draft.value.copy(decayEnabled = v))
+        if (v) {
+            // 日期A = 今天（每次打开开关都从今天开始）
+            val cal = Calendar.getInstance()
+            val today = String.format("%04d-%02d-%02d",
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH))
+            setDraft(_draft.value.copy(decayEnabled = true, lastDecayDate = today))
+            // 函数 F：打开衰减开关时也执行衰减检查
+            viewModelScope.launch {
+                repository.updateAllSettings(_draft.value)
+                val deducted = repository.applyDecay()
+                val updated = repository.settings.first()
+                _draft.value = _draft.value.copy(
+                    totalScore = updated.totalScore,
+                    // F 扣了分 → DB 中的日期A已被推进到日期B
+                    // F 没扣分 → 保留今天（忽略 DB 可能有的旧值）
+                    lastDecayDate = if (deducted > 0f) updated.lastDecayDate else today,
+                )
+            }
+        } else {
+            setDraft(_draft.value.copy(decayEnabled = v))
+        }
     }
     fun updateDecayTime(hour: Int, minute: Int) {
         setDraft(_draft.value.copy(decayHour = hour, decayMinute = minute))

@@ -825,16 +825,25 @@ private fun ScrollPicker(
     onSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val items = range.toList()
+    val baseItems = range.toList()
+    val baseSize = baseItems.size
+    // 重复 3 份实现循环效果
+    val items = remember(range) {
+        buildList { repeat(3) { addAll(range.toList()) } }
+    }
+    val totalSize = items.size
+
     val itemHeight = 44.dp
     val visibleItems = 5
     val scope = rememberCoroutineScope()
 
+    // 初始定位在中间副本（第 2 份），并让选中项居中
+    val startIndex = baseSize + baseItems.indexOf(selected).coerceAtLeast(0) - visibleItems / 2
     val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = items.indexOf(selected).coerceAtLeast(0)
+        initialFirstVisibleItemIndex = startIndex.coerceAtLeast(0)
     )
 
-    // 用 layoutInfo 找到视口正中间的项（而非 firstVisibleItemIndex 指向的顶部项）
+    // 用 layoutInfo 找到视口正中间的项
     val centerItemIndex by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -842,13 +851,19 @@ private fun ScrollPicker(
             val viewportCenter = layoutInfo.viewportEndOffset / 2
             layoutInfo.visibleItemsInfo.minByOrNull { info ->
                 abs((info.offset + info.size / 2) - viewportCenter)
-            }?.index?.coerceIn(0, items.size - 1) ?: 0
+            }?.index?.coerceIn(0, totalSize - 1) ?: 0
         }
     }
 
-    // 中间项变化时更新选中值
+    // 选中值通过取模归一化到 base 范围；边缘检测跳回中间副本
     LaunchedEffect(centerItemIndex) {
-        onSelected(items[centerItemIndex])
+        onSelected(baseItems[centerItemIndex % baseSize])
+        // 边缘检测：接近边界时跳回中间（无动画）
+        if (centerItemIndex < baseSize) {
+            listState.scrollToItem(centerItemIndex + baseSize)
+        } else if (centerItemIndex >= baseSize * 2) {
+            listState.scrollToItem(centerItemIndex - baseSize)
+        }
     }
 
     Box(
@@ -882,7 +897,7 @@ private fun ScrollPicker(
                         .height(itemHeight)
                         .clickable {
                             scope.launch { listState.animateScrollToItem(index) }
-                            onSelected(value)
+                            onSelected(baseItems[value % baseSize])
                         },
                     textAlign = TextAlign.Center,
                 )

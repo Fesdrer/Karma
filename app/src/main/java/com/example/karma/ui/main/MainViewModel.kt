@@ -89,16 +89,6 @@ class MainViewModel(
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
 
-    // ★ init 中调用衰减
-    init {
-        viewModelScope.launch {
-            val deducted = repository.applyDecay()
-            if (deducted > 0f) {
-                _message.value = "业力衰减：本次共扣除 ${String.format("%.1f", deducted)} 分"
-            }
-        }
-    }
-
     // ---- Actions ----
 
     fun selectScore(score: Float) {

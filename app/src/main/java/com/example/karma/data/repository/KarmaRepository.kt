@@ -75,15 +75,40 @@ class KarmaRepository(
     /**
      * 业力衰减：检查并补扣。
      * 返回本次扣除的总分数（0 表示未扣）。
+     *
+     * 新算法：
+     * - lastDecayDate 为空 → 设为今天并返回 0（不做追溯扣除）
+     * - 日期B = 今天，若当前时间 ≥ 设定时间则为明天
+     * - while 日期A < 日期B：按阶位扣分，时间戳统一为当前时间
      */
     suspend fun applyDecay(): Float {
         val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
         if (!settings.decayEnabled) return 0f
 
-        val today = formatDate(System.currentTimeMillis())
-        if (settings.lastDecayDate == today) return 0f  // 今天已扣过
+        val now = System.currentTimeMillis()
+        val todayStr = formatDate(now)
 
-        // 确定上次扣除日期（返回当天 00:00:00 的 Calendar）
+        // lastDecayDate 为空 → 设置今天并返回 0，不做追溯扣除
+        if (settings.lastDecayDate.isEmpty()) {
+            settingsDao.upsertSettings(settings.copy(lastDecayDate = todayStr))
+            return 0f
+        }
+
+        // 确定日期B：若当前时间 >= 设定时间 → 日期B=明天，否则日期B=今天
+        val calB = Calendar.getInstance()
+        val currentHour = calB.get(Calendar.HOUR_OF_DAY)
+        val currentMinute = calB.get(Calendar.MINUTE)
+        if (currentHour > settings.decayHour ||
+            (currentHour == settings.decayHour && currentMinute >= settings.decayMinute)
+        ) {
+            calB.add(Calendar.DAY_OF_YEAR, 1)
+        }
+        val dateB = formatDate(calB.timeInMillis)
+
+        // 日期A >= 日期B → 不需要扣除
+        if (settings.lastDecayDate >= dateB) return 0f
+
+        // 计算天数差
         fun dateToCal(dateStr: String): Calendar {
             val parts = dateStr.split("-")
             return Calendar.getInstance().apply {
@@ -92,112 +117,42 @@ class KarmaRepository(
             }
         }
 
-        if (settings.lastDecayDate.isEmpty()) {
-            val firstEntry = historyDao.getOldestEntry()
-            if (firstEntry == null) {
-                // 没有任何记录，标记今天已检查并返回
-                settingsDao.upsertSettings(settings.copy(lastDecayDate = today))
-                return 0f
-            }
-            // 从首条记录所在日期的前一天开始
-            val firstDay = dateToCal(formatDate(firstEntry.timestamp))
-            firstDay.add(Calendar.DAY_OF_YEAR, -1)
+        val calA = dateToCal(settings.lastDecayDate)
+        val calBstart = dateToCal(dateB)
+        val diffMs = calBstart.timeInMillis - calA.timeInMillis
+        val daysToCatchUp = (diffMs / (24L * 60 * 60 * 1000L)).toInt()
+        if (daysToCatchUp <= 0) return 0f
 
-            // 计算相差天数
-            val todayCal = dateToCal(today)
-            val diffMs = todayCal.timeInMillis - firstDay.timeInMillis
-            val daysToCatchUp = (diffMs / (24L * 60 * 60 * 1000L)).toInt()
-            if (daysToCatchUp <= 0) return 0f
+        var totalDeducted = 0f
+        var currentScore = settings.totalScore
+        // 时间戳统一为"此刻"，所有补扣记录相同
+        val uniformTimestamp = System.currentTimeMillis()
 
-            var totalDeducted = 0f
-            var currentScore = settings.totalScore
-            val currentDate = Calendar.getInstance().apply {
-                timeInMillis = firstDay.timeInMillis
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-
-            repeat(daysToCatchUp) {
-                val rank = getDecayRank(currentScore)
-                val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
-                if (deduction > 0f) {
-                    currentScore = roundToOneDecimal(currentScore - deduction)
-                    totalDeducted += deduction
-                    // 按该日的设定时间生成时间戳
-                    val tsCal = Calendar.getInstance().apply {
-                        timeInMillis = currentDate.timeInMillis
-                        set(Calendar.HOUR_OF_DAY, settings.decayHour)
-                        set(Calendar.MINUTE, settings.decayMinute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }
-                    historyDao.insertEntry(
-                        HistoryEntryEntity(
-                            timestamp = tsCal.timeInMillis,
-                            delta = -deduction,
-                            event = "业力衰减",
-                            type = "decay",
-                            totalAfter = currentScore,
-                        )
+        repeat(daysToCatchUp) {
+            val rank = getDecayRank(currentScore)
+            val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
+            if (deduction > 0f) {
+                currentScore = roundToOneDecimal(currentScore - deduction)
+                totalDeducted += deduction
+                historyDao.insertEntry(
+                    HistoryEntryEntity(
+                        timestamp = uniformTimestamp,
+                        delta = -deduction,
+                        event = "业力衰减",
+                        type = "decay",
+                        totalAfter = currentScore,
                     )
-                }
-                currentDate.add(Calendar.DAY_OF_YEAR, 1)
+                )
             }
-
-            // 更新总分和 lastDecayDate
-            settingsDao.upsertSettings(settings.copy(
-                totalScore = currentScore,
-                lastDecayDate = today,
-            ))
-
-            return totalDeducted
-        } else {
-            // lastDecayDate 不为空：从上次扣除日到今天的补扣
-            val lastCal = dateToCal(settings.lastDecayDate)
-            val todayCal = dateToCal(today)
-            val diffMs = todayCal.timeInMillis - lastCal.timeInMillis
-            val daysToCatchUp = (diffMs / (24L * 60 * 60 * 1000L)).toInt()
-            if (daysToCatchUp <= 0) return 0f
-
-            var totalDeducted = 0f
-            var currentScore = settings.totalScore
-            val currentDate = Calendar.getInstance().apply {
-                timeInMillis = lastCal.timeInMillis
-                add(Calendar.DAY_OF_YEAR, 1)
-            }
-
-            repeat(daysToCatchUp) {
-                val rank = getDecayRank(currentScore)
-                val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
-                if (deduction > 0f) {
-                    currentScore = roundToOneDecimal(currentScore - deduction)
-                    totalDeducted += deduction
-                    val tsCal = Calendar.getInstance().apply {
-                        timeInMillis = currentDate.timeInMillis
-                        set(Calendar.HOUR_OF_DAY, settings.decayHour)
-                        set(Calendar.MINUTE, settings.decayMinute)
-                        set(Calendar.SECOND, 0)
-                        set(Calendar.MILLISECOND, 0)
-                    }
-                    historyDao.insertEntry(
-                        HistoryEntryEntity(
-                            timestamp = tsCal.timeInMillis,
-                            delta = -deduction,
-                            event = "业力衰减",
-                            type = "decay",
-                            totalAfter = currentScore,
-                        )
-                    )
-                }
-                currentDate.add(Calendar.DAY_OF_YEAR, 1)
-            }
-
-            settingsDao.upsertSettings(settings.copy(
-                totalScore = currentScore,
-                lastDecayDate = today,
-            ))
-
-            return totalDeducted
         }
+
+        // 更新总分和 lastDecayDate
+        settingsDao.upsertSettings(settings.copy(
+            totalScore = currentScore,
+            lastDecayDate = dateB,
+        ))
+
+        return totalDeducted
     }
 
     /**

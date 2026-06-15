@@ -36,7 +36,7 @@ data class KarmaSettingsEntity(
     val historyDotRadius: Float = 3.5f,
 
     // ===== 业力衰减 =====
-    val decayEnabled: Boolean = true,
+    val decayEnabled: Boolean = false,
     val decayHour: Int = 23,
     val decayMinute: Int = 0,
     val lastDecayDate: String = "",
