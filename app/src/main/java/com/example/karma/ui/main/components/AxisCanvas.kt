@@ -20,6 +20,7 @@ import kotlin.math.pow
 import kotlin.math.sign
 
 private const val AXIS_DISPLAY_RANGE = 100f
+private const val AXIS_COMPRESSION_EXPONENT = 0.3654f
 private const val ANIM_DURATION = 400
 private val NEG_BG = Color(0xFF2d2d2d)
 private val CHART_BG = Color(0xFF0d1b2a)
@@ -119,7 +120,7 @@ fun AxisCanvas(
                     y + 4f,
                     android.graphics.Paint().apply {
                         color = android.graphics.Color.argb(128, 255, 255, 255)
-                        textSize = 24f
+                        textSize = 19f
                         textAlign = android.graphics.Paint.Align.RIGHT
                     }
                 )
@@ -144,6 +145,34 @@ fun AxisCanvas(
                 }
                 sMinor += minorInterval
             }
+        }
+
+        // ---- Even-numbered reference ticks in +/-10 range ----
+        val evenMin = kotlin.math.ceil((centerScore - 10f) / 2f).toInt() * 2
+        val evenMax = kotlin.math.floor((centerScore + 10f) / 2f).toInt() * 2
+        var evenTick = evenMin
+        while (evenTick <= evenMax) {
+            val y = scoreToY(evenTick.toFloat(), centerScore, halfH, h)
+            if (y in -8f..h + 8f) {
+                drawLine(
+                    color = Color.White.copy(alpha = 0.25f),
+                    start = Offset(axisX - 7f, y),
+                    end = Offset(axisX + 7f, y),
+                    strokeWidth = 1f,
+                )
+                val label = String.format("%.1f", evenTick.toFloat()).replace(".0", "")
+                drawContext.canvas.nativeCanvas.drawText(
+                    label,
+                    axisX - 7f - 3f,
+                    y + 4f,
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.argb(128, 255, 255, 255)
+                        textSize = 19f
+                        textAlign = android.graphics.Paint.Align.RIGHT
+                    }
+                )
+            }
+            evenTick += 2
         }
 
         // ---- 5. Axis line ----
@@ -189,7 +218,7 @@ fun AxisCanvas(
             ptrY + 4f,
             android.graphics.Paint().apply {
                 color = android.graphics.Color.rgb(255, 215, 0)
-                textSize = 26f
+                textSize = 21f
                 textAlign = android.graphics.Paint.Align.RIGHT
                 isFakeBoldText = true
             }
@@ -203,7 +232,7 @@ fun AxisCanvas(
 
         val rangePaint = android.graphics.Paint().apply {
             color = android.graphics.Color.argb(64, 255, 255, 255)
-            textSize = 20f
+            textSize = 16f
             textAlign = android.graphics.Paint.Align.RIGHT
         }
         drawContext.canvas.nativeCanvas.drawText(topLabel, axisX - tickMajorLen - 3f, 10f, rangePaint)
@@ -221,7 +250,7 @@ private fun scoreToY(
     val d = score - centerScore
     val sign = sign(d)
     val absD = minOf(abs(d), AXIS_DISPLAY_RANGE * 2f)
-    val scale = halfH / (AXIS_DISPLAY_RANGE.toDouble().pow(0.6)).toFloat()
-    val pixelOffset = sign * (absD.toDouble().pow(0.6)).toFloat() * scale
+    val scale = halfH / (AXIS_DISPLAY_RANGE.toDouble().pow(AXIS_COMPRESSION_EXPONENT.toDouble())).toFloat()
+    val pixelOffset = sign * (absD.toDouble().pow(AXIS_COMPRESSION_EXPONENT.toDouble())).toFloat() * scale
     return canvasH / 2f - pixelOffset
 }

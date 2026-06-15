@@ -19,7 +19,6 @@ data class MainUiState(
     val eventPresets: List<String> = emptyList(),
     val selectedScore: Float? = null,
     val selectedEvent: String? = null,
-    val scoreEditMode: Boolean = false,
     val eventEditMode: Boolean = false,
 )
 
@@ -31,7 +30,6 @@ class MainViewModel(
     private val _selectedEvent = MutableStateFlow<String?>(null)
     private val _customScore = MutableStateFlow<Float?>(null)
     private val _customEvent = MutableStateFlow<String?>(null)
-    private val _scoreEditMode = MutableStateFlow(false)
     private val _eventEditMode = MutableStateFlow(false)
 
     private val _effectiveScore = combine(
@@ -46,15 +44,11 @@ class MainViewModel(
         _effectiveScore, _effectiveEvent
     ) { score, event -> Pair(score, event) }
 
-    private val _editModePair = combine(
-        _scoreEditMode, _eventEditMode
-    ) { sc, ev -> Pair(sc, ev) }
-
     val uiState: StateFlow<MainUiState> = combine(
         repository.settings,
         _selectedPair,
-        _editModePair,
-    ) { settings, selection, editMode ->
+        _eventEditMode,
+    ) { settings, selection, eventEditMode ->
         MainUiState(
             totalScore = settings.totalScore,
             rank = repository.getRank(settings.totalScore),
@@ -62,8 +56,7 @@ class MainViewModel(
             eventPresets = settings.eventPresets,
             selectedScore = selection.first,
             selectedEvent = selection.second,
-            scoreEditMode = editMode.first,
-            eventEditMode = editMode.second,
+            eventEditMode = eventEditMode,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
 
@@ -112,27 +105,12 @@ class MainViewModel(
         }
     }
 
-    fun openScoreEdit() {
-        _scoreEditMode.value = true
-    }
-
-    fun closeScoreEdit() {
-        _scoreEditMode.value = false
-    }
-
     fun openEventEdit() {
         _eventEditMode.value = true
     }
 
     fun closeEventEdit() {
         _eventEditMode.value = false
-    }
-
-    fun saveScorePresets(presets: List<Float>) {
-        viewModelScope.launch {
-            repository.updateScorePresets(presets)
-            closeScoreEdit()
-        }
     }
 
     fun saveEventPresets(presets: List<String>) {

@@ -16,7 +16,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.components.EventEditModal
-import com.example.karma.ui.components.ScoreEditModal
 import com.example.karma.ui.main.components.AxisCanvas
 import com.example.karma.ui.main.components.EventPanel
 import com.example.karma.ui.main.components.Footer
@@ -56,10 +55,8 @@ fun MainScreen(
         ) {
             // Left panel: Scores
             ScorePanel(
-                scorePresets = state.scorePresets,
                 selectedScore = state.selectedScore,
                 onScoreSelected = { viewModel.selectScore(it) },
-                onEditClick = { viewModel.openScoreEdit() },
                 onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
                 modifier = Modifier
                     .weight(1f)
@@ -100,15 +97,6 @@ fun MainScreen(
             onConfirm = { viewModel.onConfirm() },
             onPrayer = onNavigateToPrayer,
             onHistory = onNavigateToHistory,
-        )
-    }
-
-    // Score Edit Modal
-    if (state.scoreEditMode) {
-        ScoreEditModal(
-            initialPresets = state.scorePresets,
-            onDismiss = { viewModel.closeScoreEdit() },
-            onSave = { viewModel.saveScorePresets(it) },
         )
     }
 

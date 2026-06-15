@@ -14,8 +14,6 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
 import com.example.karma.ui.theme.ChartBg
-import kotlin.math.abs
-import kotlin.math.roundToInt
 
 private const val PAD_TOP = 20f
 private const val PAD_RIGHT = 20f
@@ -27,6 +25,8 @@ data class ChartViewport(
     var viewEnd: Double = 0.0,
     var yMin: Float = 0f,
     var yMax: Float = 10f,
+    var minTimeRange: Double = 3600000.0,  // 1 hour minimum
+    var maxTimeRange: Double = 0.0,        // set on first auto-fit
 )
 
 @Composable
@@ -39,6 +39,7 @@ fun HistoryChartCanvas(
     val currentOnPointClicked by rememberUpdatedState(onPointClicked)
     val currentPoints by rememberUpdatedState(points)
 
+    // ---- Gesture: tap to select point ----
     Canvas(
         modifier = modifier
             .fillMaxSize()
@@ -56,7 +57,6 @@ fun HistoryChartCanvas(
                     if (plotW <= 0f || plotH <= 0f) return@detectTapGestures
 
                     val vp = viewport
-                    // Find nearest point by both x and y distance
                     val nearest = pts.minByOrNull { point ->
                         val px = PAD_LEFT + ((point.timestamp - vp.viewStart) / (vp.viewEnd - vp.viewStart) * plotW).toFloat()
                         val py = PAD_TOP + (1f - (point.totalAfter - vp.yMin) / (vp.yMax - vp.yMin)) * plotH
@@ -64,16 +64,14 @@ fun HistoryChartCanvas(
                         val dy = py - tapY
                         dx * dx + dy * dy
                     }
-                    // Only trigger if close enough (within 80dp)
                     if (nearest != null) {
                         val px = PAD_LEFT + ((nearest.timestamp - vp.viewStart) / (vp.viewEnd - vp.viewStart) * plotW).toFloat()
                         val py = PAD_TOP + (1f - (nearest.totalAfter - vp.yMin) / (vp.yMax - vp.yMin)) * plotH
                         val distSq = (px - tapX) * (px - tapX) + (py - tapY) * (py - tapY)
-                        val maxDist = 120f // ~40dp threshold
+                        val maxDist = 120f
                         if (distSq <= maxDist * maxDist) {
                             callback(nearest, px, py)
                         } else {
-                            // Tap far from any point → send null to dismiss
                             callback(null, 0f, 0f)
                         }
                     } else {
@@ -85,7 +83,6 @@ fun HistoryChartCanvas(
         val w = size.width
         val h = size.height
         if (w <= 0 || h <= 0 || points.size < 2) {
-            // Show "no data" message
             drawContext.canvas.nativeCanvas.drawText(
                 if (points.size < 2) "暂无足够数据" else "",
                 w / 2f, h / 2f,
@@ -102,7 +99,7 @@ fun HistoryChartCanvas(
         val plotH = h - PAD_TOP - PAD_BOTTOM
 
         val vp = viewport
-        // Auto-fit viewport if not set
+        // ---- Auto-fit viewport on first draw ----
         if (vp.viewEnd <= vp.viewStart) {
             val padding = 0.1
             val timeRange = points.last().timestamp - points.first().timestamp
@@ -110,13 +107,15 @@ fun HistoryChartCanvas(
             vp.viewEnd = points.last().timestamp + (timeRange * padding)
             if (vp.viewEnd <= vp.viewStart) vp.viewEnd = vp.viewStart + 3600000.0
 
+            vp.minTimeRange = minOf(3600000.0, maxOf(timeRange / 20.0, 600000.0))
+            vp.maxTimeRange = vp.viewEnd - vp.viewStart
+
             val scores = points.map { it.totalAfter }
             val yMin = scores.min()
             val yMax = scores.max()
             val yPad = maxOf((yMax - yMin) * 0.15f, 5f)
             vp.yMin = yMin - yPad
             vp.yMax = yMax + yPad
-            if (vp.yMax <= vp.yMin) vp.yMax = vp.yMin + 10f
         }
 
         // Mapping functions

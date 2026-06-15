@@ -1,22 +1,21 @@
 package com.example.karma.ui.main.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.gestures.detectTapGestures
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.lazy.grid.GridCells
-import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -25,20 +24,25 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.theme.ScoreBtnBg
+import kotlin.math.abs
+import kotlin.math.roundToInt
+
+private const val AXIS_RANGE = 6f
+private const val PADDING_FRACTION = 0.10f
 
 @Composable
 fun ScorePanel(
-    scorePresets: List<Float>,
     selectedScore: Float?,
     onScoreSelected: (Float) -> Unit,
-    onEditClick: () -> Unit,
     onCustomScoreChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -46,82 +50,31 @@ fun ScorePanel(
         modifier = modifier
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surface)
-            .padding(10.dp),
+            .padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
         // Title
-        Row(
+        Text(
+            text = "分数",
+            fontSize = 12.sp,
+            fontWeight = FontWeight.Bold,
+            color = Color(0xFFffd700),
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        // Vertical axis canvas
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "分数",
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-                color = Color(0xFFffd700),
+            ScoreAxisView(
+                selectedScore = selectedScore ?: 0f,
+                onScoreSelected = onScoreSelected,
+                modifier = Modifier.fillMaxSize(),
             )
-            TextButton(
-                onClick = onEditClick,
-                modifier = Modifier.padding(0.dp),
-            ) {
-                Text("编辑", fontSize = 11.sp, color = Color(0xFFa0c4ff))
-            }
-        }
-
-        // Score grid
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(2),
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
-        ) {
-            items(scorePresets.size) { index ->
-                val val_ = scorePresets[index]
-                val isSelected = selectedScore == val_
-                val text = if (val_ > 0) "+$val_" else val_.toString()
-                val textColor = if (val_ < 0) Color(0xFFff8a80) else Color(0xFFa0c4ff)
-
-                TextButton(
-                    onClick = { onScoreSelected(val_) },
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(7.dp))
-                        .then(
-                            if (isSelected) {
-                                Modifier.border(
-                                    2.dp,
-                                    if (val_ < 0) Color(0xFFff5252) else Color(0xFFffd700),
-                                    RoundedCornerShape(7.dp)
-                                )
-                            } else {
-                                Modifier
-                            }
-                        )
-                        .background(
-                            if (isSelected) {
-                                if (val_ < 0) Color(0xFFff5252).copy(alpha = 0.1f)
-                                else Color(0xFFffd700).copy(alpha = 0.1f)
-                            } else {
-                                ScoreBtnBg
-                            }
-                        )
-                        .padding(vertical = 6.dp)
-                        .fillMaxWidth()
-                        .height(32.dp),
-                    contentPadding = androidx.compose.foundation.layout.PaddingValues(0.dp),
-                ) {
-                    Text(
-                        text = text,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = if (isSelected) {
-                            if (val_ < 0) Color(0xFFff5252) else Color(0xFFffd700)
-                        } else {
-                            textColor
-                        },
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
         }
 
         Spacer(Modifier.height(6.dp))
@@ -148,4 +101,184 @@ fun ScorePanel(
             modifier = Modifier.fillMaxWidth(),
         )
     }
+}
+
+@Composable
+private fun ScoreAxisView(
+    selectedScore: Float,
+    onScoreSelected: (Float) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Canvas(
+        modifier = modifier
+            .pointerInput(Unit) {
+                detectTapGestures { offset ->
+                    val score = yToScore(offset.y, size.height.toFloat())
+                    val snapped = snapToHalf(score).coerceIn(-AXIS_RANGE, AXIS_RANGE)
+                    onScoreSelected(snapped)
+                }
+            }
+            .pointerInput(Unit) {
+                detectVerticalDragGestures(
+                    onVerticalDrag = { change, _ ->
+                        val score = yToScore(change.position.y, size.height.toFloat())
+                        val snapped = snapToHalf(score).coerceIn(-AXIS_RANGE, AXIS_RANGE)
+                        onScoreSelected(snapped)
+                        change.consume()
+                    },
+                )
+            }
+    ) {
+        val w = size.width
+        val h = size.height
+        val densityFactor = density
+        if (w <= 0 || h <= 0) return@Canvas
+
+        val paddingTop = h * PADDING_FRACTION
+        val paddingBottom = h * PADDING_FRACTION
+        val usableH = h - paddingTop - paddingBottom
+
+        // Axis X position — left-aligned so labels fit on the right
+        val axisX = w * 0.35f
+
+        // ---- Background ----
+        drawRect(color = Color(0xFF0d1b2a).copy(alpha = 0.3f), size = size)
+
+        // ---- Axis vertical line ----
+        drawLine(
+            color = Color.White.copy(alpha = 0.25f),
+            start = Offset(axisX, paddingTop),
+            end = Offset(axisX, h - paddingBottom),
+            strokeWidth = 1.5f * densityFactor,
+        )
+
+        // ---- Ticks and labels (every 0.5 from -6 to +6) ----
+        var tickValue = -AXIS_RANGE
+        while (tickValue <= AXIS_RANGE + 0.001f) {
+            val y = scoreToAxisY(tickValue, paddingTop, usableH)
+            val isInteger = (tickValue % 1f).let { abs(it) < 0.01f }
+            val tickLen = if (isInteger) 8f * densityFactor else 5f * densityFactor
+
+            // Tick line
+            if (isInteger) {
+                // Integer: line to the left
+                drawLine(
+                    color = Color.White.copy(alpha = 0.35f),
+                    start = Offset(axisX - tickLen, y),
+                    end = Offset(axisX, y),
+                    strokeWidth = 1f,
+                )
+            } else {
+                // Half: line to the right
+                drawLine(
+                    color = Color.White.copy(alpha = 0.15f),
+                    start = Offset(axisX, y),
+                    end = Offset(axisX + tickLen, y),
+                    strokeWidth = 1f,
+                )
+            }
+
+            // Label
+            val label = when {
+                tickValue == 0f -> "0"
+                tickValue > 0 -> "+${formatTickValue(tickValue)}"
+                else -> formatTickValue(tickValue)
+            }
+            val labelColor = when {
+                tickValue == 0f -> Color(0xFFffd700)
+                tickValue < 0 -> Color(0xFFff8a80)
+                else -> Color(0xFFa0c4ff)
+            }
+            val alpha = if (tickValue == 0f) 1f else 0.7f
+            val labelSize = if (tickValue == 0f) 26f * densityFactor else if (isInteger) 22f * densityFactor else 18f * densityFactor
+
+            if (isInteger) {
+                // Integer label: on the right
+                drawContext.canvas.nativeCanvas.drawText(
+                    label,
+                    axisX + 6f * densityFactor,
+                    y + labelSize * 0.35f,
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.argb(
+                            (alpha * 255).toInt(),
+                            (labelColor.red * 255).toInt(),
+                            (labelColor.green * 255).toInt(),
+                            (labelColor.blue * 255).toInt(),
+                        )
+                        textSize = labelSize
+                        textAlign = android.graphics.Paint.Align.LEFT
+                        isFakeBoldText = tickValue == 0f
+                    }
+                )
+            } else {
+                // Half label: on the left
+                drawContext.canvas.nativeCanvas.drawText(
+                    label,
+                    axisX - 6f * densityFactor,
+                    y + labelSize * 0.35f,
+                    android.graphics.Paint().apply {
+                        color = android.graphics.Color.argb(
+                            (alpha * 255).toInt(),
+                            (labelColor.red * 255).toInt(),
+                            (labelColor.green * 255).toInt(),
+                            (labelColor.blue * 255).toInt(),
+                        )
+                        textSize = labelSize
+                        textAlign = android.graphics.Paint.Align.RIGHT
+                    }
+                )
+            }
+
+            tickValue += 0.5f
+        }
+
+        // ---- Red selection circle ----
+        val circleY = scoreToAxisY(selectedScore, paddingTop, usableH)
+        val circleCenter = Offset(axisX, circleY)
+
+        // Outer glow
+        drawCircle(
+            color = Color(0xFFff5252).copy(alpha = 0.2f),
+            radius = 14f * densityFactor,
+            center = circleCenter,
+        )
+        // Main red circle
+        drawCircle(
+            color = Color(0xFFff5252),
+            radius = 8f * densityFactor,
+            center = circleCenter,
+        )
+        // Inner white highlight
+        drawCircle(
+            color = Color.White.copy(alpha = 0.5f),
+            radius = 3f * densityFactor,
+            center = Offset(axisX - 1.5f * densityFactor, circleY - 1.5f * densityFactor),
+        )
+    }
+}
+
+// ---- Math helpers ----
+
+/** Map a score [-6 .. +6] to a canvas Y coordinate. */
+private fun scoreToAxisY(score: Float, paddingTop: Float, usableH: Float): Float {
+    val ratio = (score / AXIS_RANGE).coerceIn(-1f, 1f)
+    return paddingTop + usableH * (0.5f - ratio * 0.5f)
+}
+
+/** Map a canvas Y coordinate back to a score [-6 .. +6]. */
+private fun yToScore(y: Float, canvasH: Float): Float {
+    val paddingTop = canvasH * PADDING_FRACTION
+    val usableH = canvasH * 0.80f
+    val ratio = 1f - (y - paddingTop) / usableH * 2f
+    return ratio * AXIS_RANGE
+}
+
+/** Snap to the nearest 0.5. */
+private fun snapToHalf(v: Float): Float {
+    return (v * 2f).roundToInt() / 2f
+}
+
+/** Format a tick value: remove trailing ".0" for integers. */
+private fun formatTickValue(v: Float): String {
+    return if (v % 1f == 0f) v.toInt().toString() else String.format("%.1f", v)
 }

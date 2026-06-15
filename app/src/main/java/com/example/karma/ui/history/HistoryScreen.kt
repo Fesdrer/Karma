@@ -18,9 +18,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.offset
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -82,7 +80,7 @@ fun HistoryScreen(
             .fillMaxSize()
             .padding(20.dp),
     ) {
-        // Header
+        // Row 1: Back + Title (left) | View mode buttons (right)
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -112,13 +110,11 @@ fun HistoryScreen(
                 )
             }
 
-            // Controls
+            // View mode buttons (no horizontal scroll)
             Row(
-                modifier = Modifier.horizontalScroll(rememberScrollState()),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // View mode buttons
                 ViewMode.entries.forEach { mode ->
                     val isActive = state.viewMode == mode
                     val label = when (mode) {
@@ -139,52 +135,62 @@ fun HistoryScreen(
                                 RoundedCornerShape(8.dp)
                             )
                             .clickable { viewModel.setViewMode(mode) }
-                            .padding(horizontal = 12.dp, vertical = 6.dp),
+                            .padding(horizontal = 10.dp, vertical = 5.dp),
                     ) {
                         Text(
                             label,
-                            fontSize = 14.sp,
+                            fontSize = 13.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = if (isActive) Color.White else Color(0xFFa0c4ff),
                         )
                     }
                 }
-
-                // Export/Import buttons
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { exportCsvLauncher.launch("karma_data.csv") }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Text("CSV", fontSize = 14.sp, color = Color(0xFFa0c4ff))
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { exportJsonLauncher.launch("karma_data.json") }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Text("JSON", fontSize = 14.sp, color = Color(0xFFa0c4ff))
-                }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { importLauncher.launch(arrayOf("application/json", "text/csv")) }
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
-                ) {
-                    Text("导入", fontSize = 14.sp, color = Color(0xFFa0c4ff))
-                }
             }
         }
 
-        Spacer(Modifier.height(16.dp))
+        Spacer(Modifier.height(8.dp))
+
+        // Row 2: Export / Import buttons (right-aligned)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1a1a3e))
+                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                    .clickable { exportCsvLauncher.launch("karma_data.csv") }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text("CSV", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+            }
+            Spacer(Modifier.width(4.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1a1a3e))
+                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                    .clickable { exportJsonLauncher.launch("karma_data.json") }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text("JSON", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+            }
+            Spacer(Modifier.width(4.dp))
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFF1a1a3e))
+                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                    .clickable { importLauncher.launch(arrayOf("application/json", "text/csv")) }
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text("导入", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
 
         // Chart
         BoxWithConstraints(
