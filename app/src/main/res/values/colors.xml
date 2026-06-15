@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Karma Dark Theme -->
+    <color name="dark_navy">#FF1a1a2e</color>
+    <color name="panel_bg">#FF16213e</color>
+    <color name="gold">#FFFFd700</color>
+    <color name="blue_light">#FFa0c4ff</color>
+    <color name="blue_primary">#FF4a90d9</color>
+    <color name="red_negative">#FFff5252</color>
+    <color name="green_positive">#FF69f0ae</color>
+
+    <!-- Rank Colors -->
+    <color name="rank_1">#FFFFFFFF</color>
+    <color name="rank_2">#FFe0e0e0</color>
+    <color name="rank_3">#FFc0c0c0</color>
+    <color name="rank_4">#FFa0a0a0</color>
+    <color name="rank_5">#FFFFd700</color>
+    <color name="rank_6">#FFff8c00</color>
+    <color name="rank_7">#FFff4444</color>
+    <color name="rank_8">#FFaa00ff</color>
+    <color name="rank_9">#FF00ffff</color>
+
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+</resources>
