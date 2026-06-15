@@ -71,33 +71,30 @@ class HistoryViewModel(
         mode: ViewMode,
     ): List<AggregatedPoint> {
         if (entries.isEmpty()) return emptyList()
-        if (mode == ViewMode.DAY) {
-            return entries.map { it.toAggregated() }
-        }
+        val now = System.currentTimeMillis()
+        val cal = Calendar.getInstance()
 
-        // Group by week or month, taking the last entry per group
-        val groups = mutableMapOf<String, HistoryEntryEntity>()
-        for (entry in entries) {
-            val cal = Calendar.getInstance().apply { timeInMillis = entry.timestamp }
-            val key = when (mode) {
-                ViewMode.WEEK -> {
-                    val year = cal.get(Calendar.YEAR)
-                    val week = cal.get(Calendar.WEEK_OF_YEAR)
-                    "$year-W${week.toString().padStart(2, '0')}"
-                }
-                ViewMode.MONTH -> {
-                    val year = cal.get(Calendar.YEAR)
-                    val month = cal.get(Calendar.MONTH) + 1
-                    "$year-${month.toString().padStart(2, '0')}"
-                }
-                else -> ""
+        val filtered = when (mode) {
+            ViewMode.DAY -> {
+                cal.timeInMillis = now
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val todayStart = cal.timeInMillis
+                entries.filter { it.timestamp >= todayStart }
             }
-            // Keep the last entry in each group (data is sorted ASC)
-            groups[key] = entry
+            ViewMode.WEEK -> {
+                val weekAgo = now - 7L * 24 * 60 * 60 * 1000
+                entries.filter { it.timestamp >= weekAgo }
+            }
+            ViewMode.MONTH -> {
+                val monthAgo = now - 30L * 24 * 60 * 60 * 1000
+                entries.filter { it.timestamp >= monthAgo }
+            }
+            ViewMode.ALL -> entries
         }
-        return groups.entries
-            .sortedBy { it.key }
-            .map { it.value.toAggregated() }
+        return filtered.map { it.toAggregated() }
     }
 
     // ---- Export ----

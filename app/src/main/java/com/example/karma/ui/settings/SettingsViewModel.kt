@@ -132,7 +132,12 @@ class SettingsViewModel(
     }
 
     fun resetToDefaults() {
-        setDraft(KarmaSettingsEntity())
+        // 保留 totalScore 和 lastDecayDate 不清零，其余恢复默认
+        val current = _draft.value
+        setDraft(KarmaSettingsEntity().copy(
+            totalScore = current.totalScore,
+            lastDecayDate = current.lastDecayDate,
+        ))
     }
 
     fun hasChanges(): Boolean = _draft.value != _original.value

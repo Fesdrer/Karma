@@ -121,6 +121,7 @@ fun HistoryScreen(
                         ViewMode.DAY -> "日"
                         ViewMode.WEEK -> "周"
                         ViewMode.MONTH -> "月"
+                        ViewMode.ALL -> "全部"
                     }
                     Box(
                         modifier = Modifier
@@ -263,5 +264,8 @@ fun HistoryScreen(
     LaunchedEffect(state.viewMode) {
         showTooltip = false
         tooltipPoint = null
+        // 重置视口，触发 Canvas 重新 auto-fit
+        viewport.viewEnd = 0.0
+        viewport.viewStart = 0.0
     }
 }
