@@ -59,9 +59,6 @@ fun HistoryScreen(
     var tooltipX by remember { mutableStateOf(0f) }
     var tooltipY by remember { mutableStateOf(0f) }
 
-    // Chart viewport state
-    val viewport = remember { ChartViewport() }
-
     // File picker launchers
     val exportCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
@@ -193,6 +190,9 @@ fun HistoryScreen(
 
         Spacer(Modifier.height(12.dp))
 
+        // Chart viewport state — 每个 viewMode 独立实例
+        val viewport = remember(state.viewMode) { ChartViewport() }
+
         // Chart
         BoxWithConstraints(
             modifier = Modifier
@@ -264,8 +264,5 @@ fun HistoryScreen(
     LaunchedEffect(state.viewMode) {
         showTooltip = false
         tooltipPoint = null
-        // 重置视口，触发 Canvas 重新 auto-fit
-        viewport.viewEnd = 0.0
-        viewport.viewStart = 0.0
     }
 }

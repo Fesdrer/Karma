@@ -3,12 +3,18 @@ package com.example.karma
 import android.app.Application
 import android.util.Log
 import com.example.karma.di.AppContainer
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import java.io.File
 
 class KarmaApplication : Application() {
 
     lateinit var container: AppContainer
         private set
+
+    private val applicationScope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
 
     override fun onCreate() {
         // 捕获未处理异常并写入文件，便于开发阶段定位闪退原因
@@ -29,5 +35,17 @@ class KarmaApplication : Application() {
 
         super.onCreate()
         container = AppContainer(this)
+
+        // 应用启动时检查业力衰减
+        applicationScope.launch {
+            try {
+                val deducted = container.repository.applyDecay()
+                if (deducted > 0f) {
+                    Log.i("KarmaDecay", "业力衰减：本次共扣除 ${String.format("%.1f", deducted)} 分")
+                }
+            } catch (e: Exception) {
+                Log.e("KarmaDecay", "衰减检查失败", e)
+            }
+        }
     }
 }

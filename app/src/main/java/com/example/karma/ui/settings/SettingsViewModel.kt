@@ -34,6 +34,13 @@ class SettingsViewModel(
             // 仅当用户尚未编辑时才覆盖 _draft，防止编辑丢失
             if (!_userEdited) {
                 _draft.value = initial
+            } else {
+                // 用户已在 DB 加载前编辑过，保留编辑但修复关键字段（totalScore 等）
+                // 否则 _draft 的 totalScore 仍是 KarmaSettingsEntity() 的 0
+                setDraft(_draft.value.copy(
+                    totalScore = initial.totalScore,
+                    lastDecayDate = initial.lastDecayDate,
+                ))
             }
         }
     }

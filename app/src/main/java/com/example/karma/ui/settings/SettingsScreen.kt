@@ -16,6 +16,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -36,10 +39,13 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,6 +59,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.theme.BorderSubtle
+import kotlin.math.abs
+import kotlinx.coroutines.launch
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.PanelBg
 import com.example.karma.ui.theme.TextMuted
@@ -427,9 +435,40 @@ private fun DecaySettingsCard(
 
         Spacer(Modifier.height(8.dp))
 
-        // 扣除时间
-        Text("扣除时间：${draft.decayHour}:${String.format("%02d", draft.decayMinute)}",
-            style = MaterialTheme.typography.bodyMedium, color = TextPrimary)
+        // 扣除时间 — 点击弹出选择对话框
+        Text("扣除时间", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+
+        var showTimePicker by remember { mutableStateOf(false) }
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(Color(0xFF1a1a3e))
+                .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                .clickable { showTimePicker = true }
+                .padding(12.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = String.format("%02d:%02d", draft.decayHour, draft.decayMinute),
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+                color = Gold,
+            )
+        }
+
+        if (showTimePicker) {
+            TimePickerDialog(
+                initialHour = draft.decayHour,
+                initialMinute = draft.decayMinute,
+                onConfirm = { hour, minute ->
+                    viewModel.updateDecayTime(hour, minute)
+                },
+                onDismiss = { showTimePicker = false },
+            )
+        }
 
         Spacer(Modifier.height(12.dp))
 
@@ -713,6 +752,143 @@ private fun ColorTextField(
             cursorColor = Gold,
         ),
     )
+}
+
+// ============================================================
+// TimePickerDialog — 弹出式时间选择
+// ============================================================
+
+@Composable
+private fun TimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onConfirm: (hour: Int, minute: Int) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    var selectedHour by remember { mutableStateOf(initialHour) }
+    var selectedMinute by remember { mutableStateOf(initialMinute) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择扣除时间", color = Gold) },
+        text = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.Center,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                ScrollPicker(
+                    range = 0..23,
+                    selected = selectedHour,
+                    onSelected = { selectedHour = it },
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    ":",
+                    fontSize = 24.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                )
+                ScrollPicker(
+                    range = 0..59,
+                    selected = selectedMinute,
+                    onSelected = { selectedMinute = it },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(selectedHour, selectedMinute)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
+            ) { Text("确定") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
+        },
+        containerColor = Color(0xFF16213e),
+    )
+}
+
+// ============================================================
+// ScrollPicker — 滑动选择器（修正：选中项居中）
+// ============================================================
+
+@Composable
+private fun ScrollPicker(
+    range: IntRange,
+    selected: Int,
+    onSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val items = range.toList()
+    val itemHeight = 44.dp
+    val visibleItems = 5
+    val scope = rememberCoroutineScope()
+
+    val listState = rememberLazyListState(
+        initialFirstVisibleItemIndex = items.indexOf(selected).coerceAtLeast(0)
+    )
+
+    // 用 layoutInfo 找到视口正中间的项（而非 firstVisibleItemIndex 指向的顶部项）
+    val centerItemIndex by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            if (layoutInfo.visibleItemsInfo.isEmpty()) return@derivedStateOf 0
+            val viewportCenter = layoutInfo.viewportEndOffset / 2
+            layoutInfo.visibleItemsInfo.minByOrNull { info ->
+                abs((info.offset + info.size / 2) - viewportCenter)
+            }?.index?.coerceIn(0, items.size - 1) ?: 0
+        }
+    }
+
+    // 中间项变化时更新选中值
+    LaunchedEffect(centerItemIndex) {
+        onSelected(items[centerItemIndex])
+    }
+
+    Box(
+        modifier = modifier
+            .height(itemHeight * visibleItems)
+            .clip(RoundedCornerShape(8.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        // 选中高亮条（始终保持在正中间）
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(itemHeight)
+                .background(Gold.copy(alpha = 0.12f))
+                .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(4.dp)),
+        )
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            itemsIndexed(items) { index, value ->
+                val isCenter = index == centerItemIndex
+                Text(
+                    text = String.format("%02d", value),
+                    fontSize = if (isCenter) 22.sp else 14.sp,
+                    fontWeight = if (isCenter) FontWeight.Bold else FontWeight.Normal,
+                    color = if (isCenter) Color.White else TextMuted,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(itemHeight)
+                        .clickable {
+                            scope.launch { listState.animateScrollToItem(index) }
+                            onSelected(value)
+                        },
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+    }
 }
 
 // ============================================================

@@ -45,7 +45,7 @@ fun HistoryChartCanvas(
     Canvas(
         modifier = modifier
             .fillMaxSize()
-            .pointerInput(Unit) {
+            .pointerInput(viewport) {
                 detectTapGestures { offset ->
                     val callback = currentOnPointClicked
                     val pts = currentPoints
