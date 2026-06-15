@@ -8,6 +8,7 @@ import com.example.karma.di.AppContainer
 import com.example.karma.ui.history.HistoryScreen
 import com.example.karma.ui.main.MainScreen
 import com.example.karma.ui.prayer.PrayerScreen
+import com.example.karma.ui.settings.SettingsScreen
 
 @Composable
 fun KarmaNavGraph(
@@ -39,6 +40,12 @@ fun KarmaNavGraph(
             PrayerScreen(
                 appContainer = appContainer,
                 onComplete = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.Settings.route) {
+            SettingsScreen(
+                appContainer = appContainer,
+                onBack = { navController.popBackStack() },
             )
         }
     }
