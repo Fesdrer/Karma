@@ -65,6 +65,17 @@ class KarmaRepository(
         settingsDao.updateEventPresets(presets)
     }
 
+    suspend fun updateAllSettings(settings: KarmaSettingsEntity) {
+        settingsDao.upsertSettings(settings)
+    }
+
+    // ---- Decay (骨架，Phase 5 完整实现) ----
+
+    suspend fun applyDecay(): Float {
+        // Phase 5 中完整实现
+        return 0f
+    }
+
     // ---- Rank ----
 
     fun getRank(score: Float): Rank? {

@@ -29,4 +29,7 @@ interface HistoryEntryDao {
 
     @Query("DELETE FROM history_entries WHERE id IN (SELECT id FROM history_entries ORDER BY timestamp ASC LIMIT :excess)")
     suspend fun trimOldest(excess: Int)
+
+    @Query("SELECT * FROM history_entries ORDER BY timestamp ASC LIMIT 1")
+    suspend fun getOldestEntry(): HistoryEntryEntity?
 }

@@ -12,4 +12,34 @@ data class KarmaSettingsEntity(
     val eventPresets: List<String> = listOf(
         "帮助他人", "早起早睡", "锻炼身体", "发脾气", "浪费粮食", "口出恶言"
     ),
+
+    // ===== 左：分数区域 =====
+    val scoreAxisFontSize: Float = 22f,
+    val scoreAxisRange: Float = 6f,
+
+    // ===== 中：刻度区域 =====
+    val axisLabelColor: Long = 0x80FFFFFF.toLong(), // = -2130706433L
+    val axisTickThickness: Float = 1f,
+    val axisLabelFontSize: Float = 19f,
+    val axisDisplayRange: Float = 100f,
+    val showNearbyTicks: Boolean = true,
+    val nearbyTickRange: Float = 10f,
+    val axisQuarterValue: Float = 15f,
+    val rankColors: List<Long> = listOf(
+        0xFF0055ffL, 0xFF0077ffL, 0xFF0099ffL, 0xFF00bbffL,
+        0xFF00ddaaL, 0xFF44dd44L, 0xFFddaa00L, 0xFFff5500L, 0xFFff0000L
+    ),
+
+    // ===== 右：历史记录 =====
+    val historyLineThickness: Float = 2f,
+    val historyDotRadius: Float = 3.5f,
+
+    // ===== 业力衰减 =====
+    val decayEnabled: Boolean = true,
+    val decayHour: Int = 23,
+    val decayMinute: Int = 0,
+    val lastDecayDate: String = "",
+    val rankDecayAmounts: List<Float> = listOf(
+        2f, 2f, 2f, 2f, 2f, 3f, 3f, 3f, 3f
+    ),
 )
