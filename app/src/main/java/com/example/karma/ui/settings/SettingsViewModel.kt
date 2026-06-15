@@ -8,6 +8,7 @@ import com.example.karma.data.repository.KarmaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /**
@@ -18,54 +19,68 @@ class SettingsViewModel(
     private val repository: KarmaRepository,
 ) : ViewModel() {
 
-    private val _original = MutableStateFlow(KarmaSettingsEntity())  // 数据库中的原始值
+    private val _original = MutableStateFlow(KarmaSettingsEntity())  // 上次保存时的值（用于 hasChanges）
     private val _draft = MutableStateFlow(KarmaSettingsEntity())     // 当前编辑中的副本
+    private var _userEdited = false  // 标记用户是否已编辑过，防止加载覆盖
 
     val draft: StateFlow<KarmaSettingsEntity> = _draft.asStateFlow()
+    val original: StateFlow<KarmaSettingsEntity> = _original.asStateFlow()
 
     init {
+        // 异步加载初始值，不阻塞主线程
         viewModelScope.launch {
-            repository.settings.collect { settings ->
-                _original.value = settings
-                _draft.value = settings   // 初始时 draft = original
+            val initial = repository.settings.first()
+            _original.value = initial
+            // 仅当用户尚未编辑时才覆盖 _draft，防止编辑丢失
+            if (!_userEdited) {
+                _draft.value = initial
             }
         }
     }
 
     // ===== 通用更新方法 =====
+    /** 标记编辑并写 _draft，防止异步初始加载覆盖用户编辑 */
+    private fun setDraft(value: KarmaSettingsEntity) {
+        _userEdited = true
+        _draft.value = value
+    }
+
     fun updateDraft(transform: KarmaSettingsEntity.() -> KarmaSettingsEntity) {
-        _draft.value = _draft.value.transform()
+        setDraft(_draft.value.transform())
     }
 
     // ===== 便捷更新方法 =====
     fun updateScoreAxisFontSize(v: Float) {
-        _draft.value = _draft.value.copy(scoreAxisFontSize = v)
+        setDraft(_draft.value.copy(scoreAxisFontSize = v))
     }
-    fun updateScoreAxisRange(v: Float) {
-        _draft.value = _draft.value.copy(scoreAxisRange = v)
+    fun updateScoreAxisRangeMin(v: Float) {
+        setDraft(_draft.value.copy(scoreAxisRangeMin = v))
+    }
+    fun updateScoreAxisRangeMax(v: Float) {
+        setDraft(_draft.value.copy(scoreAxisRangeMax = v))
     }
 
     // ★ 中间刻度区域
     fun updateAxisLabelColor(v: Long) {
-        _draft.value = _draft.value.copy(axisLabelColor = v)
+        setDraft(_draft.value.copy(axisLabelColor = v))
     }
     fun updateAxisTickThickness(v: Float) {
-        _draft.value = _draft.value.copy(axisTickThickness = v)
+        setDraft(_draft.value.copy(axisTickThickness = v))
     }
     fun updateAxisLabelFontSize(v: Float) {
-        _draft.value = _draft.value.copy(axisLabelFontSize = v)
+        setDraft(_draft.value.copy(axisLabelFontSize = v))
     }
     fun updateAxisDisplayRange(v: Float) {
-        _draft.value = _draft.value.copy(axisDisplayRange = v)
+        setDraft(_draft.value.copy(axisDisplayRange = v))
     }
     fun updateShowNearbyTicks(v: Boolean) {
-        _draft.value = _draft.value.copy(showNearbyTicks = v)
+        setDraft(_draft.value.copy(showNearbyTicks = v))
     }
     fun updateNearbyTickRange(v: Float) {
-        _draft.value = _draft.value.copy(nearbyTickRange = v)
+        setDraft(_draft.value.copy(nearbyTickRange = v))
     }
     fun updateAxisQuarterValue(v: Float) {
-        _draft.value = _draft.value.copy(axisQuarterValue = v)
+        setDraft(_draft.value.copy(axisQuarterValue = v))
     }
 
     // 阶位颜色
@@ -73,7 +88,7 @@ class SettingsViewModel(
         val colors = _draft.value.rankColors.toMutableList()
         if (index in colors.indices) {
             colors[index] = color
-            _draft.value = _draft.value.copy(rankColors = colors)
+            setDraft(_draft.value.copy(rankColors = colors))
         }
     }
 
@@ -82,29 +97,29 @@ class SettingsViewModel(
         val events = lines.lines()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
-        _draft.value = _draft.value.copy(eventPresets = events)
+        setDraft(_draft.value.copy(eventPresets = events))
     }
 
     // ★ 历史记录
     fun updateHistoryLineThickness(v: Float) {
-        _draft.value = _draft.value.copy(historyLineThickness = v)
+        setDraft(_draft.value.copy(historyLineThickness = v))
     }
     fun updateHistoryDotRadius(v: Float) {
-        _draft.value = _draft.value.copy(historyDotRadius = v)
+        setDraft(_draft.value.copy(historyDotRadius = v))
     }
 
     // ★ 业力衰减
     fun updateDecayEnabled(v: Boolean) {
-        _draft.value = _draft.value.copy(decayEnabled = v)
+        setDraft(_draft.value.copy(decayEnabled = v))
     }
     fun updateDecayTime(hour: Int, minute: Int) {
-        _draft.value = _draft.value.copy(decayHour = hour, decayMinute = minute)
+        setDraft(_draft.value.copy(decayHour = hour, decayMinute = minute))
     }
     fun updateRankDecayAmount(index: Int, amount: Float) {
         val amounts = _draft.value.rankDecayAmounts.toMutableList()
         if (index in amounts.indices) {
             amounts[index] = amount.coerceIn(0f, 10f)
-            _draft.value = _draft.value.copy(rankDecayAmounts = amounts)
+            setDraft(_draft.value.copy(rankDecayAmounts = amounts))
         }
     }
 
@@ -112,11 +127,12 @@ class SettingsViewModel(
     fun save() {
         viewModelScope.launch {
             repository.updateAllSettings(_draft.value)
+            _original.value = _draft.value  // 同步 original，hasChanges 恢复正常
         }
     }
 
     fun resetToDefaults() {
-        _draft.value = KarmaSettingsEntity()
+        setDraft(KarmaSettingsEntity())
     }
 
     fun hasChanges(): Boolean = _draft.value != _original.value

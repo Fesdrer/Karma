@@ -28,6 +28,9 @@ fun KarmaNavGraph(
                 onNavigateToPrayer = {
                     navController.navigate(Screen.Prayer.route)
                 },
+                onNavigateToSettings = {
+                    navController.navigate(Screen.Settings.route)
+                },
             )
         }
         composable(Screen.History.route) {

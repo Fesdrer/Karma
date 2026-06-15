@@ -15,7 +15,10 @@ data class KarmaSettingsEntity(
 
     // ===== 左：分数区域 =====
     val scoreAxisFontSize: Float = 22f,
+    @Deprecated("Use scoreAxisRangeMin/Max instead", ReplaceWith("scoreAxisRangeMin"))
     val scoreAxisRange: Float = 6f,
+    val scoreAxisRangeMin: Float = -6f,
+    val scoreAxisRangeMax: Float = 6f,
 
     // ===== 中：刻度区域 =====
     val axisLabelColor: Long = 0x80FFFFFF.toLong(), // = -2130706433L

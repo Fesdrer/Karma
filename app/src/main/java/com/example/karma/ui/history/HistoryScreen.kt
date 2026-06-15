@@ -205,6 +205,8 @@ fun HistoryScreen(
             HistoryChartCanvas(
                 points = state.aggregatedPoints,
                 viewport = viewport,
+                lineThickness = state.historyLineThickness,
+                dotRadius = state.historyDotRadius,
                 onPointClicked = { point, screenX, screenY ->
                     if (point != null) {
                         tooltipPoint = point

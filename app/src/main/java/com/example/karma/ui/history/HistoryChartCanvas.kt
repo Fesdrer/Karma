@@ -33,6 +33,8 @@ data class ChartViewport(
 fun HistoryChartCanvas(
     points: List<AggregatedPoint>,
     viewport: ChartViewport,
+    lineThickness: Float = 2f,
+    dotRadius: Float = 3.5f,
     onPointClicked: ((point: AggregatedPoint?, screenX: Float, screenY: Float) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -181,7 +183,7 @@ fun HistoryChartCanvas(
             if (i == 0) linePath.moveTo(x, y)
             else linePath.lineTo(x, y)
         }
-        drawPath(linePath, color = Color(0xFFffd700), style = Stroke(width = 2f))
+        drawPath(linePath, color = Color(0xFFffd700), style = Stroke(width = lineThickness))
 
         // ---- Dots ----
         val maxDots = 200
@@ -190,10 +192,10 @@ fun HistoryChartCanvas(
             val x = xMap(points[i].timestamp)
             val y = yMap(points[i].totalAfter)
             if (x < PAD_LEFT - 10f || x > w - PAD_RIGHT + 10f) continue
-            drawCircle(color = Color(0xFFffd700), radius = 3.5f, center = Offset(x, y))
+            drawCircle(color = Color(0xFFffd700), radius = dotRadius, center = Offset(x, y))
             drawCircle(
                 color = ChartBg,
-                radius = 3.5f,
+                radius = dotRadius,
                 center = Offset(x, y),
                 style = Stroke(width = 1.5f),
             )

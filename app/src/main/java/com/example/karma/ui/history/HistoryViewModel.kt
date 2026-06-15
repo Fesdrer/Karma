@@ -22,6 +22,8 @@ data class HistoryUiState(
     val entries: List<HistoryEntryEntity> = emptyList(),
     val viewMode: ViewMode = ViewMode.DAY,
     val aggregatedPoints: List<AggregatedPoint> = emptyList(),
+    val historyLineThickness: Float = 2f,
+    val historyDotRadius: Float = 3.5f,
     val message: String? = null,
 )
 
@@ -42,13 +44,16 @@ class HistoryViewModel(
 
     val uiState: StateFlow<HistoryUiState> = combine(
         repository.allHistory,
+        repository.settings,
         _viewMode.asStateFlow(),
         _message.asStateFlow(),
-    ) { entries, mode, msg ->
+    ) { entries, settings, mode, msg ->
         HistoryUiState(
             entries = entries,
             viewMode = mode,
             aggregatedPoints = aggregate(entries, mode),
+            historyLineThickness = settings.historyLineThickness,
+            historyDotRadius = settings.historyDotRadius,
             message = msg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())

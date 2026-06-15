@@ -69,6 +69,7 @@ fun SettingsScreen(
         factory = SettingsViewModel.Factory(appContainer.repository)
     )
     val draft by viewModel.draft.collectAsState()
+    val original by viewModel.original.collectAsState()
 
     Scaffold(
         modifier = modifier,
@@ -108,7 +109,7 @@ fun SettingsScreen(
                         viewModel.save()
                         onBack()
                     },
-                    enabled = viewModel.hasChanges(),
+                    enabled = draft != original,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Gold,
@@ -161,14 +162,14 @@ private fun ScoreSettingsCard(
 
         Spacer(Modifier.height(12.dp))
 
-        // 显示范围：两个数字输入框
+        // 显示范围：两个独立的数字输入框（不再强制对称）
         Text("显示范围", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             OutlinedTextField(
-                value = formatFloat(-draft.scoreAxisRange),
+                value = formatFloat(draft.scoreAxisRangeMin),
                 onValueChange = { v ->
-                    v.toFloatOrNull()?.let { viewModel.updateScoreAxisRange(kotlin.math.abs(it)) }
+                    v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMin(it) }
                 },
                 modifier = Modifier.width(70.dp),
                 singleLine = true,
@@ -185,9 +186,9 @@ private fun ScoreSettingsCard(
             Text("  ~  ", color = TextMuted)
             Spacer(Modifier.width(4.dp))
             OutlinedTextField(
-                value = formatFloat(draft.scoreAxisRange),
+                value = formatFloat(draft.scoreAxisRangeMax),
                 onValueChange = { v ->
-                    v.toFloatOrNull()?.let { viewModel.updateScoreAxisRange(it) }
+                    v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMax(it) }
                 },
                 modifier = Modifier.width(70.dp),
                 singleLine = true,
@@ -290,19 +291,28 @@ private fun AxisSettingsCard(
         Spacer(Modifier.height(12.dp))
         Text("阶位颜色（点击修改）", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(8.dp))
-        // 3行×3列
+        val rankNames = listOf("壹阶", "贰阶", "叁阶", "肆阶", "伍阶", "陆阶", "柒阶", "捌阶", "玖阶")
+        // 3行×3列，每个色块下方显示阶位名称
         for (row in 0 until 3) {
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 for (col in 0 until 3) {
                     val idx = row * 3 + col
                     if (idx < draft.rankColors.size) {
-                        ColorSwatch(
-                            color = draft.rankColors[idx],
-                            onClick = {
-                                colorPickerTargetIndex = idx
-                                showRankColorPicker = true
-                            },
-                        )
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            ColorSwatch(
+                                color = draft.rankColors[idx],
+                                onClick = {
+                                    colorPickerTargetIndex = idx
+                                    showRankColorPicker = true
+                                },
+                            )
+                            Spacer(Modifier.height(2.dp))
+                            Text(
+                                rankNames[idx],
+                                fontSize = 9.sp,
+                                color = TextMuted,
+                            )
+                        }
                     }
                 }
             }
@@ -610,7 +620,7 @@ private fun RankDecayItem(
 }
 
 // ============================================================
-// ColorPickerDialog
+// ColorPickerDialog — RGB 输入 + 实时预览
 // ============================================================
 
 @Composable
@@ -619,74 +629,89 @@ private fun ColorPickerDialog(
     onColorSelected: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    val presetColors = listOf(
-        0xFFFFFFFFL,  // 白
-        0xFFCCCCCCL,  // 浅灰
-        0xFF666666L,  // 深灰
-        0xFFFFD700L,  // 金
-        0xFF4A90D9L,  // 蓝
-        0xFFFF5252L,  // 红
-        0xFF69F0AEL,  // 绿
-        0xFFFF9800L,  // 橙
-        0xFF00BCD4L,  // 青
-        0xFF9C27B0L,  // 紫
-        0xFFF48FB1L,  // 粉
-        0xFF8D6E63L,  // 棕
-    )
+    // 从 currentColor (0xAARRGGBB) 提取 R/G/B
+    val initialR = ((currentColor shr 16) and 0xFF).toInt()
+    val initialG = ((currentColor shr 8) and 0xFF).toInt()
+    val initialB = (currentColor and 0xFF).toInt()
+
+    var r by remember { mutableStateOf(initialR.coerceIn(0, 255)) }
+    var g by remember { mutableStateOf(initialG.coerceIn(0, 255)) }
+    var b by remember { mutableStateOf(initialB.coerceIn(0, 255)) }
+
+    val previewColor = remember(r, g, b) {
+        0xFF000000L or (r.toLong() shl 16) or (g.toLong() shl 8) or b.toLong()
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("选择颜色", color = Gold) },
         text = {
-            Column {
-                // 当前选中的颜色预览
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        Modifier
-                            .size(24.dp)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(Color(currentColor))
-                            .border(1.dp, BorderSubtle, RoundedCornerShape(4.dp))
-                    )
-                    Spacer(Modifier.width(8.dp))
-                    Text("当前选择", color = TextSecondary, fontSize = 13.sp)
-                }
-                Spacer(Modifier.height(12.dp))
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // 实时预览色块
+                Box(
+                    modifier = Modifier
+                        .size(64.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(previewColor))
+                        .border(2.dp, BorderSubtle, RoundedCornerShape(8.dp)),
+                )
 
-                // 色块网格 3×4
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (row in presetColors.chunked(4)) {
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            row.forEach { color ->
-                                Box(
-                                    modifier = Modifier
-                                        .size(40.dp)
-                                        .clip(RoundedCornerShape(8.dp))
-                                        .background(Color(color))
-                                        .border(
-                                            width = if (color == currentColor) 2.dp else 1.dp,
-                                            color = if (color == currentColor) Color.White else BorderSubtle,
-                                            shape = RoundedCornerShape(8.dp),
-                                        )
-                                        .clickable {
-                                            onColorSelected(color)
-                                            onDismiss()
-                                        },
-                                )
-                            }
-                        }
-                    }
+                Spacer(Modifier.height(16.dp))
+
+                // R / G / B 三输入框
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ColorTextField("R", r, { r = it.coerceIn(0, 255) })
+                    ColorTextField("G", g, { g = it.coerceIn(0, 255) })
+                    ColorTextField("B", b, { b = it.coerceIn(0, 255) })
                 }
             }
         },
-        confirmButton = {},
+        confirmButton = {
+            Button(
+                onClick = {
+                    onColorSelected(previewColor)
+                    onDismiss()
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
+            ) { Text("确定") }
+        },
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
         },
         containerColor = Color(0xFF16213e),
+    )
+}
+
+@Composable
+private fun ColorTextField(
+    label: String,
+    value: Int,
+    onValueChange: (Int) -> Unit,
+) {
+    var text by remember(value) { mutableStateOf(value.toString()) }
+
+    OutlinedTextField(
+        value = text,
+        onValueChange = { newText ->
+            val filtered = newText.filter { it.isDigit() }
+            text = filtered
+            filtered.toIntOrNull()?.let { onValueChange(it) }
+        },
+        label = { Text(label, color = TextMuted) },
+        modifier = Modifier.width(70.dp),
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodyMedium,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Gold,
+            unfocusedBorderColor = BorderSubtle,
+            focusedTextColor = TextPrimary,
+            unfocusedTextColor = TextPrimary,
+            cursorColor = Gold,
+        ),
     )
 }
 

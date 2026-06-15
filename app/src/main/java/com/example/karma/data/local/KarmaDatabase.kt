@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 2,
+    version = 3,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -44,7 +44,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN showNearbyTicks INTEGER NOT NULL DEFAULT 1")
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN nearbyTickRange REAL NOT NULL DEFAULT 10.0")
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN axisQuarterValue REAL NOT NULL DEFAULT 15.0")
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN rankColors TEXT NOT NULL DEFAULT '[4278255615,4278220799,4278186495,4278152191,4278125226,4278255668,4279563776,4278714624,4278190080]'")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN rankColors TEXT NOT NULL DEFAULT '[4278212095,4278220799,4278229503,4278238207,4278246826,4282703172,4292717056,4294923520,4294901760]'")
 
                 // 右：历史记录
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN historyLineThickness REAL NOT NULL DEFAULT 2.0")
@@ -59,6 +59,13 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_2_3 = object : Migration(2, 3) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN scoreAxisRangeMin REAL NOT NULL DEFAULT -6.0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN scoreAxisRangeMax REAL NOT NULL DEFAULT 6.0")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -66,7 +73,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

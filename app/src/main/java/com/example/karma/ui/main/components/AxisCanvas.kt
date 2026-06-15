@@ -16,11 +16,10 @@ import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import com.example.karma.data.model.Rank
 import kotlin.math.abs
+import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sign
 
-private const val AXIS_DISPLAY_RANGE = 100f
-private const val AXIS_COMPRESSION_EXPONENT = 0.3654f
 private const val ANIM_DURATION = 400
 private val NEG_BG = Color(0xFF2d2d2d)
 private val CHART_BG = Color(0xFF0d1b2a)
@@ -28,6 +27,14 @@ private val CHART_BG = Color(0xFF0d1b2a)
 @Composable
 fun AxisCanvas(
     totalScore: Float,
+    labelColor: Long = 0x80FFFFFF.toLong(),
+    tickThickness: Float = 1f,
+    labelFontSize: Float = 19f,
+    displayRange: Float = 100f,
+    showNearby: Boolean = true,
+    nearbyRange: Float = 10f,
+    quarterValue: Float = 15f,
+    rankColorList: List<Long> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     // Animate the score value
@@ -53,12 +60,15 @@ fun AxisCanvas(
 
         if (w <= 0 || h <= 0) return@Canvas
 
+        val labelColorValue = Color(labelColor)
+        val labelAlpha = labelColorValue.alpha
+
         // ---- 1. Background ----
         drawRect(color = CHART_BG, size = size)
 
         // ---- 2. Negative region ----
-        val zeroY = scoreToY(0f, centerScore, halfH, h)
-        if (centerScore - AXIS_DISPLAY_RANGE < 0) {
+        val zeroY = scoreToY(0f, centerScore, halfH, h, displayRange, quarterValue)
+        if (centerScore - displayRange < 0) {
             val negY = zeroY.coerceIn(0f, h)
             if (h > negY) {
                 drawRect(
@@ -70,19 +80,24 @@ fun AxisCanvas(
         }
 
         // ---- 3. Rank bands ----
-        val minVis = centerScore - AXIS_DISPLAY_RANGE
-        val maxVis = centerScore + AXIS_DISPLAY_RANGE
+        val minVis = centerScore - displayRange
+        val maxVis = centerScore + displayRange
         for (rank in Rank.RANKS) {
             val bt = maxOf(rank.min, minVis)
             val bb = minOf(rank.max, maxVis)
             if (bt >= bb) continue
-            val yT = scoreToY(bb, centerScore, halfH, h)
-            val yB = scoreToY(bt, centerScore, halfH, h)
+            val yT = scoreToY(bb, centerScore, halfH, h, displayRange, quarterValue)
+            val yB = scoreToY(bt, centerScore, halfH, h, displayRange, quarterValue)
             val y0 = maxOf(0f, minOf(yT, yB))
             val y1 = minOf(h, maxOf(yT, yB))
             if (y1 <= y0) continue
+            val bandColor = if (rank.level - 1 in rankColorList.indices && rankColorList.isNotEmpty()) {
+                Color(rankColorList[rank.level - 1])
+            } else {
+                Color(rank.colorHex)
+            }
             drawRect(
-                color = Color(rank.colorHex),
+                color = bandColor,
                 topLeft = Offset(0f, y0),
                 size = androidx.compose.ui.geometry.Size(w, y1 - y0),
             )
@@ -90,7 +105,7 @@ fun AxisCanvas(
 
         // ---- 4. Ticks ----
         val idealTicks = 16
-        val rawInterval = (AXIS_DISPLAY_RANGE * 2) / idealTicks
+        val rawInterval = (displayRange * 2) / idealTicks
         val niceIntervals = listOf(1f, 2f, 5f, 10f, 20f, 50f)
         val tickInterval = niceIntervals.minByOrNull { abs(it - rawInterval) } ?: 1f
         val firstTick = kotlin.math.ceil(minVis / tickInterval) * tickInterval
@@ -104,23 +119,28 @@ fun AxisCanvas(
         // Major ticks
         var s = firstTick
         while (s <= lastTick + 0.001f) {
-            val y = scoreToY(s, centerScore, halfH, h)
+            val y = scoreToY(s, centerScore, halfH, h, displayRange, quarterValue)
             if (y in -8f..h + 8f) {
                 drawLine(
-                    color = Color.White.copy(alpha = 0.25f),
+                    color = labelColorValue.copy(alpha = 0.25f),
                     start = Offset(axisX - tickMajorLen, y),
                     end = Offset(axisX + tickMajorLen, y),
-                    strokeWidth = 1f,
+                    strokeWidth = tickThickness,
                 )
-                // Label - use simple formatting
+                // Label
                 val label = String.format("%.1f", s).replace(".0", "")
                 drawContext.canvas.nativeCanvas.drawText(
                     label,
                     axisX - tickMajorLen - 3f,
                     y + 4f,
                     android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(128, 255, 255, 255)
-                        textSize = 19f
+                        color = android.graphics.Color.argb(
+                            (labelAlpha * 128).toInt(),
+                            (labelColorValue.red * 255).toInt(),
+                            (labelColorValue.green * 255).toInt(),
+                            (labelColorValue.blue * 255).toInt(),
+                        )
+                        textSize = labelFontSize
                         textAlign = android.graphics.Paint.Align.RIGHT
                     }
                 )
@@ -133,13 +153,13 @@ fun AxisCanvas(
             var sMinor = (kotlin.math.ceil(minVis / minorInterval).toInt()) * minorInterval
             while (sMinor <= maxVis) {
                 if (abs(sMinor % tickInterval) > 0.001f) {
-                    val y = scoreToY(sMinor, centerScore, halfH, h)
+                    val y = scoreToY(sMinor, centerScore, halfH, h, displayRange, quarterValue)
                     if (y in -8f..h + 8f) {
                         drawLine(
-                            color = Color.White.copy(alpha = 0.12f),
+                            color = labelColorValue.copy(alpha = 0.12f),
                             start = Offset(axisX - tickMinorLen, y),
                             end = Offset(axisX + tickMinorLen, y),
-                            strokeWidth = 1f,
+                            strokeWidth = tickThickness,
                         )
                     }
                 }
@@ -147,32 +167,39 @@ fun AxisCanvas(
             }
         }
 
-        // ---- Even-numbered reference ticks in +/-10 range ----
-        val evenMin = kotlin.math.ceil((centerScore - 10f) / 2f).toInt() * 2
-        val evenMax = kotlin.math.floor((centerScore + 10f) / 2f).toInt() * 2
-        var evenTick = evenMin
-        while (evenTick <= evenMax) {
-            val y = scoreToY(evenTick.toFloat(), centerScore, halfH, h)
-            if (y in -8f..h + 8f) {
-                drawLine(
-                    color = Color.White.copy(alpha = 0.25f),
-                    start = Offset(axisX - 7f, y),
-                    end = Offset(axisX + 7f, y),
-                    strokeWidth = 1f,
-                )
-                val label = String.format("%.1f", evenTick.toFloat()).replace(".0", "")
-                drawContext.canvas.nativeCanvas.drawText(
-                    label,
-                    axisX - 7f - 3f,
-                    y + 4f,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(128, 255, 255, 255)
-                        textSize = 19f
-                        textAlign = android.graphics.Paint.Align.RIGHT
-                    }
-                )
+        // ---- Even-numbered reference ticks（近邻刻度） ----
+        if (showNearby && nearbyRange > 0f) {
+            val evenMin = kotlin.math.ceil((centerScore - nearbyRange) / 2f).toInt() * 2
+            val evenMax = kotlin.math.floor((centerScore + nearbyRange) / 2f).toInt() * 2
+            var evenTick = evenMin
+            while (evenTick <= evenMax) {
+                val y = scoreToY(evenTick.toFloat(), centerScore, halfH, h, displayRange, quarterValue)
+                if (y in -8f..h + 8f) {
+                    drawLine(
+                        color = labelColorValue.copy(alpha = 0.25f),
+                        start = Offset(axisX - 7f, y),
+                        end = Offset(axisX + 7f, y),
+                        strokeWidth = tickThickness,
+                    )
+                    val label = String.format("%.1f", evenTick.toFloat()).replace(".0", "")
+                    drawContext.canvas.nativeCanvas.drawText(
+                        label,
+                        axisX - 7f - 3f,
+                        y + 4f,
+                        android.graphics.Paint().apply {
+                            color = android.graphics.Color.argb(
+                                (labelAlpha * 128).toInt(),
+                                (labelColorValue.red * 255).toInt(),
+                                (labelColorValue.green * 255).toInt(),
+                                (labelColorValue.blue * 255).toInt(),
+                            )
+                            textSize = labelFontSize
+                            textAlign = android.graphics.Paint.Align.RIGHT
+                        }
+                    )
+                }
+                evenTick += 2
             }
-            evenTick += 2
         }
 
         // ---- 5. Axis line ----
@@ -180,7 +207,7 @@ fun AxisCanvas(
             color = Color.White.copy(alpha = 0.2f),
             start = Offset(axisX, 0f),
             end = Offset(axisX, h),
-            strokeWidth = 1f,
+            strokeWidth = tickThickness,
         )
 
         // ---- 6. Pointer at center ----
@@ -225,8 +252,8 @@ fun AxisCanvas(
         )
 
         // ---- 7. Range labels ----
-        val topScore = centerScore + AXIS_DISPLAY_RANGE
-        val botScore = centerScore - AXIS_DISPLAY_RANGE
+        val topScore = centerScore + displayRange
+        val botScore = centerScore - displayRange
         val topLabel = String.format("%.1f", topScore).replace(".0", "")
         val botLabel = String.format("%.1f", botScore).replace(".0", "")
 
@@ -240,17 +267,29 @@ fun AxisCanvas(
     }
 }
 
-// Non-linear score → Y mapping matching HTML exactly
+/** Non-linear score → Y mapping with dynamic exponent from quarterValue. */
 private fun scoreToY(
     score: Float,
     centerScore: Float,
     halfH: Float,
     canvasH: Float,
+    displayRange: Float,
+    quarterValue: Float,
 ): Float {
     val d = score - centerScore
     val sign = sign(d)
-    val absD = minOf(abs(d), AXIS_DISPLAY_RANGE * 2f)
-    val scale = halfH / (AXIS_DISPLAY_RANGE.toDouble().pow(AXIS_COMPRESSION_EXPONENT.toDouble())).toFloat()
-    val pixelOffset = sign * (absD.toDouble().pow(AXIS_COMPRESSION_EXPONENT.toDouble())).toFloat() * scale
+    val absD = minOf(abs(d), displayRange * 2f)
+
+    // 从 quarterValue 动态计算 exponent
+    // quarterValue: 上方 1/4 处显示的分数偏移值
+    // 公式: exp = ln(0.5) / ln(quarterValue / displayRange)
+    val exp = if (quarterValue > 0f && quarterValue < displayRange) {
+        (ln(0.5) / ln((quarterValue / displayRange).toDouble())).toFloat()
+    } else {
+        1f // 线性
+    }
+
+    val scale = halfH / (displayRange.toDouble().pow(exp.toDouble())).toFloat()
+    val pixelOffset = sign * (absD.toDouble().pow(exp.toDouble())).toFloat() * scale
     return canvasH / 2f - pixelOffset
 }

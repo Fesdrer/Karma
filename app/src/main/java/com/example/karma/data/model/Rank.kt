@@ -9,15 +9,15 @@ data class Rank(
 ) {
     companion object {
         val RANKS = listOf(
-            Rank(0f, 10f, 1, "壹阶", 0xFF0055ff),
-            Rank(10f, 30f, 2, "贰阶", 0xFF0077ff),
-            Rank(30f, 60f, 3, "叁阶", 0xFF0099ff),
-            Rank(60f, 100f, 4, "肆阶", 0xFF00bbff),
-            Rank(100f, 150f, 5, "伍阶", 0xFF00ddaa),
-            Rank(150f, 210f, 6, "陆阶", 0xFF44dd44),
-            Rank(210f, 280f, 7, "柒阶", 0xFFddaa00),
-            Rank(280f, 360f, 8, "捌阶", 0xFFff5500),
-            Rank(360f, Float.MAX_VALUE, 9, "玖阶", 0xFFff0000),
+            Rank(0f, 10f, 1, "壹阶", 0xFF0055ffL),
+            Rank(10f, 30f, 2, "贰阶", 0xFF0077ffL),
+            Rank(30f, 60f, 3, "叁阶", 0xFF0099ffL),
+            Rank(60f, 100f, 4, "肆阶", 0xFF00bbffL),
+            Rank(100f, 150f, 5, "伍阶", 0xFF00ddaaL),
+            Rank(150f, 210f, 6, "陆阶", 0xFF44dd44L),
+            Rank(210f, 280f, 7, "柒阶", 0xFFddaa00L),
+            Rank(280f, 360f, 8, "捌阶", 0xFFff5500L),
+            Rank(360f, Float.MAX_VALUE, 9, "玖阶", 0xFFff0000L),
         )
     }
 }

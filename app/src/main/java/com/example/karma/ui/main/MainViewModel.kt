@@ -19,7 +19,22 @@ data class MainUiState(
     val eventPresets: List<String> = emptyList(),
     val selectedScore: Float? = null,
     val selectedEvent: String? = null,
-    val eventEditMode: Boolean = false,
+    // ===== 以下为 settings 透传字段 =====
+    val scoreAxisFontSize: Float = 22f,
+    val scoreAxisRangeMin: Float = -6f,
+    val scoreAxisRangeMax: Float = 6f,
+    val axisLabelColor: Long = 0x80FFFFFF.toLong(),
+    val axisTickThickness: Float = 1f,
+    val axisLabelFontSize: Float = 19f,
+    val axisDisplayRange: Float = 100f,
+    val showNearbyTicks: Boolean = true,
+    val nearbyTickRange: Float = 10f,
+    val axisQuarterValue: Float = 15f,
+    val rankColors: List<Long> = emptyList(),
+    val historyLineThickness: Float = 2f,
+    val historyDotRadius: Float = 3.5f,
+    // ===== 消息 =====
+    val message: String? = null,
 )
 
 class MainViewModel(
@@ -30,7 +45,7 @@ class MainViewModel(
     private val _selectedEvent = MutableStateFlow<String?>(null)
     private val _customScore = MutableStateFlow<Float?>(null)
     private val _customEvent = MutableStateFlow<String?>(null)
-    private val _eventEditMode = MutableStateFlow(false)
+    private val _message = MutableStateFlow<String?>(null)
 
     private val _effectiveScore = combine(
         _selectedScore, _customScore
@@ -47,8 +62,8 @@ class MainViewModel(
     val uiState: StateFlow<MainUiState> = combine(
         repository.settings,
         _selectedPair,
-        _eventEditMode,
-    ) { settings, selection, eventEditMode ->
+        _message,
+    ) { settings, selection, msg ->
         MainUiState(
             totalScore = settings.totalScore,
             rank = repository.getRank(settings.totalScore),
@@ -56,9 +71,33 @@ class MainViewModel(
             eventPresets = settings.eventPresets,
             selectedScore = selection.first,
             selectedEvent = selection.second,
-            eventEditMode = eventEditMode,
+            // ★ 视觉参数透传
+            scoreAxisFontSize = settings.scoreAxisFontSize,
+            scoreAxisRangeMin = settings.scoreAxisRangeMin,
+            scoreAxisRangeMax = settings.scoreAxisRangeMax,
+            axisLabelColor = settings.axisLabelColor,
+            axisTickThickness = settings.axisTickThickness,
+            axisLabelFontSize = settings.axisLabelFontSize,
+            axisDisplayRange = settings.axisDisplayRange,
+            showNearbyTicks = settings.showNearbyTicks,
+            nearbyTickRange = settings.nearbyTickRange,
+            axisQuarterValue = settings.axisQuarterValue,
+            rankColors = settings.rankColors,
+            historyLineThickness = settings.historyLineThickness,
+            historyDotRadius = settings.historyDotRadius,
+            message = msg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
+
+    // ★ init 中调用衰减
+    init {
+        viewModelScope.launch {
+            val deducted = repository.applyDecay()
+            if (deducted > 0f) {
+                _message.value = "业力衰减：本次共扣除 ${String.format("%.1f", deducted)} 分"
+            }
+        }
+    }
 
     // ---- Actions ----
 
@@ -105,19 +144,9 @@ class MainViewModel(
         }
     }
 
-    fun openEventEdit() {
-        _eventEditMode.value = true
-    }
-
-    fun closeEventEdit() {
-        _eventEditMode.value = false
-    }
-
-    fun saveEventPresets(presets: List<String>) {
-        viewModelScope.launch {
-            repository.updateEventPresets(presets)
-            closeEventEdit()
-        }
+    // ★ 清除消息
+    fun clearMessage() {
+        _message.value = null
     }
 
     class Factory(private val repository: KarmaRepository) : ViewModelProvider.Factory {

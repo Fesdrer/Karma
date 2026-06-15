@@ -36,7 +36,6 @@ import com.example.karma.ui.theme.ScoreBtnBg
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
-private const val AXIS_RANGE = 6f
 private const val PADDING_FRACTION = 0.10f
 
 @Composable
@@ -44,6 +43,9 @@ fun ScorePanel(
     selectedScore: Float?,
     onScoreSelected: (Float) -> Unit,
     onCustomScoreChanged: (String) -> Unit,
+    axisFontSize: Float = 22f,
+    axisRangeMin: Float = -6f,
+    axisRangeMax: Float = 6f,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -73,6 +75,9 @@ fun ScorePanel(
             ScoreAxisView(
                 selectedScore = selectedScore ?: 0f,
                 onScoreSelected = onScoreSelected,
+                axisFontSize = axisFontSize,
+                axisRangeMin = axisRangeMin,
+                axisRangeMax = axisRangeMax,
                 modifier = Modifier.fillMaxSize(),
             )
         }
@@ -107,22 +112,25 @@ fun ScorePanel(
 private fun ScoreAxisView(
     selectedScore: Float,
     onScoreSelected: (Float) -> Unit,
+    axisFontSize: Float = 22f,
+    axisRangeMin: Float = -6f,
+    axisRangeMax: Float = 6f,
     modifier: Modifier = Modifier,
 ) {
     Canvas(
         modifier = modifier
-            .pointerInput(Unit) {
+            .pointerInput(axisRangeMin, axisRangeMax) {
                 detectTapGestures { offset ->
-                    val score = yToScore(offset.y, size.height.toFloat())
-                    val snapped = snapToHalf(score).coerceIn(-AXIS_RANGE, AXIS_RANGE)
+                    val score = yToScore(offset.y, size.height.toFloat(), axisRangeMin, axisRangeMax)
+                    val snapped = snapToHalf(score).coerceIn(axisRangeMin, axisRangeMax)
                     onScoreSelected(snapped)
                 }
             }
-            .pointerInput(Unit) {
+            .pointerInput(axisRangeMin, axisRangeMax) {
                 detectVerticalDragGestures(
                     onVerticalDrag = { change, _ ->
-                        val score = yToScore(change.position.y, size.height.toFloat())
-                        val snapped = snapToHalf(score).coerceIn(-AXIS_RANGE, AXIS_RANGE)
+                        val score = yToScore(change.position.y, size.height.toFloat(), axisRangeMin, axisRangeMax)
+                        val snapped = snapToHalf(score).coerceIn(axisRangeMin, axisRangeMax)
                         onScoreSelected(snapped)
                         change.consume()
                     },
@@ -137,6 +145,7 @@ private fun ScoreAxisView(
         val paddingTop = h * PADDING_FRACTION
         val paddingBottom = h * PADDING_FRACTION
         val usableH = h - paddingTop - paddingBottom
+        val baseSize = axisFontSize * densityFactor
 
         // Axis X position — left-aligned so labels fit on the right
         val axisX = w * 0.35f
@@ -152,14 +161,19 @@ private fun ScoreAxisView(
             strokeWidth = 1.5f * densityFactor,
         )
 
-        // ---- Ticks and labels (every 0.5 from -6 to +6) ----
-        var tickValue = -AXIS_RANGE
-        while (tickValue <= AXIS_RANGE + 0.001f) {
-            val y = scoreToAxisY(tickValue, paddingTop, usableH)
+        // ---- Ticks and labels ----
+        var tickValue = axisRangeMin
+        while (tickValue <= axisRangeMax + 0.001f) {
+            val y = scoreToAxisY(tickValue, paddingTop, usableH, axisRangeMin, axisRangeMax)
             val isInteger = (tickValue % 1f).let { abs(it) < 0.01f }
             val tickLen = if (isInteger) 8f * densityFactor else 5f * densityFactor
 
             // Tick line
+            val labelSize = when {
+                tickValue == 0f -> baseSize * 1.18f
+                isInteger -> baseSize
+                else -> baseSize * 0.82f
+            }
             if (isInteger) {
                 // Integer: line to the left
                 drawLine(
@@ -190,7 +204,6 @@ private fun ScoreAxisView(
                 else -> Color(0xFFa0c4ff)
             }
             val alpha = if (tickValue == 0f) 1f else 0.7f
-            val labelSize = if (tickValue == 0f) 26f * densityFactor else if (isInteger) 22f * densityFactor else 18f * densityFactor
 
             if (isInteger) {
                 // Integer label: on the right
@@ -233,7 +246,7 @@ private fun ScoreAxisView(
         }
 
         // ---- Red selection circle ----
-        val circleY = scoreToAxisY(selectedScore, paddingTop, usableH)
+        val circleY = scoreToAxisY(selectedScore, paddingTop, usableH, axisRangeMin, axisRangeMax)
         val circleCenter = Offset(axisX, circleY)
 
         // Outer glow
@@ -259,18 +272,24 @@ private fun ScoreAxisView(
 
 // ---- Math helpers ----
 
-/** Map a score [-6 .. +6] to a canvas Y coordinate. */
-private fun scoreToAxisY(score: Float, paddingTop: Float, usableH: Float): Float {
-    val ratio = (score / AXIS_RANGE).coerceIn(-1f, 1f)
+/** Map a score to a canvas Y coordinate. Handles asymmetric ranges. */
+private fun scoreToAxisY(score: Float, paddingTop: Float, usableH: Float, axisRangeMin: Float, axisRangeMax: Float): Float {
+    val mid = (axisRangeMax + axisRangeMin) / 2f
+    val halfRange = (axisRangeMax - axisRangeMin) / 2f
+    if (halfRange <= 0f) return paddingTop + usableH / 2f
+    val ratio = ((score - mid) / halfRange).coerceIn(-1f, 1f)
     return paddingTop + usableH * (0.5f - ratio * 0.5f)
 }
 
-/** Map a canvas Y coordinate back to a score [-6 .. +6]. */
-private fun yToScore(y: Float, canvasH: Float): Float {
+/** Map a canvas Y coordinate back to a score. Handles asymmetric ranges. */
+private fun yToScore(y: Float, canvasH: Float, axisRangeMin: Float, axisRangeMax: Float): Float {
     val paddingTop = canvasH * PADDING_FRACTION
     val usableH = canvasH * 0.80f
+    val mid = (axisRangeMax + axisRangeMin) / 2f
+    val halfRange = (axisRangeMax - axisRangeMin) / 2f
+    if (halfRange <= 0f) return mid
     val ratio = 1f - (y - paddingTop) / usableH * 2f
-    return ratio * AXIS_RANGE
+    return mid + ratio * halfRange
 }
 
 /** Snap to the nearest 0.5. */
