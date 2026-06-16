@@ -23,7 +23,7 @@ data class KarmaSettingsEntity(
     val scoreAxisRangeMax: Float = 6f,
 
     // ===== 中：刻度区域 =====
-    val axisLabelColor: Long = 0x80FFFFFF.toLong(), // = -2130706433L
+    val axisLabelColor: Long = -1L, // 0xFFFFFFFF = 完全不透明白色
     val axisTickThickness: Float = 6f,
     val axisLabelFontSize: Float = 28f,
     val axisDisplayRange: Float = 100f,

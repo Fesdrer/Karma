@@ -135,7 +135,7 @@ fun AxisCanvas(
                     y + 4f,
                     android.graphics.Paint().apply {
                         color = android.graphics.Color.argb(
-                            (labelAlpha * 128).toInt(),
+                            (labelAlpha * 255).toInt(),
                             (labelColorValue.red * 255).toInt(),
                             (labelColorValue.green * 255).toInt(),
                             (labelColorValue.blue * 255).toInt(),
@@ -188,7 +188,7 @@ fun AxisCanvas(
                         y + 4f,
                         android.graphics.Paint().apply {
                             color = android.graphics.Color.argb(
-                                (labelAlpha * 128).toInt(),
+                                (labelAlpha * 255).toInt(),
                                 (labelColorValue.red * 255).toInt(),
                                 (labelColorValue.green * 255).toInt(),
                                 (labelColorValue.blue * 255).toInt(),

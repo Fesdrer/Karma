@@ -20,7 +20,7 @@ private const val PAD_RIGHT = 20f
 private const val PAD_BOTTOM = 40f
 private const val PAD_LEFT = 60f
 
-data class ChartViewport(
+class ChartViewport(
     var viewStart: Double = 0.0,
     var viewEnd: Double = 0.0,
     var yMin: Float = 0f,
