@@ -93,7 +93,7 @@ fun EventPanel(
                 titleColor = Color(0xFFffd700),
                 events = goodResultPresets.ifEmpty { listOf("（暂无预设事件）") },
                 selectedEvent = selectedEvent,
-                onEventSelected = { /* 善果提示文字不可选中 */ },
+                onEventSelected = onEventSelected,
             )
         }
 

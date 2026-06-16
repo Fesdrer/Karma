@@ -18,14 +18,14 @@ data class KarmaSettingsEntity(
     val goodResultPresets: List<String> = emptyList(),
 
     // ===== 左：分数区域 =====
-    val scoreAxisFontSize: Float = 22f,
+    val scoreAxisFontSize: Float = 18f,
     val scoreAxisRangeMin: Float = -6f,
     val scoreAxisRangeMax: Float = 6f,
 
     // ===== 中：刻度区域 =====
     val axisLabelColor: Long = 0x80FFFFFF.toLong(), // = -2130706433L
-    val axisTickThickness: Float = 1f,
-    val axisLabelFontSize: Float = 19f,
+    val axisTickThickness: Float = 6f,
+    val axisLabelFontSize: Float = 28f,
     val axisDisplayRange: Float = 100f,
     val showNearbyTicks: Boolean = true,
     val nearbyTickRange: Float = 10f,
@@ -36,8 +36,8 @@ data class KarmaSettingsEntity(
     ),
 
     // ===== 右：历史记录 =====
-    val historyLineThickness: Float = 2f,
-    val historyDotRadius: Float = 3.5f,
+    val historyLineThickness: Float = 5f,
+    val historyDotRadius: Float = 8f,
 
     // ===== 业力衰减 =====
     val decayEnabled: Boolean = false,

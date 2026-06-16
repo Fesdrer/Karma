@@ -238,10 +238,10 @@ private fun AxisSettingsCard(
         Spacer(Modifier.height(12.dp))
 
         // 2. 刻度粗细
-        SettingsSlider("刻度粗细", draft.axisTickThickness, 0.5f..3.0f, 4, viewModel::updateAxisTickThickness)
+        SettingsSlider("刻度粗细", draft.axisTickThickness, 0.5f..12.0f, 22, viewModel::updateAxisTickThickness)
 
         // 3. 字体大小
-        SettingsSlider("字体大小", draft.axisLabelFontSize, 12f..32f, 19, viewModel::updateAxisLabelFontSize)
+        SettingsSlider("字体大小", draft.axisLabelFontSize, 12f..56f, 43, viewModel::updateAxisLabelFontSize)
 
         // 4. 显示区间
         SettingsSlider("显示区间", draft.axisDisplayRange, 50f..500f, 44, viewModel::updateAxisDisplayRange)
@@ -446,8 +446,8 @@ private fun HistorySettingsCard(
     viewModel: SettingsViewModel,
 ) {
     SettingsCard("历史记录设置") {
-        SettingsSlider("线条粗细", draft.historyLineThickness, 0.5f..5f, 8, viewModel::updateHistoryLineThickness)
-        SettingsSlider("点的半径", draft.historyDotRadius, 1f..8f, 13, viewModel::updateHistoryDotRadius)
+        SettingsSlider("线条粗细", draft.historyLineThickness, 0.5f..10f, 18, viewModel::updateHistoryLineThickness)
+        SettingsSlider("点的半径", draft.historyDotRadius, 1f..16f, 29, viewModel::updateHistoryDotRadius)
     }
 }
 
