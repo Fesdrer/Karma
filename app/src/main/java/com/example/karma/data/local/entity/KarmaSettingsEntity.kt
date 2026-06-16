@@ -9,9 +9,13 @@ data class KarmaSettingsEntity(
     val id: Int = 1,
     val totalScore: Float = 0f,
     val scorePresets: List<Float> = listOf(-2f, -1.5f, -1f, -0.5f, 0.5f, 1f, 1.5f, 2f),
-    val eventPresets: List<String> = listOf(
-        "帮助他人", "早起早睡", "锻炼身体", "发脾气", "浪费粮食", "口出恶言"
+    val goodDeedPresets: List<String> = listOf(
+        "帮助他人", "早起早睡", "锻炼身体", "日行一善", "孝敬父母"
     ),
+    val badDeedPresets: List<String> = listOf(
+        "发脾气", "浪费粮食", "口出恶言", "懒惰拖延", "伤害他人"
+    ),
+    val goodResultPresets: List<String> = emptyList(),
 
     // ===== 左：分数区域 =====
     val scoreAxisFontSize: Float = 22f,

@@ -25,6 +25,12 @@ interface KarmaSettingsDao {
     @Query("UPDATE karma_settings SET scorePresets = :presets WHERE id = 1")
     suspend fun updateScorePresets(presets: List<Float>)
 
-    @Query("UPDATE karma_settings SET eventPresets = :presets WHERE id = 1")
-    suspend fun updateEventPresets(presets: List<String>)
+    @Query("UPDATE karma_settings SET goodDeedPresets = :presets WHERE id = 1")
+    suspend fun updateGoodDeedPresets(presets: List<String>)
+
+    @Query("UPDATE karma_settings SET badDeedPresets = :presets WHERE id = 1")
+    suspend fun updateBadDeedPresets(presets: List<String>)
+
+    @Query("UPDATE karma_settings SET goodResultPresets = :presets WHERE id = 1")
+    suspend fun updateGoodResultPresets(presets: List<String>)
 }

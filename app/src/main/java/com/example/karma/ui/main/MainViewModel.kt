@@ -16,7 +16,9 @@ data class MainUiState(
     val totalScore: Float = 0f,
     val rank: Rank? = null,
     val scorePresets: List<Float> = emptyList(),
-    val eventPresets: List<String> = emptyList(),
+    val goodDeedPresets: List<String> = emptyList(),
+    val badDeedPresets: List<String> = emptyList(),
+    val goodResultPresets: List<String> = emptyList(),
     val selectedScore: Float? = null,
     val selectedEvent: String? = null,
     // ===== 以下为 settings 透传字段 =====
@@ -68,7 +70,9 @@ class MainViewModel(
             totalScore = settings.totalScore,
             rank = repository.getRank(settings.totalScore),
             scorePresets = settings.scorePresets,
-            eventPresets = settings.eventPresets,
+            goodDeedPresets = settings.goodDeedPresets,
+            badDeedPresets = settings.badDeedPresets,
+            goodResultPresets = settings.goodResultPresets,
             selectedScore = selection.first,
             selectedEvent = selection.second,
             // ★ 视觉参数透传

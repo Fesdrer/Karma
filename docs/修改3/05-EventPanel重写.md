@@ -1,39 +1,63 @@
-package com.example.karma.ui.main.components
+# 步骤 05：EventPanel 重写为三段式
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.example.karma.ui.theme.BorderSubtle
-import com.example.karma.ui.theme.ScoreBtnBg
+## 目标
 
+将右侧事件栏从扁平列表改为三个区段（善业/恶业/善果）紧邻排列的可滚动列表。
+
+## 文件
+
+`ui/main/components/EventPanel.kt`
+
+## 核心设计
+
+- 不再使用 `LazyColumn`，改用 `Column` + `verticalScroll`，使三个区段在一个滚动容器中
+- 自定义输入框固定在底部，不随区段滚动
+- 区段标题使用对应的语义颜色
+
+## 新布局结构
+
+```
+┌─────────────────────────────┐
+│  事件（金色标题）             │
+│                             │
+│  ── 善业 ──                  │  ← 绿色
+│  帮助他人  □                  │
+│  早起早睡  □                  │
+│  锻炼身体  ■  ← 选中状态      │
+│  日行一善  □                  │
+│  孝敬父母  □                  │
+│                             │
+│  ── 恶业 ──                  │  ← 红色
+│  发脾气    □                  │
+│  浪费粮食  □                  │
+│  ...                         │
+│                             │
+│  ── 善果 ──                  │  ← 金色
+│  (暂无预设事件)               │
+│                             │
+├─────────────────────────────┤
+│  [自定义事件输入框]           │  ← 固定底部
+└─────────────────────────────┘
+```
+
+## 新函数签名
+
+```kotlin
+@Composable
+fun EventPanel(
+    goodDeedPresets: List<String>,
+    badDeedPresets: List<String>,
+    goodResultPresets: List<String>,
+    selectedEvent: String?,
+    onEventSelected: (String) -> Unit,
+    onCustomEventChanged: (String) -> Unit,
+    modifier: Modifier = Modifier,
+)
+```
+
+## 完整实现
+
+```kotlin
 @Composable
 fun EventPanel(
     goodDeedPresets: List<String>,
@@ -93,7 +117,9 @@ fun EventPanel(
                 titleColor = Color(0xFFffd700),
                 events = goodResultPresets.ifEmpty { listOf("（暂无预设事件）") },
                 selectedEvent = selectedEvent,
-                onEventSelected = { /* 善果提示文字不可选中 */ },
+                onEventSelected = { event ->
+                    // 善果目前只有提示文字，不允许选中
+                },
             )
         }
 
@@ -144,7 +170,7 @@ private fun EventSection(
         // Section items
         events.forEach { event ->
             val isSelected = selectedEvent == event
-            val canSelect = !event.startsWith("（")
+            val canSelect = !event.startsWith("（") // 不能选中提示文字
 
             Box(
                 modifier = Modifier
@@ -193,3 +219,12 @@ private fun EventSection(
         }
     }
 }
+```
+
+## 关键点
+
+- `verticalScroll` 配合 `weight(1f)` 使三个区段占满可用空间并一起滚动
+- `EventSection` 提取为辅助 composable，三个区段共享同一渲染逻辑
+- 善果区段目前无预设事件时显示"（暂无预设事件）"灰色提示，不可点击选中
+- 注意需要新增 import：`rememberScrollState`
+- 善业/恶业/善果的不可点击提示文字需要用括号包围（例如"（暂无预设事件）"），这样 `!canSelect` 逻辑会禁止选中

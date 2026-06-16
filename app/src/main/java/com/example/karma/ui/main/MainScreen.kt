@@ -31,6 +31,7 @@ fun MainScreen(
     appContainer: AppContainer,
     onNavigateToHistory: () -> Unit,
     onNavigateToPrayer: () -> Unit,
+    onNavigateToDivination: () -> Unit,
     onNavigateToSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -107,7 +108,9 @@ fun MainScreen(
 
                 // Right panel: Events
                 EventPanel(
-                    eventPresets = state.eventPresets,
+                    goodDeedPresets = state.goodDeedPresets,
+                    badDeedPresets = state.badDeedPresets,
+                    goodResultPresets = state.goodResultPresets,
                     selectedEvent = state.selectedEvent,
                     onEventSelected = { viewModel.selectEvent(it) },
                     onCustomEventChanged = { viewModel.onCustomEventChanged(it) },
@@ -125,6 +128,7 @@ fun MainScreen(
                 prayerEnabled = state.totalScore >= 30f,
                 onConfirm = { viewModel.onConfirm() },
                 onPrayer = onNavigateToPrayer,
+                onDivination = onNavigateToDivination,
                 onHistory = onNavigateToHistory,
                 onSettings = onNavigateToSettings,
             )

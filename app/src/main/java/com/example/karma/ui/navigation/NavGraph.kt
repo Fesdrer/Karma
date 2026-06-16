@@ -5,6 +5,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.divination.DivinationScreen
 import com.example.karma.ui.history.HistoryScreen
 import com.example.karma.ui.main.MainScreen
 import com.example.karma.ui.prayer.PrayerScreen
@@ -28,6 +29,9 @@ fun KarmaNavGraph(
                 onNavigateToPrayer = {
                     navController.navigate(Screen.Prayer.route)
                 },
+                onNavigateToDivination = {
+                    navController.navigate(Screen.Divination.route)
+                },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
                 },
@@ -48,6 +52,11 @@ fun KarmaNavGraph(
         composable(Screen.Settings.route) {
             SettingsScreen(
                 appContainer = appContainer,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(Screen.Divination.route) {
+            DivinationScreen(
                 onBack = { navController.popBackStack() },
             )
         }

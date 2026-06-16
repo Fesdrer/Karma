@@ -101,11 +101,25 @@ class SettingsViewModel(
     }
 
     // ★ 事件列表（来自多行文本框）
-    fun updateEventPresets(lines: String) {
+    fun updateGoodDeedPresets(lines: String) {
         val events = lines.lines()
             .map { it.trim() }
             .filter { it.isNotEmpty() }
-        setDraft(_draft.value.copy(eventPresets = events))
+        setDraft(_draft.value.copy(goodDeedPresets = events))
+    }
+
+    fun updateBadDeedPresets(lines: String) {
+        val events = lines.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        setDraft(_draft.value.copy(badDeedPresets = events))
+    }
+
+    fun updateGoodResultPresets(lines: String) {
+        val events = lines.lines()
+            .map { it.trim() }
+            .filter { it.isNotEmpty() }
+        setDraft(_draft.value.copy(goodResultPresets = events))
     }
 
     // ★ 历史记录

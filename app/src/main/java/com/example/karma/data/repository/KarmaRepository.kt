@@ -62,8 +62,16 @@ class KarmaRepository(
         settingsDao.updateScorePresets(presets)
     }
 
-    suspend fun updateEventPresets(presets: List<String>) {
-        settingsDao.updateEventPresets(presets)
+    suspend fun updateGoodDeedPresets(presets: List<String>) {
+        settingsDao.updateGoodDeedPresets(presets)
+    }
+
+    suspend fun updateBadDeedPresets(presets: List<String>) {
+        settingsDao.updateBadDeedPresets(presets)
+    }
+
+    suspend fun updateGoodResultPresets(presets: List<String>) {
+        settingsDao.updateGoodResultPresets(presets)
     }
 
     suspend fun updateAllSettings(settings: KarmaSettingsEntity) {

@@ -361,31 +361,76 @@ private fun EventSettingsCard(
             fontSize = 12.sp,
             color = TextSecondary,
         )
-        Spacer(Modifier.height(8.dp))
+        Spacer(Modifier.height(12.dp))
 
-        var text by remember(draft.eventPresets) {
-            mutableStateOf(draft.eventPresets.joinToString("\n"))
-        }
+        // — 善业 —
+        EventSection(
+            title = "善业",
+            titleColor = Color(0xFF69f0ae),
+            events = draft.goodDeedPresets,
+            onUpdate = { viewModel.updateGoodDeedPresets(it) },
+        )
 
+        Spacer(Modifier.height(12.dp))
+
+        // — 恶业 —
+        EventSection(
+            title = "恶业",
+            titleColor = Color(0xFFff5252),
+            events = draft.badDeedPresets,
+            onUpdate = { viewModel.updateBadDeedPresets(it) },
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // — 善果 —
+        EventSection(
+            title = "善果",
+            titleColor = Color(0xFFffd700),
+            events = draft.goodResultPresets,
+            onUpdate = { viewModel.updateGoodResultPresets(it) },
+        )
+    }
+}
+
+@Composable
+private fun EventSection(
+    title: String,
+    titleColor: Color,
+    events: List<String>,
+    onUpdate: (String) -> Unit,
+) {
+    var text by remember(events) {
+        mutableStateOf(events.joinToString("\n"))
+    }
+
+    Column {
+        Text(
+            text = "■ $title",
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Bold,
+            color = titleColor,
+        )
+        Spacer(Modifier.height(4.dp))
         OutlinedTextField(
             value = text,
             onValueChange = { newText ->
                 text = newText
-                viewModel.updateEventPresets(newText)
+                onUpdate(newText)
             },
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 160.dp),
+                .heightIn(min = 80.dp),
             singleLine = false,
-            minLines = 6,
-            textStyle = MaterialTheme.typography.bodyMedium,
-            placeholder = { Text("帮助他人\n早起早睡\n锻炼身体\n...") },
+            minLines = 3,
+            textStyle = MaterialTheme.typography.bodySmall,
+            placeholder = { Text("输入${title}事件...") },
             colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Gold,
+                focusedBorderColor = titleColor,
                 unfocusedBorderColor = BorderSubtle,
                 focusedTextColor = TextPrimary,
                 unfocusedTextColor = TextPrimary,
-                cursorColor = Gold,
+                cursorColor = titleColor,
             ),
         )
     }
