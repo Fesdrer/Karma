@@ -33,8 +33,10 @@ fun AxisCanvas(
     displayRange: Float = 100f,
     showNearby: Boolean = true,
     nearbyRange: Float = 10f,
-    quarterValue: Float = 15f,
+    quarterValue: Float = 30f,
     rankColorList: List<Long> = emptyList(),
+    guideLineWidth: Float = 6f,
+    guideLineColor: Long = 0xFFFFD700L,
     modifier: Modifier = Modifier,
 ) {
     // Animate the score value
@@ -122,7 +124,7 @@ fun AxisCanvas(
             val y = scoreToY(s, centerScore, halfH, h, displayRange, quarterValue)
             if (y in -8f..h + 8f) {
                 drawLine(
-                    color = labelColorValue.copy(alpha = 0.25f),
+                    color = labelColorValue,
                     start = Offset(axisX - tickMajorLen, y),
                     end = Offset(axisX + tickMajorLen, y),
                     strokeWidth = tickThickness,
@@ -176,7 +178,7 @@ fun AxisCanvas(
                 val y = scoreToY(evenTick.toFloat(), centerScore, halfH, h, displayRange, quarterValue)
                 if (y in -8f..h + 8f) {
                     drawLine(
-                        color = labelColorValue.copy(alpha = 0.25f),
+                        color = labelColorValue,
                         start = Offset(axisX - 7f, y),
                         end = Offset(axisX + 7f, y),
                         strokeWidth = tickThickness,
@@ -215,23 +217,25 @@ fun AxisCanvas(
 
         // Dashed guide line
         drawLine(
-            color = Color(0xFFffd700).copy(alpha = 0.5f),
+            color = Color(guideLineColor),
             start = Offset(0f, ptrY),
             end = Offset(w, ptrY),
-            strokeWidth = 1.5f,
+            strokeWidth = guideLineWidth,
             pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
-                floatArrayOf(6f, 4f), 0f
+                floatArrayOf(8f, 6f), 0f
             ),
         )
 
         // Triangle pointer at right edge
+        val triBase = guideLineWidth * 2.5f
+        val triHeight = guideLineWidth * 2.5f
         val triPath = Path().apply {
             moveTo(w - 3f, ptrY)
-            lineTo(w - 13f, ptrY - 6f)
-            lineTo(w - 13f, ptrY + 6f)
+            lineTo(w - 3f - triBase, ptrY - triHeight / 2f)
+            lineTo(w - 3f - triBase, ptrY + triHeight / 2f)
             close()
         }
-        drawPath(triPath, color = Color(0xFFffd700), style = Fill)
+        drawPath(triPath, color = Color(guideLineColor), style = Fill)
 
         // Score label
         val scoreLabel = if (centerScore.toInt().toFloat() == centerScore) {

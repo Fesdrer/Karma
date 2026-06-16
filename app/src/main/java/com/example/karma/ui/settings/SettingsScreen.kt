@@ -224,6 +224,7 @@ private fun AxisSettingsCard(
 ) {
     var showLabelColorPicker by remember { mutableStateOf(false) }
     var showRankColorPicker by remember { mutableStateOf(false) }
+    var showGuideLineColorPicker by remember { mutableStateOf(false) }
     var colorPickerTargetIndex by remember { mutableStateOf(0) }
 
     SettingsCard("中间刻度区域") {
@@ -325,6 +326,17 @@ private fun AxisSettingsCard(
                 }
             }
         }
+        // 8. 指引线 — 粗细 + 颜色
+        Spacer(Modifier.height(12.dp))
+        SettingsSlider("指引线粗细", draft.guideLineWidth, 0.5f..12f, 22, viewModel::updateGuideLineWidth)
+
+        Spacer(Modifier.height(8.dp))
+        Text("指引线颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        ColorSwatch(
+            color = draft.guideLineColor,
+            onClick = { showGuideLineColorPicker = true },
+        )
     }
 
     // 刻度颜色选择器
@@ -342,6 +354,15 @@ private fun AxisSettingsCard(
             currentColor = draft.rankColors.getOrElse(colorPickerTargetIndex) { 0xFFFFFFFFL },
             onColorSelected = { viewModel.updateRankColor(colorPickerTargetIndex, it) },
             onDismiss = { showRankColorPicker = false },
+        )
+    }
+
+    // 指引线颜色选择器
+    if (showGuideLineColorPicker) {
+        ColorPickerDialog(
+            currentColor = draft.guideLineColor,
+            onColorSelected = { viewModel.updateGuideLineColor(it) },
+            onDismiss = { showGuideLineColorPicker = false },
         )
     }
 }

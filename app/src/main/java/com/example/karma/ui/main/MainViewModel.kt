@@ -35,6 +35,8 @@ data class MainUiState(
     val rankColors: List<Long> = emptyList(),
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
+    val guideLineWidth: Float = 6f,
+    val guideLineColor: Long = 0xFFFFD700L,
     // ===== 消息 =====
     val message: String? = null,
 )
@@ -89,6 +91,8 @@ class MainViewModel(
             rankColors = settings.rankColors,
             historyLineThickness = settings.historyLineThickness,
             historyDotRadius = settings.historyDotRadius,
+            guideLineWidth = settings.guideLineWidth,
+            guideLineColor = settings.guideLineColor,
             message = msg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())

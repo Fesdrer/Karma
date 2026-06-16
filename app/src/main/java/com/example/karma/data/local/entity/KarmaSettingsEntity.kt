@@ -29,7 +29,7 @@ data class KarmaSettingsEntity(
     val axisDisplayRange: Float = 100f,
     val showNearbyTicks: Boolean = true,
     val nearbyTickRange: Float = 10f,
-    val axisQuarterValue: Float = 15f,
+    val axisQuarterValue: Float = 30f,
     val rankColors: List<Long> = listOf(
         0xFF0055ffL, 0xFF0077ffL, 0xFF0099ffL, 0xFF00bbffL,
         0xFF00ddaaL, 0xFF44dd44L, 0xFFddaa00L, 0xFFff5500L, 0xFFff0000L
@@ -38,6 +38,10 @@ data class KarmaSettingsEntity(
     // ===== 右：历史记录 =====
     val historyLineThickness: Float = 5f,
     val historyDotRadius: Float = 8f,
+
+    // ===== 中间指针引导线 =====
+    val guideLineWidth: Float = 6f,
+    val guideLineColor: Long = 0xFFFFD700L,
 
     // ===== 业力衰减 =====
     val decayEnabled: Boolean = false,

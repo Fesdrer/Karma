@@ -122,6 +122,14 @@ class SettingsViewModel(
         setDraft(_draft.value.copy(goodResultPresets = events))
     }
 
+    // ★ 中间指引线
+    fun updateGuideLineWidth(v: Float) {
+        setDraft(_draft.value.copy(guideLineWidth = v))
+    }
+    fun updateGuideLineColor(v: Long) {
+        setDraft(_draft.value.copy(guideLineColor = v))
+    }
+
     // ★ 历史记录
     fun updateHistoryLineThickness(v: Float) {
         setDraft(_draft.value.copy(historyLineThickness = v))

@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -74,6 +74,13 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN guideLineWidth REAL NOT NULL DEFAULT 6.0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN guideLineColor INTEGER NOT NULL DEFAULT -10496")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -81,7 +88,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

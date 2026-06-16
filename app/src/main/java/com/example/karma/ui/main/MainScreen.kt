@@ -99,6 +99,8 @@ fun MainScreen(
                     nearbyRange = state.nearbyTickRange,
                     quarterValue = state.axisQuarterValue,
                     rankColorList = state.rankColors,
+                    guideLineWidth = state.guideLineWidth,
+                    guideLineColor = state.guideLineColor,
                     modifier = Modifier
                         .width(75.dp)
                         .fillMaxHeight(),
