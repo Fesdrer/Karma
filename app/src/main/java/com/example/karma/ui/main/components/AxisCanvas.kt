@@ -206,7 +206,7 @@ fun AxisCanvas(
 
         // ---- 5. Axis line ----
         drawLine(
-            color = Color.White.copy(alpha = 0.2f),
+            color = labelColorValue,
             start = Offset(axisX, 0f),
             end = Offset(axisX, h),
             strokeWidth = tickThickness,
@@ -226,18 +226,17 @@ fun AxisCanvas(
             ),
         )
 
-        // Triangle pointer at right edge
-        val triBase = guideLineWidth * 2.5f
-        val triHeight = guideLineWidth * 2.5f
+        // Triangle pointer at right edge (bigger, to be visible above the guide line)
+        val triSize = maxOf(guideLineWidth * 3f, 22f)
         val triPath = Path().apply {
             moveTo(w - 3f, ptrY)
-            lineTo(w - 3f - triBase, ptrY - triHeight / 2f)
-            lineTo(w - 3f - triBase, ptrY + triHeight / 2f)
+            lineTo(w - 3f - triSize, ptrY - triSize / 2f)
+            lineTo(w - 3f - triSize, ptrY + triSize / 2f)
             close()
         }
         drawPath(triPath, color = Color(guideLineColor), style = Fill)
 
-        // Score label
+        // Score label (above the guide line so it's not covered)
         val scoreLabel = if (centerScore.toInt().toFloat() == centerScore) {
             centerScore.toInt().toString()
         } else {
@@ -246,7 +245,7 @@ fun AxisCanvas(
         drawContext.canvas.nativeCanvas.drawText(
             scoreLabel,
             w - 16f,
-            ptrY + 4f,
+            ptrY - 10f,
             android.graphics.Paint().apply {
                 color = android.graphics.Color.rgb(255, 215, 0)
                 textSize = 21f

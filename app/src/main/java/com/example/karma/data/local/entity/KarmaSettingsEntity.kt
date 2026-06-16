@@ -24,10 +24,10 @@ data class KarmaSettingsEntity(
 
     // ===== 中：刻度区域 =====
     val axisLabelColor: Long = -1L, // 0xFFFFFFFF = 完全不透明白色
-    val axisTickThickness: Float = 6f,
+    val axisTickThickness: Float = 3f,
     val axisLabelFontSize: Float = 28f,
     val axisDisplayRange: Float = 100f,
-    val showNearbyTicks: Boolean = true,
+    val showNearbyTicks: Boolean = false,
     val nearbyTickRange: Float = 10f,
     val axisQuarterValue: Float = 30f,
     val rankColors: List<Long> = listOf(
