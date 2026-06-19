@@ -36,6 +36,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -193,6 +194,9 @@ fun HistoryScreen(
                         fontSize = 13.sp,
                         fontWeight = FontWeight.SemiBold,
                         color = Color.White,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false),
                     )
 
                     Spacer(Modifier.width(6.dp))
@@ -257,6 +261,27 @@ fun HistoryScreen(
                         )
                     }
                 }
+            } else {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(
+                            if (state.isZoomEnabled) Color(0xFF4a90d9)
+                            else Color(0xFF1a1a3e)
+                        )
+                        .border(
+                            1.dp,
+                            if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF334444),
+                            RoundedCornerShape(6.dp),
+                        )
+                        .clickable { viewModel.toggleZoom() }
+                        .padding(horizontal = 7.dp, vertical = 3.dp),
+                ) {
+                    Text(
+                        "放大", fontSize = 11.sp,
+                        color = if (state.isZoomEnabled) Color.White else Color(0xFFa0c4ff),
+                    )
+                }
             }
 
             // ── 右半：导出/导入下拉菜单 ──
@@ -305,7 +330,7 @@ fun HistoryScreen(
         Spacer(Modifier.height(12.dp))
 
         // Chart viewport state — 每个 viewMode 独立实例
-        val viewport = remember(state.viewMode) { ChartViewport() }
+        val viewport = remember(state.viewMode, state.focusDate) { ChartViewport() }
 
         // Chart
         BoxWithConstraints(

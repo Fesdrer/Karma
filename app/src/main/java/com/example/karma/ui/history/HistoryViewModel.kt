@@ -82,6 +82,9 @@ class HistoryViewModel(
         _viewMode.value = mode
         // 切换视图模式时保持 focusDate 不变（如 WEEK→DAY 停留同一周）
         // ALL 模式下 focusDate 保留但不用于过滤
+        if (mode == ViewMode.DAY) {
+            _isZoomEnabled.value = false
+        }
     }
 
     fun clearMessage() {
@@ -178,6 +181,7 @@ class HistoryViewModel(
             ViewMode.WEEK -> {
                 _focusDate.value = timestamp
                 _viewMode.value = ViewMode.DAY
+                _isZoomEnabled.value = false
             }
             ViewMode.MONTH -> {
                 val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
@@ -224,12 +228,11 @@ class HistoryViewModel(
             ViewMode.DAY -> String.format("%04d-%02d-%02d",
                 cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
             ViewMode.WEEK -> {
-                val weekNum = cal.get(Calendar.WEEK_OF_YEAR)
                 val monCal = cal.clone() as Calendar
                 monCal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
                 val sunCal = cal.clone() as Calendar
                 sunCal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
-                "第${weekNum}周 (${monCal.get(Calendar.MONTH) + 1}/${monCal.get(Calendar.DAY_OF_MONTH)}-${sunCal.get(Calendar.MONTH) + 1}/${sunCal.get(Calendar.DAY_OF_MONTH)})"
+                "${monCal.get(Calendar.MONTH) + 1}/${monCal.get(Calendar.DAY_OF_MONTH)}-${sunCal.get(Calendar.MONTH) + 1}/${sunCal.get(Calendar.DAY_OF_MONTH)}"
             }
             ViewMode.MONTH -> String.format("%04d年%02d月",
                 cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1)
