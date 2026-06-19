@@ -50,7 +50,7 @@ fun HistoryChartCanvas(
                 detectTapGestures { offset ->
                     val callback = currentOnPointClicked
                     val pts = currentPoints
-                    if (callback == null || pts.size < 2) return@detectTapGestures
+                    if (callback == null || pts.size < 1) return@detectTapGestures
                     val tapX = offset.x
                     val tapY = offset.y
                     val w = size.width.toFloat()
@@ -85,9 +85,9 @@ fun HistoryChartCanvas(
     ) {
         val w = size.width
         val h = size.height
-        if (w <= 0 || h <= 0 || points.size < 2) {
+        if (w <= 0 || h <= 0 || points.isEmpty()) {
             drawContext.canvas.nativeCanvas.drawText(
-                if (points.size < 2) "暂无足够数据" else "",
+                if (points.isEmpty()) "暂无足够数据" else "",
                 w / 2f, h / 2f,
                 android.graphics.Paint().apply {
                     color = android.graphics.Color.argb(77, 255, 255, 255)
@@ -104,14 +104,21 @@ fun HistoryChartCanvas(
         val vp = viewport
         // ---- Auto-fit viewport on first draw ----
         if (vp.viewEnd <= vp.viewStart) {
-            val padding = 0.1
             val timeRange = points.last().timestamp - points.first().timestamp
-            vp.viewStart = points.first().timestamp - (timeRange * padding)
-            vp.viewEnd = points.last().timestamp + (timeRange * padding)
-            if (vp.viewEnd <= vp.viewStart) vp.viewEnd = vp.viewStart + 3600000.0
-
-            vp.minTimeRange = minOf(3600000.0, maxOf(timeRange / 20.0, 600000.0))
-            vp.maxTimeRange = vp.viewEnd - vp.viewStart
+            if (timeRange == 0L) {
+                // 单点：居中显示，左右各 2 小时
+                vp.viewStart = points.first().timestamp - 7200000.0
+                vp.viewEnd = points.first().timestamp + 7200000.0
+                vp.minTimeRange = 3600000.0
+                vp.maxTimeRange = 14400000.0
+            } else {
+                val padding = 0.1
+                vp.viewStart = points.first().timestamp - (timeRange * padding)
+                vp.viewEnd = points.last().timestamp + (timeRange * padding)
+                if (vp.viewEnd <= vp.viewStart) vp.viewEnd = vp.viewStart + 3600000.0
+                vp.minTimeRange = minOf(3600000.0, maxOf(timeRange / 20.0, 600000.0))
+                vp.maxTimeRange = vp.viewEnd - vp.viewStart
+            }
 
             val scores = points.map { it.totalAfter }
             val yMin = scores.min()
