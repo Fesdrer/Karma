@@ -20,6 +20,7 @@ data class MainUiState(
     val badDeedPresets: List<String> = emptyList(),
     val goodResultPresets: List<String> = emptyList(),
     val selectedScore: Float? = null,
+    val effectiveScore: Float? = null,
     val selectedEvent: String? = null,
     // ===== 以下为 settings 透传字段 =====
     val scoreAxisFontSize: Float = 22f,
@@ -76,6 +77,7 @@ class MainViewModel(
             badDeedPresets = settings.badDeedPresets,
             goodResultPresets = settings.goodResultPresets,
             selectedScore = selection.first,
+            effectiveScore = selection.first,
             selectedEvent = selection.second,
             // ★ 视觉参数透传
             scoreAxisFontSize = settings.scoreAxisFontSize,

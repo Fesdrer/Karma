@@ -75,7 +75,7 @@ fun MainScreen(
             ) {
                 // Left panel: Scores
                 ScorePanel(
-                    selectedScore = state.selectedScore,
+                    selectedScore = state.effectiveScore,
                     onScoreSelected = { viewModel.selectScore(it) },
                     onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
                     axisFontSize = state.scoreAxisFontSize,

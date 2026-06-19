@@ -618,7 +618,10 @@ private fun ResetCard(viewModel: SettingsViewModel) {
                 contentColor = Color(0xFFff5252),
             ),
         ) {
-            Text("重置所有设置为默认")
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("重置所有设置为默认", fontSize = 14.sp)
+                Text("（事件除外）", fontSize = 11.sp, color = Color(0xFFff5252).copy(alpha = 0.7f))
+            }
         }
     }
 }

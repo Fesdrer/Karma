@@ -148,43 +148,131 @@ fun HistoryScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Row 2: Export / Import buttons (right-aligned)
+        // Row 2: 导航栏 (左) + 导出/导入 (右)
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF1a1a3e))
-                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                    .clickable { exportCsvLauncher.launch("karma_data.csv") }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-            ) {
-                Text("CSV", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+            // ── 左半：导航控件 ──
+            if (state.viewMode != ViewMode.ALL) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    // ◀ 按钮
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF1a1a3e))
+                            .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
+                            .clickable { viewModel.navigatePrevious() }
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) { Text("<", fontSize = 14.sp, color = Color(0xFFa0c4ff)) }
+
+                    Spacer(Modifier.width(6.dp))
+
+                    // 日期标签
+                    Text(
+                        text = state.dateLabel,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color.White,
+                    )
+
+                    Spacer(Modifier.width(6.dp))
+
+                    // ▶ 按钮
+                    val forwardBg = if (state.canGoForward) Color(0xFF1a1a3e)
+                    else Color(0xFF1a1a3e).copy(alpha = 0.4f)
+                    val forwardBorder = if (state.canGoForward) Color(0xFF334444)
+                    else Color(0xFF334444).copy(alpha = 0.2f)
+                    val forwardColor = if (state.canGoForward) Color(0xFFa0c4ff)
+                    else Color(0xFF666666)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(forwardBg)
+                            .border(1.dp, forwardBorder, RoundedCornerShape(6.dp))
+                            .clickable(enabled = state.canGoForward) { viewModel.navigateNext() }
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
+                    ) { Text(">", fontSize = 14.sp, color = forwardColor) }
+
+                    Spacer(Modifier.width(6.dp))
+
+                    // [今天] 按钮
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF1a1a3e))
+                            .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
+                            .clickable { viewModel.resetFocusToToday() }
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) { Text("今天", fontSize = 11.sp, color = Color(0xFFa0c4ff)) }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    // [放大] 开关
+                    val zoomDisabled = state.viewMode == ViewMode.DAY
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF1a1a3e)
+                            )
+                            .border(
+                                1.dp,
+                                when {
+                                    state.isZoomEnabled -> Color(0xFF4a90d9)
+                                    zoomDisabled -> Color(0xFF334444).copy(alpha = 0.2f)
+                                    else -> Color(0xFF334444)
+                                },
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable(enabled = !zoomDisabled) { viewModel.toggleZoom() }
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            "放大", fontSize = 11.sp,
+                            color = when {
+                                zoomDisabled -> Color(0xFF666666)
+                                state.isZoomEnabled -> Color.White
+                                else -> Color(0xFFa0c4ff)
+                            },
+                        )
+                    }
+                }
             }
-            Spacer(Modifier.width(4.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF1a1a3e))
-                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                    .clickable { exportJsonLauncher.launch("karma_data.json") }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-            ) {
-                Text("JSON", fontSize = 13.sp, color = Color(0xFFa0c4ff))
-            }
-            Spacer(Modifier.width(4.dp))
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(8.dp))
-                    .background(Color(0xFF1a1a3e))
-                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                    .clickable { importLauncher.launch(arrayOf("application/json", "text/csv")) }
-                    .padding(horizontal = 10.dp, vertical = 5.dp),
-            ) {
-                Text("导入", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+
+            // ── 右半：导出/导入 ──
+            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF1a1a3e))
+                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                        .clickable { exportCsvLauncher.launch("karma_data.csv") }
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                ) { Text("CSV", fontSize = 13.sp, color = Color(0xFFa0c4ff)) }
+
+                Spacer(Modifier.width(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF1a1a3e))
+                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                        .clickable { exportJsonLauncher.launch("karma_data.json") }
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                ) { Text("JSON", fontSize = 13.sp, color = Color(0xFFa0c4ff)) }
+
+                Spacer(Modifier.width(4.dp))
+
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF1a1a3e))
+                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                        .clickable { importLauncher.launch(arrayOf("application/json", "text/csv")) }
+                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                ) { Text("导入", fontSize = 13.sp, color = Color(0xFFa0c4ff)) }
             }
         }
 
@@ -208,12 +296,21 @@ fun HistoryScreen(
                 viewport = viewport,
                 lineThickness = state.historyLineThickness,
                 dotRadius = state.historyDotRadius,
+                rankColors = state.rankColors,
                 onPointClicked = { point, screenX, screenY ->
                     if (point != null) {
-                        tooltipPoint = point
-                        tooltipX = screenX
-                        tooltipY = screenY
-                        showTooltip = true
+                        if (state.isZoomEnabled && state.viewMode != ViewMode.DAY) {
+                            // 缩放模式：下钻，不显示 tooltip
+                            viewModel.zoomToPoint(point.timestamp)
+                            showTooltip = false
+                            tooltipPoint = null
+                        } else {
+                            // 普通模式：显示 tooltip
+                            tooltipPoint = point
+                            tooltipX = screenX
+                            tooltipY = screenY
+                            showTooltip = true
+                        }
                     } else {
                         showTooltip = false
                         tooltipPoint = null

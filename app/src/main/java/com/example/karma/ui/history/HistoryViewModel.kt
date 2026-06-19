@@ -24,6 +24,11 @@ data class HistoryUiState(
     val aggregatedPoints: List<AggregatedPoint> = emptyList(),
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
+    val focusDate: Long = System.currentTimeMillis(),
+    val canGoForward: Boolean = false,
+    val dateLabel: String = "",
+    val isZoomEnabled: Boolean = false,
+    val rankColors: List<Long> = emptyList(),
     val message: String? = null,
 )
 
@@ -41,25 +46,42 @@ class HistoryViewModel(
 
     private val _viewMode = MutableStateFlow(ViewMode.DAY)
     private val _message = MutableStateFlow<String?>(null)
+    private val _focusDate = MutableStateFlow(System.currentTimeMillis())
+    private val _isZoomEnabled = MutableStateFlow(false)
+
+    // combine 最多支持 5 个类型安全参数，因此先合并 _focusDate + _isZoomEnabled
+    private val _focusState = combine(
+        _focusDate, _isZoomEnabled
+    ) { date, zoom -> Pair(date, zoom) }
 
     val uiState: StateFlow<HistoryUiState> = combine(
         repository.allHistory,
         repository.settings,
         _viewMode.asStateFlow(),
         _message.asStateFlow(),
-    ) { entries, settings, mode, msg ->
+        _focusState,
+    ) { entries: List<HistoryEntryEntity>, settings: com.example.karma.data.local.entity.KarmaSettingsEntity, mode: ViewMode, msg: String?, focusPair: Pair<Long, Boolean> ->
+        val focusDate = focusPair.first
+        val zoomEnabled = focusPair.second
         HistoryUiState(
             entries = entries,
             viewMode = mode,
-            aggregatedPoints = aggregate(entries, mode),
+            aggregatedPoints = aggregate(entries, mode, focusDate),
             historyLineThickness = settings.historyLineThickness,
             historyDotRadius = settings.historyDotRadius,
+            focusDate = focusDate,
+            canGoForward = !isAtNewest(focusDate, mode),
+            dateLabel = formatDateLabel(focusDate, mode),
+            isZoomEnabled = zoomEnabled,
+            rankColors = settings.rankColors,
             message = msg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())
 
     fun setViewMode(mode: ViewMode) {
         _viewMode.value = mode
+        // 切换视图模式时保持 focusDate 不变（如 WEEK→DAY 停留同一周）
+        // ALL 模式下 focusDate 保留但不用于过滤
     }
 
     fun clearMessage() {
@@ -69,32 +91,150 @@ class HistoryViewModel(
     private fun aggregate(
         entries: List<HistoryEntryEntity>,
         mode: ViewMode,
+        focusDate: Long,
     ): List<AggregatedPoint> {
         if (entries.isEmpty()) return emptyList()
-        val now = System.currentTimeMillis()
         val cal = Calendar.getInstance()
 
-        val filtered = when (mode) {
+        val (startMs, endMs) = when (mode) {
             ViewMode.DAY -> {
-                cal.timeInMillis = now
+                cal.timeInMillis = focusDate
                 cal.set(Calendar.HOUR_OF_DAY, 0)
                 cal.set(Calendar.MINUTE, 0)
                 cal.set(Calendar.SECOND, 0)
                 cal.set(Calendar.MILLISECOND, 0)
-                val todayStart = cal.timeInMillis
-                entries.filter { it.timestamp >= todayStart }
+                val start = cal.timeInMillis
+                cal.add(Calendar.DAY_OF_MONTH, 1)
+                Pair(start, cal.timeInMillis)
             }
             ViewMode.WEEK -> {
-                val weekAgo = now - 7L * 24 * 60 * 60 * 1000
-                entries.filter { it.timestamp >= weekAgo }
+                cal.timeInMillis = focusDate
+                cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis
+                cal.add(Calendar.WEEK_OF_YEAR, 1)
+                Pair(start, cal.timeInMillis)
             }
             ViewMode.MONTH -> {
-                val monthAgo = now - 30L * 24 * 60 * 60 * 1000
-                entries.filter { it.timestamp >= monthAgo }
+                cal.timeInMillis = focusDate
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                val start = cal.timeInMillis
+                cal.add(Calendar.MONTH, 1)
+                Pair(start, cal.timeInMillis)
             }
-            ViewMode.ALL -> entries
+            ViewMode.ALL -> Pair(0L, Long.MAX_VALUE)
         }
-        return filtered.map { it.toAggregated() }
+
+        return entries
+            .filter { it.timestamp in startMs until endMs }
+            .map { it.toAggregated() }
+    }
+
+    // ---- Navigation ----
+
+    fun navigatePrevious() {
+        if (_viewMode.value == ViewMode.ALL) return
+        val cal = Calendar.getInstance().apply { timeInMillis = _focusDate.value }
+        when (_viewMode.value) {
+            ViewMode.DAY -> cal.add(Calendar.DAY_OF_MONTH, -1)
+            ViewMode.WEEK -> cal.add(Calendar.WEEK_OF_YEAR, -1)
+            ViewMode.MONTH -> cal.add(Calendar.MONTH, -1)
+            ViewMode.ALL -> return
+        }
+        _focusDate.value = cal.timeInMillis
+    }
+
+    fun navigateNext() {
+        if (_viewMode.value == ViewMode.ALL) return
+        if (isAtNewest(_focusDate.value, _viewMode.value)) return
+        val cal = Calendar.getInstance().apply { timeInMillis = _focusDate.value }
+        when (_viewMode.value) {
+            ViewMode.DAY -> cal.add(Calendar.DAY_OF_MONTH, 1)
+            ViewMode.WEEK -> cal.add(Calendar.WEEK_OF_YEAR, 1)
+            ViewMode.MONTH -> cal.add(Calendar.MONTH, 1)
+            ViewMode.ALL -> return
+        }
+        _focusDate.value = cal.timeInMillis
+    }
+
+    fun resetFocusToToday() {
+        _focusDate.value = System.currentTimeMillis()
+    }
+
+    fun toggleZoom() {
+        _isZoomEnabled.value = !_isZoomEnabled.value
+    }
+
+    fun zoomToPoint(timestamp: Long) {
+        when (_viewMode.value) {
+            ViewMode.DAY -> { /* 已是最细粒度 */ }
+            ViewMode.WEEK -> {
+                _focusDate.value = timestamp
+                _viewMode.value = ViewMode.DAY
+            }
+            ViewMode.MONTH -> {
+                val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
+                cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                _focusDate.value = cal.timeInMillis
+                _viewMode.value = ViewMode.WEEK
+            }
+            ViewMode.ALL -> {
+                val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
+                cal.set(Calendar.DAY_OF_MONTH, 1)
+                cal.set(Calendar.HOUR_OF_DAY, 0)
+                cal.set(Calendar.MINUTE, 0)
+                cal.set(Calendar.SECOND, 0)
+                cal.set(Calendar.MILLISECOND, 0)
+                _focusDate.value = cal.timeInMillis
+                _viewMode.value = ViewMode.MONTH
+            }
+        }
+    }
+
+    // ---- Helper methods ----
+
+    /** 判断 focusDate 是否在当前最新周期内 */
+    private fun isAtNewest(focusDate: Long, mode: ViewMode): Boolean {
+        if (mode == ViewMode.ALL) return true
+        val now = Calendar.getInstance()
+        val focus = Calendar.getInstance().apply { timeInMillis = focusDate }
+        return when (mode) {
+            ViewMode.DAY -> focus.get(Calendar.DAY_OF_YEAR) == now.get(Calendar.DAY_OF_YEAR)
+                    && focus.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+            ViewMode.WEEK -> focus.get(Calendar.WEEK_OF_YEAR) == now.get(Calendar.WEEK_OF_YEAR)
+                    && focus.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+            ViewMode.MONTH -> focus.get(Calendar.MONTH) == now.get(Calendar.MONTH)
+                    && focus.get(Calendar.YEAR) == now.get(Calendar.YEAR)
+            ViewMode.ALL -> true
+        }
+    }
+
+    /** 格式化日期标签 */
+    private fun formatDateLabel(focusDate: Long, mode: ViewMode): String {
+        if (mode == ViewMode.ALL) return "全部记录"
+        val cal = Calendar.getInstance().apply { timeInMillis = focusDate }
+        return when (mode) {
+            ViewMode.DAY -> String.format("%04d-%02d-%02d",
+                cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
+            ViewMode.WEEK -> {
+                val weekNum = cal.get(Calendar.WEEK_OF_YEAR)
+                val monCal = cal.clone() as Calendar
+                monCal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                val sunCal = cal.clone() as Calendar
+                sunCal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+                "第${weekNum}周 (${monCal.get(Calendar.MONTH) + 1}/${monCal.get(Calendar.DAY_OF_MONTH)}-${sunCal.get(Calendar.MONTH) + 1}/${sunCal.get(Calendar.DAY_OF_MONTH)})"
+            }
+            ViewMode.MONTH -> String.format("%04d年%02d月",
+                cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1)
+            ViewMode.ALL -> "全部记录"
+        }
     }
 
     // ---- Export ----

@@ -35,6 +35,7 @@ fun HistoryChartCanvas(
     viewport: ChartViewport,
     lineThickness: Float = 2f,
     dotRadius: Float = 3.5f,
+    rankColors: List<Long> = emptyList(),
     onPointClicked: ((point: AggregatedPoint?, screenX: Float, screenY: Float) -> Unit)? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -130,6 +131,27 @@ fun HistoryChartCanvas(
 
         // ---- Background ----
         drawRect(color = ChartBg, size = size)
+
+        // ---- Rank color bands（阶位色带） ----
+        if (rankColors.isNotEmpty() && points.size >= 2) {
+            for (rank in com.example.karma.data.model.Rank.RANKS) {
+                val bandColor = rankColors.getOrElse(rank.level - 1) { rank.colorHex }
+
+                val bandTopY = yMap(rank.max)
+                val bandBottomY = yMap(rank.min)
+
+                val drawTop = bandTopY.coerceIn(PAD_TOP, h - PAD_BOTTOM)
+                val drawBottom = bandBottomY.coerceIn(PAD_TOP, h - PAD_BOTTOM)
+                val bandHeight = drawBottom - drawTop
+                if (bandHeight <= 0f) continue
+
+                drawRect(
+                    color = Color(bandColor).copy(alpha = 0.10f),
+                    topLeft = Offset(PAD_LEFT, drawTop),
+                    size = androidx.compose.ui.geometry.Size(plotW, bandHeight),
+                )
+            }
+        }
 
         // ---- Grid lines ----
         val gridLines = 5

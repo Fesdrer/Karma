@@ -65,6 +65,30 @@ fun ScorePanel(
 
         Spacer(Modifier.height(4.dp))
 
+        // ===== 当前选中分数显示 =====
+        if (selectedScore != null) {
+            val displayText = if (selectedScore % 1f == 0f) {
+                (if (selectedScore > 0) "+" else "") + selectedScore.toInt().toString()
+            } else {
+                (if (selectedScore > 0) "+" else "") + String.format("%.1f", selectedScore)
+            }
+            val scoreColor = when {
+                selectedScore > 0 -> Color(0xFF69f0ae)
+                selectedScore < 0 -> Color(0xFFff5252)
+                else -> Color(0xFFa0c4ff)
+            }
+            Text(
+                text = displayText,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = scoreColor,
+                modifier = Modifier.fillMaxWidth(),
+                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+            )
+            Spacer(Modifier.height(4.dp))
+        }
+        // ===== 结束选中分数显示 =====
+
         // Vertical axis canvas
         Box(
             modifier = Modifier

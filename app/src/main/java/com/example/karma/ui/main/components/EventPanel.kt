@@ -107,7 +107,7 @@ fun EventPanel(
                 customText = it
                 onCustomEventChanged(it)
             },
-            placeholder = { Text("自定义事件...", fontSize = 14.sp, color = Color(0xFF666666)) },
+            placeholder = { Text("自定义事件...", fontSize = 12.sp, color = Color(0xFF666666)) },
             textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
             singleLine = true,
             shape = RoundedCornerShape(8.dp),

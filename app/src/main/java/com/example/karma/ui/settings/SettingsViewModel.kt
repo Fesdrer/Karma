@@ -189,6 +189,10 @@ class SettingsViewModel(
         setDraft(KarmaSettingsEntity().copy(
             totalScore = current.totalScore,
             lastDecayDate = current.lastDecayDate,
+            // 保留三个事件列表，不被默认值覆盖
+            goodDeedPresets = current.goodDeedPresets,
+            badDeedPresets = current.badDeedPresets,
+            goodResultPresets = current.goodResultPresets,
         ))
     }
 
