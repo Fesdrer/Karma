@@ -222,23 +222,5 @@ fun HistoryChartCanvas(
                 style = Stroke(width = 1.5f),
             )
         }
-
-        // ---- Area fill under line ----
-        if (points.isNotEmpty()) {
-            val areaPath = Path()
-            for (i in points.indices) {
-                val x = xMap(points[i].timestamp)
-                val y = yMap(points[i].totalAfter)
-                if (x < PAD_LEFT - 10f || x > w - PAD_RIGHT + 10f) continue
-                if (i == 0) areaPath.moveTo(x, y)
-                else areaPath.lineTo(x, y)
-            }
-            val lastX = xMap(points.last().timestamp)
-            areaPath.lineTo(lastX, PAD_TOP + plotH)
-            val firstX = xMap(points.first().timestamp)
-            areaPath.lineTo(firstX, PAD_TOP + plotH)
-            areaPath.close()
-            drawPath(areaPath, color = Color(0xFFffd700).copy(alpha = 0.08f))
-        }
     }
 }

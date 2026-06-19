@@ -7,6 +7,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.material3.Text
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -107,39 +109,55 @@ fun HistoryScreen(
                 )
             }
 
-            // View mode buttons (no horizontal scroll)
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                ViewMode.entries.forEach { mode ->
-                    val isActive = state.viewMode == mode
-                    val label = when (mode) {
-                        ViewMode.DAY -> "日"
-                        ViewMode.WEEK -> "周"
-                        ViewMode.MONTH -> "月"
-                        ViewMode.ALL -> "全部"
-                    }
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(8.dp))
-                            .then(
-                                if (isActive) Modifier.background(Color(0xFF4a90d9))
-                                else Modifier.background(Color(0xFF1a1a3e))
-                            )
-                            .border(
-                                1.dp,
-                                if (isActive) Color(0xFF4a90d9) else Color(0xFF334444),
-                                RoundedCornerShape(8.dp)
-                            )
-                            .clickable { viewModel.setViewMode(mode) }
-                            .padding(horizontal = 10.dp, vertical = 5.dp),
-                    ) {
-                        Text(
-                            label,
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = if (isActive) Color.White else Color(0xFFa0c4ff),
+            // View mode dropdown（日/周/月/全部）
+            var viewModeExpanded by remember { mutableStateOf(false) }
+            val currentViewLabel = when (state.viewMode) {
+                ViewMode.DAY -> "日"
+                ViewMode.WEEK -> "周"
+                ViewMode.MONTH -> "月"
+                ViewMode.ALL -> "全部"
+            }
+            Box {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(Color(0xFF1a1a3e))
+                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                        .clickable { viewModeExpanded = true }
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text(
+                        "$currentViewLabel ▼",
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = Color(0xFFa0c4ff),
+                    )
+                }
+
+                DropdownMenu(
+                    expanded = viewModeExpanded,
+                    onDismissRequest = { viewModeExpanded = false },
+                ) {
+                    ViewMode.entries.forEach { mode ->
+                        val itemLabel = when (mode) {
+                            ViewMode.DAY -> "日"
+                            ViewMode.WEEK -> "周"
+                            ViewMode.MONTH -> "月"
+                            ViewMode.ALL -> "全部"
+                        }
+                        DropdownMenuItem(
+                            text = {
+                                Text(
+                                    itemLabel,
+                                    fontSize = 13.sp,
+                                    fontWeight = if (mode == state.viewMode) FontWeight.Bold else FontWeight.Normal,
+                                    color = if (mode == state.viewMode) Color(0xFF4a90d9) else Color.White,
+                                )
+                            },
+                            onClick = {
+                                viewModel.setViewMode(mode)
+                                viewModeExpanded = false
+                            },
                         )
                     }
                 }
@@ -241,38 +259,46 @@ fun HistoryScreen(
                 }
             }
 
-            // ── 右半：导出/导入 ──
-            Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+            // ── 右半：导出/导入下拉菜单 ──
+            var exportExpanded by remember { mutableStateOf(false) }
+            Box {
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(0xFF1a1a3e))
                         .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { exportCsvLauncher.launch("karma_data.csv") }
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                ) { Text("CSV", fontSize = 13.sp, color = Color(0xFFa0c4ff)) }
+                        .clickable { exportExpanded = true }
+                        .padding(horizontal = 12.dp, vertical = 5.dp),
+                ) {
+                    Text("导出 ▼", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+                }
 
-                Spacer(Modifier.width(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { exportJsonLauncher.launch("karma_data.json") }
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                ) { Text("JSON", fontSize = 13.sp, color = Color(0xFFa0c4ff)) }
-
-                Spacer(Modifier.width(4.dp))
-
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { importLauncher.launch(arrayOf("application/json", "text/csv")) }
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
-                ) { Text("导入", fontSize = 13.sp, color = Color(0xFFa0c4ff)) }
+                DropdownMenu(
+                    expanded = exportExpanded,
+                    onDismissRequest = { exportExpanded = false },
+                ) {
+                    DropdownMenuItem(
+                        text = { Text("CSV", fontSize = 13.sp, color = Color.White) },
+                        onClick = {
+                            exportExpanded = false
+                            exportCsvLauncher.launch("karma_data.csv")
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("JSON", fontSize = 13.sp, color = Color.White) },
+                        onClick = {
+                            exportExpanded = false
+                            exportJsonLauncher.launch("karma_data.json")
+                        },
+                    )
+                    DropdownMenuItem(
+                        text = { Text("导入", fontSize = 13.sp, color = Color.White) },
+                        onClick = {
+                            exportExpanded = false
+                            importLauncher.launch(arrayOf("application/json", "text/csv"))
+                        },
+                    )
+                }
             }
         }
 
