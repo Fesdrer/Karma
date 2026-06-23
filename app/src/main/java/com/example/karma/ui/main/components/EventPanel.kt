@@ -27,7 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -183,6 +183,10 @@ private fun EventSection(
         }
 
         // Custom event input — compact, ~1.2x event item height
+        val fieldTextStyle = TextStyle(
+            color = titleColor.copy(alpha = 0.8f),
+            fontSize = 12.sp,
+        )
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -190,8 +194,7 @@ private fun EventSection(
                 .clip(RoundedCornerShape(6.dp))
                 .background(ScoreBtnBg)
                 .border(1.dp, titleColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                .heightIn(min = 18.dp),
-            contentAlignment = Alignment.Center,
+                .padding(horizontal = 8.dp, vertical = 5.dp),
         ) {
             BasicTextField(
                 value = customText,
@@ -199,28 +202,21 @@ private fun EventSection(
                     customText = it
                     onCustomChanged(it)
                 },
-                textStyle = TextStyle(
-                    color = titleColor.copy(alpha = 0.8f),
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    platformStyle = PlatformTextStyle(includeFontPadding = false),
-                ),
+                textStyle = fieldTextStyle,
                 singleLine = false,
+                cursorBrush = SolidColor(titleColor),
                 decorationBox = { innerTextField ->
-                    Box {
+                    Box(modifier = Modifier.fillMaxWidth()) {
                         if (customText.isEmpty()) {
                             Text(
-                                customPlaceholder,
-                                fontSize = 11.sp,
-                                color = Color(0xFF666666),
+                                text = customPlaceholder,
+                                style = fieldTextStyle.copy(color = Color(0xFF666666)),
                             )
                         }
                         innerTextField()
                     }
                 },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 4.dp),
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }
