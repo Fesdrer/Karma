@@ -268,17 +268,23 @@ fun ParticleEngineCanvas(
                         isFakeBoldText = true
                     }
                 )
-                drawContext.canvas.nativeCanvas.drawText(
-                    "「$purpose」",
-                    cx,
-                    cy + 55f * scale,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
-                        textSize = 44f * scale
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        isFakeBoldText = true
-                    }
-                )
+                // 使用 StaticLayout 支持多行换行
+                val divinePurposeText = "「$purpose」"
+                val divineTextPaint = android.text.TextPaint().apply {
+                    color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
+                    textSize = 44f * scale
+                    isFakeBoldText = true
+                    isAntiAlias = true
+                }
+                val divineMaxWidth = (w * 0.8f).toInt()
+                val divineLayout = android.text.StaticLayout.Builder
+                    .obtain(divinePurposeText, 0, divinePurposeText.length, divineTextPaint, divineMaxWidth)
+                    .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
+                    .build()
+                drawContext.canvas.save()
+                drawContext.canvas.translate(cx - divineMaxWidth / 2f, cy + 55f * scale)
+                divineLayout.draw(drawContext.canvas.nativeCanvas)
+                drawContext.canvas.restore()
             } else {
                 drawContext.canvas.nativeCanvas.drawText(
                     "扣除 $amount 分",
@@ -291,16 +297,22 @@ fun ParticleEngineCanvas(
                         isFakeBoldText = true
                     }
                 )
-                drawContext.canvas.nativeCanvas.drawText(
-                    "「$purpose」",
-                    cx,
-                    cy + 45f * scale,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
-                        textSize = 36f * scale
-                        textAlign = android.graphics.Paint.Align.CENTER
-                    }
-                )
+                // 使用 StaticLayout 支持多行换行
+                val normalPurposeText = "「$purpose」"
+                val normalTextPaint = android.text.TextPaint().apply {
+                    color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
+                    textSize = 36f * scale
+                    isAntiAlias = true
+                }
+                val normalMaxWidth = (w * 0.8f).toInt()
+                val normalLayout = android.text.StaticLayout.Builder
+                    .obtain(normalPurposeText, 0, normalPurposeText.length, normalTextPaint, normalMaxWidth)
+                    .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
+                    .build()
+                drawContext.canvas.save()
+                drawContext.canvas.translate(cx - normalMaxWidth / 2f, cy + 45f * scale)
+                normalLayout.draw(drawContext.canvas.nativeCanvas)
+                drawContext.canvas.restore()
             }
         }
     }

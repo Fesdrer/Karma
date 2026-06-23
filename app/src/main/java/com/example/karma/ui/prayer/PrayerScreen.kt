@@ -147,20 +147,22 @@ fun PrayerScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                     Spacer(Modifier.height(4.dp))
-                    Row(
+                    // 括号对角布局：「左上角 」右下角
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(10.dp))
                             .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
                             .background(ScoreBtnBg),
-                        verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
                             text = "「",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFff0000),
-                            modifier = Modifier.padding(start = 10.dp),
+                            modifier = Modifier
+                                .align(Alignment.TopStart)
+                                .padding(start = 8.dp, top = 4.dp),
                         )
                         OutlinedTextField(
                             value = state.purpose,
@@ -178,14 +180,18 @@ fun PrayerScreen(
                                 focusedTextColor = Color(0xFFff0000),
                                 unfocusedTextColor = Color(0xFFff0000),
                             ),
-                            modifier = Modifier.weight(1f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 24.dp),
                         )
                         Text(
                             text = "」",
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFff0000),
-                            modifier = Modifier.padding(end = 10.dp),
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 8.dp, bottom = 4.dp),
                         )
                     }
                     Spacer(Modifier.height(20.dp))

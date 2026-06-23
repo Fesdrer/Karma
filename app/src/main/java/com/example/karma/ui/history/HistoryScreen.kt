@@ -116,54 +116,100 @@ fun HistoryScreen(
                 )
             }
 
-            // View mode dropdown（日/周/月/全部）
-            var viewModeExpanded by remember { mutableStateOf(false) }
-            val currentViewLabel = when (state.viewMode) {
-                ViewMode.DAY -> "日"
-                ViewMode.WEEK -> "周"
-                ViewMode.MONTH -> "月"
-                ViewMode.ALL -> "全部"
-            }
-            Box {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { viewModeExpanded = true }
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                ) {
-                    Text(
-                        "$currentViewLabel ▼",
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color(0xFFa0c4ff),
-                    )
+            // View mode dropdown + 导出/导入下拉（同排右端）
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                var viewModeExpanded by remember { mutableStateOf(false) }
+                val currentViewLabel = when (state.viewMode) {
+                    ViewMode.DAY -> "日"
+                    ViewMode.WEEK -> "周"
+                    ViewMode.MONTH -> "月"
+                    ViewMode.ALL -> "全部"
+                }
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF1a1a3e))
+                            .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                            .clickable { viewModeExpanded = true }
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                    ) {
+                        Text(
+                            "$currentViewLabel ▼",
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color(0xFFa0c4ff),
+                        )
+                    }
+
+                    DropdownMenu(
+                        expanded = viewModeExpanded,
+                        onDismissRequest = { viewModeExpanded = false },
+                    ) {
+                        ViewMode.entries.forEach { mode ->
+                            val itemLabel = when (mode) {
+                                ViewMode.DAY -> "日"
+                                ViewMode.WEEK -> "周"
+                                ViewMode.MONTH -> "月"
+                                ViewMode.ALL -> "全部"
+                            }
+                            DropdownMenuItem(
+                                text = {
+                                    Text(
+                                        itemLabel,
+                                        fontSize = 13.sp,
+                                        fontWeight = if (mode == state.viewMode) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (mode == state.viewMode) Color(0xFF4a90d9) else Color.White,
+                                    )
+                                },
+                                onClick = {
+                                    viewModel.setViewMode(mode)
+                                    viewModeExpanded = false
+                                },
+                            )
+                        }
+                    }
                 }
 
-                DropdownMenu(
-                    expanded = viewModeExpanded,
-                    onDismissRequest = { viewModeExpanded = false },
-                ) {
-                    ViewMode.entries.forEach { mode ->
-                        val itemLabel = when (mode) {
-                            ViewMode.DAY -> "日"
-                            ViewMode.WEEK -> "周"
-                            ViewMode.MONTH -> "月"
-                            ViewMode.ALL -> "全部"
-                        }
+                Spacer(Modifier.width(8.dp))
+
+                // Export dropdown
+                var exportExpanded by remember { mutableStateOf(false) }
+                Box {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .background(Color(0xFF1a1a3e))
+                            .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
+                            .clickable { exportExpanded = true }
+                            .padding(horizontal = 12.dp, vertical = 5.dp),
+                    ) {
+                        Text("导出 ▼", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+                    }
+
+                    DropdownMenu(
+                        expanded = exportExpanded,
+                        onDismissRequest = { exportExpanded = false },
+                    ) {
                         DropdownMenuItem(
-                            text = {
-                                Text(
-                                    itemLabel,
-                                    fontSize = 13.sp,
-                                    fontWeight = if (mode == state.viewMode) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (mode == state.viewMode) Color(0xFF4a90d9) else Color.White,
-                                )
-                            },
+                            text = { Text("CSV", fontSize = 13.sp, color = Color.White) },
                             onClick = {
-                                viewModel.setViewMode(mode)
-                                viewModeExpanded = false
+                                exportExpanded = false
+                                exportCsvLauncher.launch("karma_data.csv")
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("JSON", fontSize = 13.sp, color = Color.White) },
+                            onClick = {
+                                exportExpanded = false
+                                exportJsonLauncher.launch("karma_data.json")
+                            },
+                        )
+                        DropdownMenuItem(
+                            text = { Text("导入", fontSize = 13.sp, color = Color.White) },
+                            onClick = {
+                                exportExpanded = false
+                                importLauncher.launch(arrayOf("application/json", "text/csv"))
                             },
                         )
                     }
@@ -173,11 +219,10 @@ fun HistoryScreen(
 
         Spacer(Modifier.height(8.dp))
 
-        // Row 2: 导航栏 (左) + 导出/导入 (右)
+        // Row 2: 导航栏
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween,
         ) {
             // ── 左半：导航控件 ──
             if (state.viewMode != ViewMode.ALL) {
@@ -332,47 +377,6 @@ fun HistoryScreen(
                 }
             }
 
-            // ── 右半：导出/导入下拉菜单 ──
-            var exportExpanded by remember { mutableStateOf(false) }
-            Box {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF1a1a3e))
-                        .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
-                        .clickable { exportExpanded = true }
-                        .padding(horizontal = 12.dp, vertical = 5.dp),
-                ) {
-                    Text("导出 ▼", fontSize = 13.sp, color = Color(0xFFa0c4ff))
-                }
-
-                DropdownMenu(
-                    expanded = exportExpanded,
-                    onDismissRequest = { exportExpanded = false },
-                ) {
-                    DropdownMenuItem(
-                        text = { Text("CSV", fontSize = 13.sp, color = Color.White) },
-                        onClick = {
-                            exportExpanded = false
-                            exportCsvLauncher.launch("karma_data.csv")
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("JSON", fontSize = 13.sp, color = Color.White) },
-                        onClick = {
-                            exportExpanded = false
-                            exportJsonLauncher.launch("karma_data.json")
-                        },
-                    )
-                    DropdownMenuItem(
-                        text = { Text("导入", fontSize = 13.sp, color = Color.White) },
-                        onClick = {
-                            exportExpanded = false
-                            importLauncher.launch(arrayOf("application/json", "text/csv"))
-                        },
-                    )
-                }
-            }
         }
 
         Spacer(Modifier.height(12.dp))
@@ -428,20 +432,32 @@ fun HistoryScreen(
                 val tooltipMaxWidth = 220.dp
                 val tooltipMaxHeight = 200.dp
 
-                // Try placing right of the point; if it overflows, place left instead
-                val rawX = tooltipDpX + 12.dp
-                val finalX = if (rawX + tooltipMaxWidth > parentWidth) {
-                    maxOf(4.dp, tooltipDpX - tooltipMaxWidth - 12.dp)
+                // X direction: prefer right, flip left if overflow; prefer left, flip right if overflow
+                val rawXRight = tooltipDpX + 12.dp
+                val rawXLeft = tooltipDpX - tooltipMaxWidth - 12.dp
+                val finalX = if (rawXRight + tooltipMaxWidth <= parentWidth) {
+                    // Fits on the right
+                    maxOf(4.dp, rawXRight)
+                } else if (rawXLeft >= 4.dp) {
+                    // Overflow right → flip to left
+                    rawXLeft
                 } else {
-                    maxOf(4.dp, rawX)
+                    // Neither fits → clamp rightmost possible
+                    maxOf(4.dp, parentWidth - tooltipMaxWidth - 4.dp)
                 }
 
-                // Try placing above the point; if it overflows, place below instead
-                val rawY = tooltipDpY - 10.dp
-                val finalY = if (rawY < 4.dp) {
-                    minOf(tooltipDpY + 10.dp, parentHeight - tooltipMaxHeight - 4.dp)
+                // Y direction: prefer above, flip below if overflow; prefer below, flip above if overflow
+                val rawYAbove = tooltipDpY - tooltipMaxHeight - 10.dp
+                val rawYBelow = tooltipDpY + 10.dp
+                val finalY = if (rawYAbove >= 4.dp) {
+                    // Fits above
+                    rawYAbove
+                } else if (rawYBelow + tooltipMaxHeight <= parentHeight) {
+                    // Overflow above → flip to below
+                    minOf(rawYBelow, parentHeight - tooltipMaxHeight - 4.dp)
                 } else {
-                    maxOf(4.dp, minOf(rawY, parentHeight - tooltipMaxHeight - 4.dp))
+                    // Neither fits → clamp bottommost possible
+                    maxOf(4.dp, parentHeight - tooltipMaxHeight - 4.dp)
                 }
 
                 Box(

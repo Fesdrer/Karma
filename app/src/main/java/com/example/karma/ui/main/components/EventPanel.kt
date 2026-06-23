@@ -10,13 +10,13 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -180,32 +180,43 @@ private fun EventSection(
             }
         }
 
-        // Custom event input for this category — slightly taller than event items
-        Spacer(Modifier.height(2.dp))
-        OutlinedTextField(
-            value = customText,
-            onValueChange = {
-                customText = it
-                onCustomChanged(it)
-            },
-            placeholder = { Text(customPlaceholder, fontSize = 11.sp, color = Color(0xFF666666)) },
-            textStyle = MaterialTheme.typography.bodySmall.copy(
-                color = titleColor.copy(alpha = 0.8f),
-                fontSize = 12.sp,
-            ),
-            singleLine = false,
-            minLines = 1,
-            shape = RoundedCornerShape(6.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = titleColor.copy(alpha = 0.5f),
-                unfocusedBorderColor = BorderSubtle,
-                cursorColor = titleColor,
-                focusedContainerColor = ScoreBtnBg,
-                unfocusedContainerColor = ScoreBtnBg,
-            ),
+        // Custom event input — compact, ~1.2x event item height
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .defaultMinSize(minHeight = 16.dp),
-        )
+                .padding(vertical = 2.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(ScoreBtnBg)
+                .border(1.dp, titleColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
+                .padding(horizontal = 8.dp)
+                .heightIn(min = 16.dp),
+            contentAlignment = Alignment.CenterStart,
+        ) {
+            BasicTextField(
+                value = customText,
+                onValueChange = {
+                    customText = it
+                    onCustomChanged(it)
+                },
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    color = titleColor.copy(alpha = 0.8f),
+                    fontSize = 12.sp,
+                ),
+                singleLine = false,
+                decorationBox = { innerTextField ->
+                    Box {
+                        if (customText.isEmpty()) {
+                            Text(
+                                customPlaceholder,
+                                fontSize = 11.sp,
+                                color = Color(0xFF666666),
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
     }
 }
