@@ -166,10 +166,9 @@ fun PrayerScreen(
                             value = state.purpose,
                             onValueChange = { viewModel.onPurposeChanged(it) },
                             placeholder = { Text("输入祈福内容...", color = Color(0xFF666666)) },
-                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
-                            keyboardActions = KeyboardActions(onDone = { viewModel.confirmPrayer() }),
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                             textStyle = TextStyle(color = Color(0xFFff0000), fontSize = 16.sp),
-                            singleLine = true,
+                            minLines = 1,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
                                 unfocusedContainerColor = Color.Transparent,

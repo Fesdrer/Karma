@@ -118,7 +118,7 @@ class HistoryViewModel(
                 cal.set(Calendar.SECOND, 0)
                 cal.set(Calendar.MILLISECOND, 0)
                 val start = cal.timeInMillis
-                cal.add(Calendar.WEEK_OF_YEAR, 1)
+                cal.add(Calendar.DAY_OF_MONTH, 7)
                 Pair(start, cal.timeInMillis)
             }
             ViewMode.MONTH -> {
@@ -173,6 +173,20 @@ class HistoryViewModel(
 
     fun toggleZoom() {
         _isZoomEnabled.value = !_isZoomEnabled.value
+    }
+
+    fun zoomOut() {
+        when (_viewMode.value) {
+            ViewMode.DAY -> {
+                val cal = Calendar.getInstance().apply { timeInMillis = _focusDate.value }
+                cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                _focusDate.value = cal.timeInMillis
+                _viewMode.value = ViewMode.WEEK
+            }
+            ViewMode.WEEK -> _viewMode.value = ViewMode.MONTH
+            ViewMode.MONTH -> _viewMode.value = ViewMode.ALL
+            ViewMode.ALL -> { /* 已是最粗粒度 */ }
+        }
     }
 
     fun zoomToPoint(timestamp: Long) {
@@ -230,8 +244,9 @@ class HistoryViewModel(
             ViewMode.WEEK -> {
                 val monCal = cal.clone() as Calendar
                 monCal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
-                val sunCal = cal.clone() as Calendar
-                sunCal.set(Calendar.DAY_OF_WEEK, Calendar.SUNDAY)
+                // 先算周一，再 +6 天得周日，避免 locale 下 SUNDAY 作为一周首日的 bug
+                val sunCal = monCal.clone() as Calendar
+                sunCal.add(Calendar.DAY_OF_MONTH, 6)
                 "${monCal.get(Calendar.MONTH) + 1}/${monCal.get(Calendar.DAY_OF_MONTH)}-${sunCal.get(Calendar.MONTH) + 1}/${sunCal.get(Calendar.DAY_OF_MONTH)}"
             }
             ViewMode.MONTH -> String.format("%04d年%02d月",

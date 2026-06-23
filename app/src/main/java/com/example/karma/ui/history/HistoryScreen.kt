@@ -89,12 +89,18 @@ fun HistoryScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Back button
+                // Back button (with debounce to prevent rapid double-pop)
+                var backHandled by remember { mutableStateOf(false) }
                 Box(
                     modifier = Modifier
                         .clip(RoundedCornerShape(8.dp))
                         .background(Color(0xFF333333))
-                        .clickable { onBack() }
+                        .clickable {
+                            if (!backHandled) {
+                                backHandled = true
+                                onBack()
+                            }
+                        }
                         .padding(horizontal = 16.dp, vertical = 6.dp),
                 ) {
                     Text("← 返回", fontSize = 14.sp, color = Color(0xFF888888))
@@ -260,27 +266,69 @@ fun HistoryScreen(
                             },
                         )
                     }
+
+                    Spacer(Modifier.width(4.dp))
+
+                    // [缩小] 按钮
+                    val zoomOutDisabled = state.viewMode == ViewMode.ALL
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF1a1a3e))
+                            .border(
+                                1.dp,
+                                if (zoomOutDisabled) Color(0xFF334444).copy(alpha = 0.2f)
+                                else Color(0xFF334444),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable(enabled = !zoomOutDisabled) { viewModel.zoomOut() }
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            "缩小", fontSize = 11.sp,
+                            color = if (zoomOutDisabled) Color(0xFF666666) else Color(0xFFa0c4ff),
+                        )
+                    }
                 }
             } else {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(
-                            if (state.isZoomEnabled) Color(0xFF4a90d9)
-                            else Color(0xFF1a1a3e)
+                // ALL 模式：仅有放大按钮，缩小禁用
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(
+                                if (state.isZoomEnabled) Color(0xFF4a90d9)
+                                else Color(0xFF1a1a3e)
+                            )
+                            .border(
+                                1.dp,
+                                if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF334444),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable { viewModel.toggleZoom() }
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text(
+                            "放大", fontSize = 11.sp,
+                            color = if (state.isZoomEnabled) Color.White else Color(0xFFa0c4ff),
                         )
-                        .border(
-                            1.dp,
-                            if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF334444),
-                            RoundedCornerShape(6.dp),
-                        )
-                        .clickable { viewModel.toggleZoom() }
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                ) {
-                    Text(
-                        "放大", fontSize = 11.sp,
-                        color = if (state.isZoomEnabled) Color.White else Color(0xFFa0c4ff),
-                    )
+                    }
+
+                    Spacer(Modifier.width(4.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(Color(0xFF1a1a3e))
+                            .border(
+                                1.dp,
+                                Color(0xFF334444).copy(alpha = 0.2f),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .padding(horizontal = 7.dp, vertical = 3.dp),
+                    ) {
+                        Text("缩小", fontSize = 11.sp, color = Color(0xFF666666))
+                    }
                 }
             }
 
@@ -376,24 +424,29 @@ fun HistoryScreen(
                 val tooltipDpX = with(density) { tooltipX.toDp() }
                 val tooltipDpY = with(density) { tooltipY.toDp() }
 
-                // Estimated tooltip size for bounds checking
-                val tooltipWidth = 200.dp
-                val tooltipHeight = 120.dp
+                // Fixed tooltip max width (matches ChartTooltip's widthIn)
+                val tooltipMaxWidth = 220.dp
+                val tooltipMaxHeight = 200.dp
 
-                // Position: slightly right and above the clicked point
+                // Try placing right of the point; if it overflows, place left instead
                 val rawX = tooltipDpX + 12.dp
-                val rawY = tooltipDpY - 10.dp
+                val finalX = if (rawX + tooltipMaxWidth > parentWidth) {
+                    maxOf(4.dp, tooltipDpX - tooltipMaxWidth - 12.dp)
+                } else {
+                    maxOf(4.dp, rawX)
+                }
 
-                // Clamp X to stay within parent bounds
-                val clampedX = maxOf(4.dp, minOf(rawX, parentWidth - tooltipWidth - 4.dp))
-                // If above the top edge, show below the point instead
-                val clampedY = if (rawY < 0.dp) tooltipDpY + 10.dp else rawY
-                // Clamp Y to stay within parent bounds
-                val finalY = minOf(maxOf(4.dp, clampedY), parentHeight - tooltipHeight - 4.dp)
+                // Try placing above the point; if it overflows, place below instead
+                val rawY = tooltipDpY - 10.dp
+                val finalY = if (rawY < 4.dp) {
+                    minOf(tooltipDpY + 10.dp, parentHeight - tooltipMaxHeight - 4.dp)
+                } else {
+                    maxOf(4.dp, minOf(rawY, parentHeight - tooltipMaxHeight - 4.dp))
+                }
 
                 Box(
                     modifier = Modifier
-                        .offset(x = clampedX, y = finalY),
+                        .offset(x = finalX, y = finalY),
                 ) {
                     ChartTooltip(point = tooltipPoint)
                 }

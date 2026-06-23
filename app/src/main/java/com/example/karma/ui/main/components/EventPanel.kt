@@ -41,7 +41,9 @@ fun EventPanel(
     goodResultPresets: List<String>,
     selectedEvent: String?,
     onEventSelected: (String) -> Unit,
-    onCustomEventChanged: (String) -> Unit,
+    onCustomGoodDeedChanged: (String) -> Unit,
+    onCustomBadDeedChanged: (String) -> Unit,
+    onCustomGoodResultChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val scrollState = rememberScrollState()
@@ -62,7 +64,7 @@ fun EventPanel(
 
         Spacer(Modifier.height(6.dp))
 
-        // Scrollable event sections
+        // Scrollable event sections (with custom inputs inside)
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -76,6 +78,8 @@ fun EventPanel(
                 events = goodDeedPresets,
                 selectedEvent = selectedEvent,
                 onEventSelected = onEventSelected,
+                customPlaceholder = "自定义善业...",
+                onCustomChanged = onCustomGoodDeedChanged,
             )
 
             // — 恶业 —
@@ -85,6 +89,8 @@ fun EventPanel(
                 events = badDeedPresets,
                 selectedEvent = selectedEvent,
                 onEventSelected = onEventSelected,
+                customPlaceholder = "自定义恶业...",
+                onCustomChanged = onCustomBadDeedChanged,
             )
 
             // — 善果 —
@@ -94,32 +100,10 @@ fun EventPanel(
                 events = goodResultPresets.ifEmpty { listOf("（暂无预设事件）") },
                 selectedEvent = selectedEvent,
                 onEventSelected = onEventSelected,
+                customPlaceholder = "自定义善果...",
+                onCustomChanged = onCustomGoodResultChanged,
             )
         }
-
-        Spacer(Modifier.height(6.dp))
-
-        // Custom event input (fixed at bottom)
-        var customText by remember { mutableStateOf("") }
-        OutlinedTextField(
-            value = customText,
-            onValueChange = {
-                customText = it
-                onCustomEventChanged(it)
-            },
-            placeholder = { Text("自定义事件...", fontSize = 12.sp, color = Color(0xFF666666)) },
-            textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
-            singleLine = true,
-            shape = RoundedCornerShape(8.dp),
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = Color(0xFFffd700),
-                unfocusedBorderColor = BorderSubtle,
-                cursorColor = Color(0xFFffd700),
-                focusedContainerColor = ScoreBtnBg,
-                unfocusedContainerColor = ScoreBtnBg,
-            ),
-            modifier = Modifier.fillMaxWidth(),
-        )
     }
 }
 
@@ -130,7 +114,11 @@ private fun EventSection(
     events: List<String>,
     selectedEvent: String?,
     onEventSelected: (String) -> Unit,
+    customPlaceholder: String,
+    onCustomChanged: (String) -> Unit,
 ) {
+    var customText by remember { mutableStateOf("") }
+
     Column {
         // Section title
         Text(
@@ -186,10 +174,38 @@ private fun EventSection(
                         !canSelect -> Color(0xFF666666)
                         else -> Color(0xFFa0c4ff)
                     },
-                    maxLines = 1,
+                    maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                 )
             }
         }
+
+        // Custom event input for this category — slightly taller than event items
+        Spacer(Modifier.height(2.dp))
+        OutlinedTextField(
+            value = customText,
+            onValueChange = {
+                customText = it
+                onCustomChanged(it)
+            },
+            placeholder = { Text(customPlaceholder, fontSize = 11.sp, color = Color(0xFF666666)) },
+            textStyle = MaterialTheme.typography.bodySmall.copy(
+                color = titleColor.copy(alpha = 0.8f),
+                fontSize = 12.sp,
+            ),
+            singleLine = false,
+            minLines = 1,
+            shape = RoundedCornerShape(6.dp),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = titleColor.copy(alpha = 0.5f),
+                unfocusedBorderColor = BorderSubtle,
+                cursorColor = titleColor,
+                focusedContainerColor = ScoreBtnBg,
+                unfocusedContainerColor = ScoreBtnBg,
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .defaultMinSize(minHeight = 16.dp),
+        )
     }
 }

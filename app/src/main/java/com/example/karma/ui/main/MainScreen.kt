@@ -115,7 +115,9 @@ fun MainScreen(
                     goodResultPresets = state.goodResultPresets,
                     selectedEvent = state.selectedEvent,
                     onEventSelected = { viewModel.selectEvent(it) },
-                    onCustomEventChanged = { viewModel.onCustomEventChanged(it) },
+                    onCustomGoodDeedChanged = { viewModel.onCustomGoodDeedEventChanged(it) },
+                    onCustomBadDeedChanged = { viewModel.onCustomBadDeedEventChanged(it) },
+                    onCustomGoodResultChanged = { viewModel.onCustomGoodResultEventChanged(it) },
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),

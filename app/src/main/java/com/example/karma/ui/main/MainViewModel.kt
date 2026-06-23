@@ -49,16 +49,23 @@ class MainViewModel(
     private val _selectedScore = MutableStateFlow<Float?>(null)
     private val _selectedEvent = MutableStateFlow<String?>(null)
     private val _customScore = MutableStateFlow<Float?>(null)
-    private val _customEvent = MutableStateFlow<String?>(null)
+    private val _customGoodDeedEvent = MutableStateFlow<String?>(null)
+    private val _customBadDeedEvent = MutableStateFlow<String?>(null)
+    private val _customGoodResultEvent = MutableStateFlow<String?>(null)
     private val _message = MutableStateFlow<String?>(null)
+
+    // 缓存当前善果预设列表，用于 onConfirm 时判断是否加前缀
+    private var _currentGoodResultPresets: List<String> = emptyList()
 
     private val _effectiveScore = combine(
         _selectedScore, _customScore
     ) { presetScore, custom -> custom ?: presetScore }
 
     private val _effectiveEvent = combine(
-        _selectedEvent, _customEvent
-    ) { presetEvent, custom -> custom ?: presetEvent }
+        _selectedEvent, _customGoodDeedEvent, _customBadDeedEvent, _customGoodResultEvent
+    ) { presetEvent, customGood, customBad, customResult ->
+        customGood ?: customBad ?: customResult ?: presetEvent
+    }
 
     private val _selectedPair = combine(
         _effectiveScore, _effectiveEvent
@@ -69,6 +76,8 @@ class MainViewModel(
         _selectedPair,
         _message,
     ) { settings, selection, msg ->
+        // 缓存善果列表供 onConfirm 使用
+        _currentGoodResultPresets = settings.goodResultPresets
         MainUiState(
             totalScore = settings.totalScore,
             rank = repository.getRank(settings.totalScore),
@@ -108,7 +117,9 @@ class MainViewModel(
 
     fun selectEvent(event: String) {
         _selectedEvent.value = event
-        _customEvent.value = null
+        _customGoodDeedEvent.value = null
+        _customBadDeedEvent.value = null
+        _customGoodResultEvent.value = null
     }
 
     fun onCustomScoreChanged(text: String) {
@@ -121,26 +132,63 @@ class MainViewModel(
         }
     }
 
-    fun onCustomEventChanged(text: String) {
+    fun onCustomGoodDeedEventChanged(text: String) {
         val v = text.trim()
         if (v.isNotEmpty()) {
-            _customEvent.value = v
+            _customGoodDeedEvent.value = v
             _selectedEvent.value = null
+            _customBadDeedEvent.value = null
+            _customGoodResultEvent.value = null
         } else {
-            _customEvent.value = null
+            _customGoodDeedEvent.value = null
+        }
+    }
+
+    fun onCustomBadDeedEventChanged(text: String) {
+        val v = text.trim()
+        if (v.isNotEmpty()) {
+            _customBadDeedEvent.value = v
+            _selectedEvent.value = null
+            _customGoodDeedEvent.value = null
+            _customGoodResultEvent.value = null
+        } else {
+            _customBadDeedEvent.value = null
+        }
+    }
+
+    fun onCustomGoodResultEventChanged(text: String) {
+        val v = text.trim()
+        if (v.isNotEmpty()) {
+            _customGoodResultEvent.value = v
+            _selectedEvent.value = null
+            _customGoodDeedEvent.value = null
+            _customBadDeedEvent.value = null
+        } else {
+            _customGoodResultEvent.value = null
         }
     }
 
     fun onConfirm() {
         val score = _customScore.value ?: _selectedScore.value ?: return
-        val event = _customEvent.value ?: _selectedEvent.value ?: return
+        val rawEvent = _customGoodDeedEvent.value
+            ?: _customBadDeedEvent.value
+            ?: _customGoodResultEvent.value
+            ?: _selectedEvent.value
+            ?: return
+
+        // 善果事件自动加"善果："前缀（仿祈福前缀模式）
+        val isGoodResult = _selectedEvent.value in _currentGoodResultPresets
+                || _customGoodResultEvent.value != null
+        val event = if (isGoodResult) "善果：$rawEvent" else rawEvent
 
         viewModelScope.launch {
             repository.addHistoryEntry(score, event, "record")
             _selectedScore.value = null
             _selectedEvent.value = null
             _customScore.value = null
-            _customEvent.value = null
+            _customGoodDeedEvent.value = null
+            _customBadDeedEvent.value = null
+            _customGoodResultEvent.value = null
         }
     }
 
