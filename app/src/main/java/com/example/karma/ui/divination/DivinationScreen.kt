@@ -33,6 +33,7 @@ fun DivinationScreen(
     modifier: Modifier = Modifier,
 ) {
     var result by remember { mutableStateOf<Int?>(null) }
+    var backHandled by remember { mutableStateOf(false) }
 
     Box(
         modifier = modifier
@@ -44,7 +45,12 @@ fun DivinationScreen(
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(start = 8.dp, top = 32.dp)
-                .clickable { onBack() },
+                .clickable {
+                    if (!backHandled) {
+                        backHandled = true
+                        onBack()
+                    }
+                },
         ) {
             Text(
                 text = "← 返回",

@@ -247,8 +247,8 @@ class HistoryViewModel(
                 // 先算周一，再 +6 天得周日，避免 locale 下 SUNDAY 作为一周首日的 bug
                 val sunCal = monCal.clone() as Calendar
                 sunCal.add(Calendar.DAY_OF_MONTH, 6)
-                val monYear = monCal.get(Calendar.YEAR) % 100
-                val sunYear = sunCal.get(Calendar.YEAR) % 100
+                val monYear = monCal.get(Calendar.YEAR)
+                val sunYear = sunCal.get(Calendar.YEAR)
                 "${monYear}/${monCal.get(Calendar.MONTH) + 1}/${monCal.get(Calendar.DAY_OF_MONTH)}-${sunYear}/${sunCal.get(Calendar.MONTH) + 1}/${sunCal.get(Calendar.DAY_OF_MONTH)}"
             }
             ViewMode.MONTH -> String.format("%04d年%02d月",

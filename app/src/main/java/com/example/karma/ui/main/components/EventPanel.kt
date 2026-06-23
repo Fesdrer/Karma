@@ -27,6 +27,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.PlatformTextStyle
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -184,13 +186,12 @@ private fun EventSection(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 2.dp)
+                .padding(vertical = 1.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(ScoreBtnBg)
                 .border(1.dp, titleColor.copy(alpha = 0.3f), RoundedCornerShape(6.dp))
-                .padding(horizontal = 8.dp)
-                .heightIn(min = 16.dp),
-            contentAlignment = Alignment.CenterStart,
+                .heightIn(min = 18.dp),
+            contentAlignment = Alignment.Center,
         ) {
             BasicTextField(
                 value = customText,
@@ -198,9 +199,11 @@ private fun EventSection(
                     customText = it
                     onCustomChanged(it)
                 },
-                textStyle = MaterialTheme.typography.bodySmall.copy(
+                textStyle = TextStyle(
                     color = titleColor.copy(alpha = 0.8f),
                     fontSize = 12.sp,
+                    lineHeight = 16.sp,
+                    platformStyle = PlatformTextStyle(includeFontPadding = false),
                 ),
                 singleLine = false,
                 decorationBox = { innerTextField ->
@@ -215,7 +218,9 @@ private fun EventSection(
                         innerTextField()
                     }
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 8.dp, vertical = 4.dp),
             )
         }
     }

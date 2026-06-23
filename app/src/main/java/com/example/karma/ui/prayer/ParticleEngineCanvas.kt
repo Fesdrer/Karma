@@ -268,22 +268,43 @@ fun ParticleEngineCanvas(
                         isFakeBoldText = true
                     }
                 )
-                // 使用 StaticLayout 支持多行换行
-                val divinePurposeText = "「$purpose」"
+                // StaticLayout 绘制 purpose 文本，括号独立绘制在对角
                 val divineTextPaint = android.text.TextPaint().apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
                     textSize = 44f * scale
                     isFakeBoldText = true
                     isAntiAlias = true
                 }
-                val divineMaxWidth = (w * 0.8f).toInt()
+                val bracketPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
+                    textSize = 44f * scale
+                    isFakeBoldText = true
+                    isAntiAlias = true
+                }
+                val divineMaxWidth = (w * 0.74f).toInt()
                 val divineLayout = android.text.StaticLayout.Builder
-                    .obtain(divinePurposeText, 0, divinePurposeText.length, divineTextPaint, divineMaxWidth)
+                    .obtain(purpose, 0, purpose.length, divineTextPaint, divineMaxWidth)
                     .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
                     .build()
                 drawContext.canvas.save()
-                drawContext.canvas.translate(cx - divineMaxWidth / 2f, cy + 55f * scale)
+                val layoutX = cx - divineMaxWidth / 2f
+                val layoutY = cy + 55f * scale
+                drawContext.canvas.translate(layoutX, layoutY)
                 divineLayout.draw(drawContext.canvas.nativeCanvas)
+                //「左上角
+                val bracketPad = 8f * scale
+                drawContext.canvas.nativeCanvas.drawText(
+                    "「", bracketPad, divineTextPaint.textSize, bracketPaint
+                )
+                //」右下角
+                val lastLineBot = divineLayout.height.toFloat()
+                val bracketW = bracketPaint.measureText("」")
+                drawContext.canvas.nativeCanvas.drawText(
+                    "」",
+                    divineMaxWidth - bracketW - bracketPad,
+                    lastLineBot,
+                    bracketPaint
+                )
                 drawContext.canvas.restore()
             } else {
                 drawContext.canvas.nativeCanvas.drawText(
@@ -297,21 +318,41 @@ fun ParticleEngineCanvas(
                         isFakeBoldText = true
                     }
                 )
-                // 使用 StaticLayout 支持多行换行
-                val normalPurposeText = "「$purpose」"
+                // StaticLayout 绘制 purpose 文本，括号独立绘制在对角
                 val normalTextPaint = android.text.TextPaint().apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
                     textSize = 36f * scale
                     isAntiAlias = true
                 }
-                val normalMaxWidth = (w * 0.8f).toInt()
+                val normalBracketPaint = android.graphics.Paint().apply {
+                    color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
+                    textSize = 36f * scale
+                    isAntiAlias = true
+                }
+                val normalMaxWidth = (w * 0.74f).toInt()
                 val normalLayout = android.text.StaticLayout.Builder
-                    .obtain(normalPurposeText, 0, normalPurposeText.length, normalTextPaint, normalMaxWidth)
+                    .obtain(purpose, 0, purpose.length, normalTextPaint, normalMaxWidth)
                     .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
                     .build()
                 drawContext.canvas.save()
-                drawContext.canvas.translate(cx - normalMaxWidth / 2f, cy + 45f * scale)
+                val nLayoutX = cx - normalMaxWidth / 2f
+                val nLayoutY = cy + 45f * scale
+                drawContext.canvas.translate(nLayoutX, nLayoutY)
                 normalLayout.draw(drawContext.canvas.nativeCanvas)
+                //「左上角
+                val nBracketPad = 6f * scale
+                drawContext.canvas.nativeCanvas.drawText(
+                    "「", nBracketPad, normalTextPaint.textSize, normalBracketPaint
+                )
+                //」右下角
+                val nLastLineBot = normalLayout.height.toFloat()
+                val nBracketW = normalBracketPaint.measureText("」")
+                drawContext.canvas.nativeCanvas.drawText(
+                    "」",
+                    normalMaxWidth - nBracketW - nBracketPad,
+                    nLastLineBot,
+                    normalBracketPaint
+                )
                 drawContext.canvas.restore()
             }
         }
