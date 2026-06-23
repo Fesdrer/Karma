@@ -33,7 +33,7 @@ data class MainUiState(
     val showNearbyTicks: Boolean = true,
     val nearbyTickRange: Float = 10f,
     val axisQuarterValue: Float = 15f,
-    val rankColors: List<Long> = emptyList(),
+    val ranks: List<Rank> = emptyList(),
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
     val guideLineWidth: Float = 6f,
@@ -80,7 +80,7 @@ class MainViewModel(
         _currentGoodResultPresets = settings.goodResultPresets
         MainUiState(
             totalScore = settings.totalScore,
-            rank = repository.getRank(settings.totalScore),
+            rank = repository.getRank(settings.totalScore, settings),
             scorePresets = settings.scorePresets,
             goodDeedPresets = settings.goodDeedPresets,
             badDeedPresets = settings.badDeedPresets,
@@ -99,7 +99,7 @@ class MainViewModel(
             showNearbyTicks = settings.showNearbyTicks,
             nearbyTickRange = settings.nearbyTickRange,
             axisQuarterValue = settings.axisQuarterValue,
-            rankColors = settings.rankColors,
+            ranks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors),
             historyLineThickness = settings.historyLineThickness,
             historyDotRadius = settings.historyDotRadius,
             guideLineWidth = settings.guideLineWidth,

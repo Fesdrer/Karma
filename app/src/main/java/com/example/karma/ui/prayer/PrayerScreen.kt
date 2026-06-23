@@ -74,6 +74,7 @@ fun PrayerScreen(
                 amount = state.amount.toFloatOrNull() ?: 0f,
                 purpose = state.purpose,
                 rankLevel = state.rankLevel,
+                totalRanks = state.totalRanks,
                 onComplete = {
                     onComplete()
                 },

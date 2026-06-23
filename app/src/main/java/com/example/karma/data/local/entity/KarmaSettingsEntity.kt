@@ -51,4 +51,7 @@ data class KarmaSettingsEntity(
     val rankDecayAmounts: List<Float> = listOf(
         2f, 2f, 2f, 2f, 2f, 3f, 3f, 3f, 3f
     ),
+
+    val rankThresholds: List<Float> = listOf(10f, 30f, 60f, 100f, 150f, 210f, 280f, 360f),
+    val rankNames: List<String> = listOf("壹阶", "贰阶", "叁阶", "肆阶", "伍阶", "陆阶", "柒阶", "捌阶", "玖阶"),
 )

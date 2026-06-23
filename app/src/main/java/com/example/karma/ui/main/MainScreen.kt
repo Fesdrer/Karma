@@ -63,6 +63,7 @@ fun MainScreen(
             Header(
                 totalScore = state.totalScore,
                 rank = state.rank,
+                ranks = state.ranks,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -98,7 +99,7 @@ fun MainScreen(
                     showNearby = state.showNearbyTicks,
                     nearbyRange = state.nearbyTickRange,
                     quarterValue = state.axisQuarterValue,
-                    rankColorList = state.rankColors,
+                    ranks = state.ranks,
                     guideLineWidth = state.guideLineWidth,
                     guideLineColor = state.guideLineColor,
                     modifier = Modifier

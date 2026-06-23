@@ -28,7 +28,7 @@ data class HistoryUiState(
     val canGoForward: Boolean = false,
     val dateLabel: String = "",
     val isZoomEnabled: Boolean = false,
-    val rankColors: List<Long> = emptyList(),
+    val ranks: List<com.example.karma.data.model.Rank> = emptyList(),
     val message: String? = null,
 )
 
@@ -73,7 +73,9 @@ class HistoryViewModel(
             canGoForward = !isAtNewest(focusDate, mode),
             dateLabel = formatDateLabel(focusDate, mode),
             isZoomEnabled = zoomEnabled,
-            rankColors = settings.rankColors,
+            ranks = com.example.karma.data.model.Rank.listFrom(
+                settings.rankThresholds, settings.rankNames, settings.rankColors
+            ),
             message = msg,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())

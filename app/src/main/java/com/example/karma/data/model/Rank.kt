@@ -8,16 +8,26 @@ data class Rank(
     val colorHex: Long,
 ) {
     companion object {
-        val RANKS = listOf(
-            Rank(0f, 10f, 1, "壹阶", 0xFF0055ffL),
-            Rank(10f, 30f, 2, "贰阶", 0xFF0077ffL),
-            Rank(30f, 60f, 3, "叁阶", 0xFF0099ffL),
-            Rank(60f, 100f, 4, "肆阶", 0xFF00bbffL),
-            Rank(100f, 150f, 5, "伍阶", 0xFF00ddaaL),
-            Rank(150f, 210f, 6, "陆阶", 0xFF44dd44L),
-            Rank(210f, 280f, 7, "柒阶", 0xFFddaa00L),
-            Rank(280f, 360f, 8, "捌阶", 0xFFff5500L),
-            Rank(360f, Float.MAX_VALUE, 9, "玖阶", 0xFFff0000L),
-        )
+        fun listFrom(
+            thresholds: List<Float>,
+            names: List<String>,
+            colors: List<Long>,
+        ): List<Rank> {
+            val result = mutableListOf<Rank>()
+            for (i in 0 until names.size) {
+                val min = if (i == 0) 0f else thresholds.getOrElse(i - 1) { 360f }
+                val max = if (i == names.size - 1) Float.MAX_VALUE else thresholds.getOrElse(i) { 360f }
+                result.add(
+                    Rank(
+                        min = min,
+                        max = max,
+                        level = i + 1,
+                        name = names.getOrElse(i) { "?" },
+                        colorHex = colors.getOrElse(i) { 0xFFFFFFFF },
+                    )
+                )
+            }
+            return result
+        }
     }
 }

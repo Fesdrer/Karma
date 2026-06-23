@@ -87,6 +87,7 @@ fun ParticleEngineCanvas(
     amount: Float,
     purpose: String,
     rankLevel: Int,
+    totalRanks: Int = 9,
     onComplete: () -> Unit,
     modifier: Modifier = Modifier,
     scale: Float = 1.5f,
@@ -94,8 +95,13 @@ fun ParticleEngineCanvas(
     val frameCount = remember { mutableIntStateOf(0) }
     val state = remember {
         ParticleState(
-            tier = TIERS[(rankLevel >= 9).let { if (it) 3 else if (rankLevel <= 3) 0 else if (rankLevel <= 6) 1 else 2 }],
-            isDivine = rankLevel >= 9,
+            tier = TIERS[when {
+                rankLevel >= totalRanks -> 3
+                rankLevel.toFloat() / totalRanks.toFloat() <= 0.33f -> 0
+                rankLevel.toFloat() / totalRanks.toFloat() <= 0.66f -> 1
+                else -> 2
+            }],
+            isDivine = rankLevel >= totalRanks,
             scale = scale,
         )
     }

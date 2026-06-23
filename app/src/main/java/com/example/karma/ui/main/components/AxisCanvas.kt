@@ -34,7 +34,7 @@ fun AxisCanvas(
     showNearby: Boolean = true,
     nearbyRange: Float = 10f,
     quarterValue: Float = 30f,
-    rankColorList: List<Long> = emptyList(),
+    ranks: List<com.example.karma.data.model.Rank> = emptyList(),
     guideLineWidth: Float = 6f,
     guideLineColor: Long = 0xFFFFD700L,
     modifier: Modifier = Modifier,
@@ -84,7 +84,7 @@ fun AxisCanvas(
         // ---- 3. Rank bands ----
         val minVis = centerScore - displayRange
         val maxVis = centerScore + displayRange
-        for (rank in Rank.RANKS) {
+        for (rank in ranks) {
             val bt = maxOf(rank.min, minVis)
             val bb = minOf(rank.max, maxVis)
             if (bt >= bb) continue
@@ -93,13 +93,8 @@ fun AxisCanvas(
             val y0 = maxOf(0f, minOf(yT, yB))
             val y1 = minOf(h, maxOf(yT, yB))
             if (y1 <= y0) continue
-            val bandColor = if (rank.level - 1 in rankColorList.indices && rankColorList.isNotEmpty()) {
-                Color(rankColorList[rank.level - 1])
-            } else {
-                Color(rank.colorHex)
-            }
             drawRect(
-                color = bandColor,
+                color = Color(rank.colorHex),
                 topLeft = Offset(0f, y0),
                 size = androidx.compose.ui.geometry.Size(w, y1 - y0),
             )

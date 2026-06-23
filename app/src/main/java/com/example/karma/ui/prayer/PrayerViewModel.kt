@@ -7,6 +7,7 @@ import com.example.karma.data.repository.KarmaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 data class PrayerUiState(
@@ -16,6 +17,7 @@ data class PrayerUiState(
     val isAnimating: Boolean = false,
     val totalScore: Float = 0f,
     val rankLevel: Int = 1,
+    val totalRanks: Int = 9,
     val errorMessage: String? = null,
 )
 
@@ -29,10 +31,12 @@ class PrayerViewModel(
     init {
         viewModelScope.launch {
             val score = repository.getTotalScoreOnce()
-            val rank = repository.getRank(score)
+            val settings = repository.settings.first()
+            val rank = repository.getRank(score, settings)
             _uiState.value = _uiState.value.copy(
                 totalScore = score,
                 rankLevel = rank?.level ?: 1,
+                totalRanks = settings.rankNames.size.coerceAtLeast(1),
             )
         }
     }

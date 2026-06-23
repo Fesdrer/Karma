@@ -23,9 +23,11 @@ class SettingsViewModel(
     private val _original = MutableStateFlow(KarmaSettingsEntity())  // 上次保存时的值（用于 hasChanges）
     private val _draft = MutableStateFlow(KarmaSettingsEntity())     // 当前编辑中的副本
     private var _userEdited = false  // 标记用户是否已编辑过，防止加载覆盖
+    private val _deleteMode = MutableStateFlow(false)
 
     val draft: StateFlow<KarmaSettingsEntity> = _draft.asStateFlow()
     val original: StateFlow<KarmaSettingsEntity> = _original.asStateFlow()
+    val deleteMode: StateFlow<Boolean> = _deleteMode.asStateFlow()
 
     init {
         // 异步加载初始值，不阻塞主线程
@@ -175,6 +177,32 @@ class SettingsViewModel(
         }
     }
 
+    fun updateRankThreshold(index: Int, value: Float) {
+        val thresholds = _draft.value.rankThresholds.toMutableList()
+        if (index in thresholds.indices) {
+            thresholds[index] = value
+            setDraft(_draft.value.copy(rankThresholds = thresholds))
+        }
+    }
+
+    fun updateRankName(index: Int, name: String) {
+        val names = _draft.value.rankNames.toMutableList()
+        if (index in names.indices) {
+            names[index] = name
+            setDraft(_draft.value.copy(rankNames = names))
+        }
+    }
+
+    fun updateRankNames(lines: String) {
+        val inputNames = lines.lines().map { it.trim() }.filter { it.isNotEmpty() }
+        val names = _draft.value.rankNames.toMutableList()
+        for (i in 0 until names.size) {
+            val name = inputNames.getOrElse(i) { names.getOrElse(i) { "?" } }
+            if (i < names.size) names[i] = name
+        }
+        setDraft(_draft.value.copy(rankNames = names))
+    }
+
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {
@@ -194,6 +222,53 @@ class SettingsViewModel(
             badDeedPresets = current.badDeedPresets,
             goodResultPresets = current.goodResultPresets,
         ))
+    }
+
+    // ===== 阶位增删 =====
+
+    fun addRank() {
+        val d = _draft.value
+        val newNames = d.rankNames + "新阶位"
+        val newColors = d.rankColors + (d.rankColors.lastOrNull() ?: 0xFFFFFFFF)
+        val newDecays = d.rankDecayAmounts + (d.rankDecayAmounts.lastOrNull() ?: 3f)
+        val lastThreshold = d.rankThresholds.lastOrNull() ?: 360f
+        val newThresholds = d.rankThresholds + (lastThreshold + 50f)
+        setDraft(d.copy(
+            rankNames = newNames,
+            rankColors = newColors,
+            rankDecayAmounts = newDecays,
+            rankThresholds = newThresholds,
+        ))
+    }
+
+    fun deleteRank(index: Int) {
+        val d = _draft.value
+        if (d.rankNames.size <= 1) return
+        val newNames = d.rankNames.toMutableList().apply { removeAt(index) }
+        val newColors = d.rankColors.toMutableList().apply { removeAt(index) }
+        val newDecays = d.rankDecayAmounts.toMutableList().apply { removeAt(index) }
+        val newThresholds = d.rankThresholds.toMutableList()
+        // 删除第 index 个阶位，对应的阈值也需要调整
+        if (index < newThresholds.size) {
+            newThresholds.removeAt(index)
+        } else if (newThresholds.isNotEmpty()) {
+            newThresholds.removeAt(newThresholds.lastIndex)
+        }
+        setDraft(d.copy(
+            rankNames = newNames,
+            rankColors = newColors,
+            rankDecayAmounts = newDecays,
+            rankThresholds = newThresholds,
+        ))
+        if (newNames.size <= 1) _deleteMode.value = false
+    }
+
+    fun toggleDeleteMode() {
+        if (_draft.value.rankNames.size > 1) {
+            _deleteMode.value = !_deleteMode.value
+        } else {
+            _deleteMode.value = false
+        }
     }
 
     fun hasChanges(): Boolean = _draft.value != _original.value

@@ -137,7 +137,7 @@ class KarmaRepository(
         val uniformTimestamp = System.currentTimeMillis()
 
         repeat(daysToCatchUp) {
-            val rank = getDecayRank(currentScore)
+            val rank = getDecayRank(currentScore, settings.rankThresholds)
             val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
             if (deduction > 0f) {
                 currentScore = roundToOneDecimal(currentScore - deduction)
@@ -167,17 +167,18 @@ class KarmaRepository(
      * 根据分数确定阶位（1~9）。
      * 负数归为一阶。
      */
-    private fun getDecayRank(score: Float): Int {
+    private fun getDecayRank(score: Float, thresholds: List<Float>): Int {
+        val t = thresholds
         return when {
             score < 0 -> 1
-            score < 10 -> 1
-            score < 30 -> 2
-            score < 60 -> 3
-            score < 100 -> 4
-            score < 150 -> 5
-            score < 210 -> 6
-            score < 280 -> 7
-            score < 360 -> 8
+            t.isNotEmpty() && score < t[0] -> 1
+            t.size > 1 && score < t[1] -> 2
+            t.size > 2 && score < t[2] -> 3
+            t.size > 3 && score < t[3] -> 4
+            t.size > 4 && score < t[4] -> 5
+            t.size > 5 && score < t[5] -> 6
+            t.size > 6 && score < t[6] -> 7
+            t.size > 7 && score < t[7] -> 8
             else -> 9
         }
     }
@@ -204,9 +205,14 @@ class KarmaRepository(
 
     // ---- Rank ----
 
-    fun getRank(score: Float): Rank? {
+    fun getRank(score: Float, settings: KarmaSettingsEntity): Rank? {
         if (score < 0) return null
-        return Rank.RANKS.find { score >= it.min && score < it.max }
+        val ranks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors)
+        return ranks.find { score >= it.min && score < it.max }
+    }
+
+    fun buildRanks(settings: KarmaSettingsEntity): List<Rank> {
+        return Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors)
     }
 
     // ---- Import / Export ----

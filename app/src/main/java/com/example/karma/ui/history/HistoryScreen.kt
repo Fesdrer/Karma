@@ -399,7 +399,7 @@ fun HistoryScreen(
                 viewport = viewport,
                 lineThickness = state.historyLineThickness,
                 dotRadius = state.historyDotRadius,
-                rankColors = state.rankColors,
+                ranks = state.ranks,
                 onPointClicked = { point, screenX, screenY ->
                     if (point != null) {
                         if (state.isZoomEnabled && state.viewMode != ViewMode.DAY) {

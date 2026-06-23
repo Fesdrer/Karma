@@ -4,8 +4,8 @@ import com.example.karma.data.model.Rank
 
 object RankCalculator {
 
-    fun getRank(score: Float): Rank? {
+    fun getRank(score: Float, ranks: List<Rank>): Rank? {
         if (score < 0) return null
-        return Rank.RANKS.find { score >= it.min && score < it.max }
+        return ranks.find { score >= it.min && score < it.max }
     }
 }

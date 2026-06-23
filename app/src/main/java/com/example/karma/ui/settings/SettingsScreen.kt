@@ -141,6 +141,7 @@ fun SettingsScreen(
         ) {
             ScoreSettingsCard(draft = draft, viewModel = viewModel)
             AxisSettingsCard(draft = draft, viewModel = viewModel)
+            RankSettingsCard(draft = draft, viewModel = viewModel)
             EventSettingsCard(draft = draft, viewModel = viewModel)
             HistorySettingsCard(draft = draft, viewModel = viewModel)
             DecaySettingsCard(draft = draft, viewModel = viewModel)
@@ -223,9 +224,7 @@ private fun AxisSettingsCard(
     viewModel: SettingsViewModel,
 ) {
     var showLabelColorPicker by remember { mutableStateOf(false) }
-    var showRankColorPicker by remember { mutableStateOf(false) }
     var showGuideLineColorPicker by remember { mutableStateOf(false) }
-    var colorPickerTargetIndex by remember { mutableStateOf(0) }
 
     SettingsCard("中间刻度区域") {
         // 1. 刻度颜色
@@ -296,37 +295,7 @@ private fun AxisSettingsCard(
             Text("较密集", fontSize = 11.sp, color = TextMuted)
         }
 
-        // 7. 阶位颜色 — 9个色块
-        Spacer(Modifier.height(12.dp))
-        Text("阶位颜色（点击修改）", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-        Spacer(Modifier.height(8.dp))
-        val rankNames = listOf("壹阶", "贰阶", "叁阶", "肆阶", "伍阶", "陆阶", "柒阶", "捌阶", "玖阶")
-        // 3行×3列，每个色块下方显示阶位名称
-        for (row in 0 until 3) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (col in 0 until 3) {
-                    val idx = row * 3 + col
-                    if (idx < draft.rankColors.size) {
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            ColorSwatch(
-                                color = draft.rankColors[idx],
-                                onClick = {
-                                    colorPickerTargetIndex = idx
-                                    showRankColorPicker = true
-                                },
-                            )
-                            Spacer(Modifier.height(2.dp))
-                            Text(
-                                rankNames[idx],
-                                fontSize = 9.sp,
-                                color = TextMuted,
-                            )
-                        }
-                    }
-                }
-            }
-        }
-        // 8. 指引线 — 粗细 + 颜色
+        // 7. 指引线 — 粗细 + 颜色
         Spacer(Modifier.height(12.dp))
         SettingsSlider("指引线粗细", draft.guideLineWidth, 0.5f..12f, 22, viewModel::updateGuideLineWidth)
 
@@ -345,15 +314,6 @@ private fun AxisSettingsCard(
             currentColor = draft.axisLabelColor,
             onColorSelected = { viewModel.updateAxisLabelColor(it) },
             onDismiss = { showLabelColorPicker = false },
-        )
-    }
-
-    // 阶位颜色选择器
-    if (showRankColorPicker) {
-        ColorPickerDialog(
-            currentColor = draft.rankColors.getOrElse(colorPickerTargetIndex) { 0xFFFFFFFFL },
-            onColorSelected = { viewModel.updateRankColor(colorPickerTargetIndex, it) },
-            onDismiss = { showRankColorPicker = false },
         )
     }
 
@@ -538,38 +498,6 @@ private fun DecaySettingsCard(
 
         Spacer(Modifier.height(12.dp))
 
-        // 各阶位扣除量
-        Text("各阶位扣除量：", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
-        Spacer(Modifier.height(4.dp))
-
-        for (row in 0..4) {
-            Row {
-                val idx1 = row * 2
-                if (idx1 < 9) {
-                    RankDecayItem(
-                        rankIndex = idx1,
-                        amount = draft.rankDecayAmounts.getOrElse(idx1) { 0f },
-                        color = draft.rankColors.getOrElse(idx1) { 0xFF0055ffL },
-                        onDecrement = { viewModel.updateRankDecayAmount(idx1, it - 1f) },
-                        onIncrement = { viewModel.updateRankDecayAmount(idx1, it + 1f) },
-                    )
-                }
-                Spacer(Modifier.width(12.dp))
-                val idx2 = row * 2 + 1
-                if (idx2 < 9) {
-                    RankDecayItem(
-                        rankIndex = idx2,
-                        amount = draft.rankDecayAmounts.getOrElse(idx2) { 0f },
-                        color = draft.rankColors.getOrElse(idx2) { 0xFF0055ffL },
-                        onDecrement = { viewModel.updateRankDecayAmount(idx2, it - 1f) },
-                        onIncrement = { viewModel.updateRankDecayAmount(idx2, it + 1f) },
-                    )
-                }
-            }
-        }
-
-        Spacer(Modifier.height(8.dp))
-
         // 上次扣除日期
         Text(
             text = "上次扣除：${draft.lastDecayDate.ifEmpty { "尚未扣除" }}",
@@ -693,37 +621,200 @@ private fun ColorSwatch(color: Long, onClick: () -> Unit) {
     )
 }
 
+// ============================================================
+// RankSettingsCard — 阶位设置（可变数量）
+// ============================================================
+
 @Composable
-private fun RankDecayItem(
-    rankIndex: Int,
-    amount: Float,
-    color: Long,
-    onDecrement: (Float) -> Unit,
-    onIncrement: (Float) -> Unit,
+private fun RankSettingsCard(
+    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
+    viewModel: SettingsViewModel,
 ) {
-    val rankNames = listOf("壹阶", "贰阶", "叁阶", "肆阶", "伍阶", "陆阶", "柒阶", "捌阶", "玖阶")
-    Row(verticalAlignment = Alignment.CenterVertically) {
-        Box(
-            Modifier
-                .size(8.dp)
-                .clip(CircleShape)
-                .background(Color(color))
-        )
-        Spacer(Modifier.width(4.dp))
-        Text(rankNames[rankIndex], fontSize = 13.sp, color = TextPrimary, modifier = Modifier.width(32.dp))
-        IconButton(onClick = { onDecrement(amount) }, modifier = Modifier.size(28.dp)) {
-            Text("−", fontSize = 16.sp, color = TextSecondary)
+    val deleteMode by viewModel.deleteMode.collectAsState()
+    var showColorPicker by remember { mutableStateOf(false) }
+    var colorPickerTarget by remember { mutableStateOf(0) }
+
+    SettingsCard("阶位设置") {
+        val count = draft.rankNames.size
+
+        for (i in 0 until count) {
+            val isLast = i == count - 1
+            val name = draft.rankNames.getOrElse(i) { "?" }
+            val color = draft.rankColors.getOrElse(i) { 0xFFFFFFFF }
+            val threshold = draft.rankThresholds.getOrElse(i) { 0f }
+            val decay = draft.rankDecayAmounts.getOrElse(i) { 2f }
+
+            // 每个阶位卡片
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(PanelBg)
+                    .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
+                    .padding(12.dp),
+            ) {
+                Column {
+                    // 第一行：名称 + 删除按钮
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        OutlinedTextField(
+                            value = name,
+                            onValueChange = { viewModel.updateRankName(i, it) },
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary,
+                            ),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Gold,
+                                unfocusedBorderColor = Color.Transparent,
+                                focusedContainerColor = Color.Transparent,
+                                unfocusedContainerColor = Color.Transparent,
+                                cursorColor = Gold,
+                            ),
+                            modifier = Modifier.weight(1f),
+                        )
+
+                        // 删除按钮（仅 deleteMode 显示）
+                        if (deleteMode) {
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFcc0000))
+                                    .clickable { viewModel.deleteRank(i) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "×", color = Color.White,
+                                    fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(Modifier.height(6.dp))
+
+                    // 第二行：颜色 + 上限
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        ColorSwatch(color = color) {
+                            colorPickerTarget = i
+                            showColorPicker = true
+                        }
+                        Spacer(Modifier.width(12.dp))
+                        Text("上限：", fontSize = 12.sp, color = TextMuted)
+                        if (isLast) {
+                            Text("∞", fontSize = 14.sp, color = TextMuted)
+                        } else {
+                            OutlinedTextField(
+                                value = formatFloat(threshold),
+                                onValueChange = { v ->
+                                    v.toFloatOrNull()?.let { viewModel.updateRankThreshold(i, it) }
+                                },
+                                modifier = Modifier.width(52.dp),
+                                singleLine = true,
+                                textStyle = MaterialTheme.typography.bodySmall,
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                colors = OutlinedTextFieldDefaults.colors(
+                                    focusedBorderColor = Gold,
+                                    unfocusedBorderColor = BorderSubtle,
+                                    focusedTextColor = TextPrimary,
+                                    unfocusedTextColor = TextPrimary,
+                                ),
+                            )
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 第三行：业力衰减
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("业力衰减：", fontSize = 12.sp, color = TextMuted)
+                        IconButton(
+                            onClick = { viewModel.updateRankDecayAmount(i, decay - 1f) },
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Text("−", fontSize = 16.sp, color = TextSecondary)
+                        }
+                        Text(
+                            decay.toInt().toString(),
+                            fontSize = 14.sp, color = Gold,
+                            modifier = Modifier.width(20.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                        IconButton(
+                            onClick = { viewModel.updateRankDecayAmount(i, decay + 1f) },
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Text("+", fontSize = 16.sp, color = TextSecondary)
+                        }
+                    }
+                }
+            }
         }
-        Text(
-            amount.toInt().toString(),
-            fontSize = 14.sp,
-            color = Gold,
-            modifier = Modifier.width(20.dp),
-            textAlign = TextAlign.Center,
-        )
-        IconButton(onClick = { onIncrement(amount) }, modifier = Modifier.size(28.dp)) {
-            Text("+", fontSize = 16.sp, color = TextSecondary)
+
+        // 底部按钮：+ / -
+        Spacer(Modifier.height(8.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            // [+] 添加
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF1a1a3e))
+                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
+                    .clickable { viewModel.addRank() }
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                Text("+", fontSize = 16.sp, color = Color(0xFFa0c4ff))
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // [-] 删除模式切换
+            val delActive = deleteMode && count > 1
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(
+                        if (delActive) Color(0xFF4a90d9) else Color(0xFF1a1a3e)
+                    )
+                    .border(
+                        1.dp,
+                        if (delActive) Color(0xFF4a90d9) else Color(0xFF334444),
+                        RoundedCornerShape(6.dp),
+                    )
+                    .clickable(enabled = count > 1) { viewModel.toggleDeleteMode() }
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    "−", fontSize = 16.sp,
+                    color = when {
+                        delActive -> Color.White
+                        count <= 1 -> Color(0xFF666666)
+                        else -> Color(0xFFa0c4ff)
+                    },
+                )
+            }
         }
+    }
+
+    // 颜色选择器
+    if (showColorPicker) {
+        ColorPickerDialog(
+            currentColor = draft.rankColors.getOrElse(colorPickerTarget) { 0xFFFFFFFF },
+            onColorSelected = {
+                viewModel.updateRankColor(colorPickerTarget, it)
+                showColorPicker = false
+            },
+            onDismiss = { showColorPicker = false },
+        )
     }
 }
 

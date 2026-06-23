@@ -26,6 +26,7 @@ import com.example.karma.data.model.Rank
 fun Header(
     totalScore: Float,
     rank: Rank?,
+    ranks: List<Rank> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -58,7 +59,9 @@ fun Header(
 
             if (rank != null) {
                 Spacer(Modifier.width(10.dp))
-                val textColor = if (rank.level <= 6) Color.White else Color(0xFFffd700)
+                val totalRanks = ranks.size
+                val textColor = if (totalRanks > 0 && rank.level <= totalRanks * 2 / 3)
+                    Color.White else Color(0xFFffd700)
                 val bgColor = Color(rank.colorHex).copy(alpha = 0.4f)
                 Text(
                     text = rank.name,
