@@ -67,7 +67,7 @@ class PrayerViewModel(
 
         // Record prayer and start animation
         viewModelScope.launch {
-            repository.addHistoryEntry(-amount, "祈福：${state.purpose}", "prayer")
+            repository.addHistoryEntry(-amount, "祈福：\n${state.purpose}", "prayer")
             _uiState.value = _uiState.value.copy(
                 showForm = false,
                 isAnimating = true,
