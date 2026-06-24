@@ -64,6 +64,10 @@ class PrayerViewModel(
             _uiState.value = state.copy(errorMessage = "业力值不足，无法祈福")
             return
         }
+        if (state.totalScore - amount <= 0f) {
+            _uiState.value = state.copy(errorMessage = "扣减后业力值将归零或为负，请减少扣减分数")
+            return
+        }
 
         // Record prayer and start animation
         viewModelScope.launch {
