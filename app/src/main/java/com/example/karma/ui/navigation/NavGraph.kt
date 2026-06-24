@@ -57,6 +57,7 @@ fun KarmaNavGraph(
         }
         composable(Screen.Divination.route) {
             DivinationScreen(
+                appContainer = appContainer,
                 onBack = { navController.popBackStack() },
             )
         }
