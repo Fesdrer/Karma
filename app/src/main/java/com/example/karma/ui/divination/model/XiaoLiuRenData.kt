@@ -194,9 +194,12 @@ object XiaoLiuRenPalaces {
 }
 
 /**
- * 农历日历辅助工具（简化版）
+ * 农历日历辅助工具
+ *
+ * 支持公历 → 农历转换（1900–2100 年），用于小六壬传统模式自动填充当前月日时辰。
  */
 object LunarCalendarHelper {
+
     /** 农历月份名称映射 */
     val monthNames = listOf(
         "", "正月", "二月", "三月", "四月", "五月", "六月",
@@ -213,6 +216,47 @@ object LunarCalendarHelper {
         "廿六", "廿七", "廿八", "廿九", "三十",
     )
 
+    /** 农历日期 */
+    data class LunarDate(val year: Int, val month: Int, val day: Int, val isLeap: Boolean)
+
+    // ====== 公历 → 农历（使用 Android 内置 ICU ChineseCalendar） ======
+
+    /** 将公历日期转为农历日期（支持 1900-2100 年范围）
+     *
+     *  使用 android.icu.util.ChineseCalendar（API 24+）实现，
+     *  可靠性优于手写查表算法，且时区、闰月处理更准确。
+     */
+    fun solarToLunar(year: Int, month: Int, day: Int): LunarDate {
+        val gregCal = java.util.GregorianCalendar(year, month - 1, day)
+        val chineseCal = android.icu.util.ChineseCalendar()
+        chineseCal.timeInMillis = gregCal.timeInMillis
+
+        val extendedYear = chineseCal.get(android.icu.util.ChineseCalendar.EXTENDED_YEAR)
+        val lunarYear = extendedYear - android.icu.util.ChineseCalendar.CHINESE_EPOCH_OFFSET
+        val lunarMonth = chineseCal.get(java.util.Calendar.MONTH) + 1
+        val lunarDay = chineseCal.get(java.util.Calendar.DAY_OF_MONTH)
+        val isLeap = chineseCal.get(android.icu.util.ChineseCalendar.IS_LEAP_MONTH) == 1
+
+        return LunarDate(lunarYear, lunarMonth, lunarDay, isLeap)
+    }
+
+    /** 获取当前时刻的农历日期 */
+    fun getCurrentLunarDate(): LunarDate {
+        val cal = java.util.Calendar.getInstance()
+        return solarToLunar(
+            cal.get(java.util.Calendar.YEAR),
+            cal.get(java.util.Calendar.MONTH) + 1,
+            cal.get(java.util.Calendar.DAY_OF_MONTH),
+        )
+    }
+
+    /** 获取当前时刻的时辰 */
+    fun getCurrentShiChen(): ShiChen {
+        val hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY)
+        return ShiChen.fromHour(hour)
+    }
+
     /** 根据 24 小时制获取对应时辰 */
     fun getShiChenFromHour(hour: Int): ShiChen = ShiChen.fromHour(hour)
+
 }

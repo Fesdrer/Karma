@@ -137,15 +137,6 @@ fun XiaoLiuRenInputPanel(
                 )
             }
 
-            // 提示
-            Spacer(Modifier.height(10.dp))
-            Text(
-                text = "当前显示公历日期，请自行调至农历日期以获得准确结果",
-                fontSize = 11.sp,
-                color = TextMuted,
-                textAlign = TextAlign.Center,
-            )
-
             Spacer(Modifier.height(16.dp))
 
             // 开始按钮

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.karma.ui.divination.model.FortuneLevel
+import com.example.karma.ui.divination.model.LunarCalendarHelper
 import com.example.karma.ui.divination.model.PalaceIndex
 import com.example.karma.ui.divination.model.PalaceRevelation
 import com.example.karma.ui.divination.model.ShiChen
@@ -44,6 +45,10 @@ data class DivinationUiState(
     // 推算结果
     val resultPalace: PalaceRevelation? = null,
     val fullPath: List<Int> = emptyList(),
+    // 三阶段各自的实际计数值（用于动画分段）
+    val calcMonth: Int = 0,
+    val calcDay: Int = 0,
+    val calcHour: Int = 0,
     // 错误
     val errorMessage: String? = null,
 )
@@ -62,10 +67,34 @@ class DivinationViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(DivinationUiState())
     val uiState: StateFlow<DivinationUiState> = _uiState.asStateFlow()
 
+    init {
+        initializeWithCurrentLunarDate()
+    }
+
     // ====== 输入更新 ======
 
     fun setInputMode(mode: InputMode) {
         _uiState.update { it.copy(inputMode = mode) }
+        if (mode == InputMode.TRADITIONAL) {
+            initializeWithCurrentLunarDate()
+        }
+    }
+
+    /** 用当前农历日期和时辰填充输入 */
+    fun initializeWithCurrentLunarDate() {
+        try {
+            val lunar = LunarCalendarHelper.getCurrentLunarDate()
+            val shiChen = LunarCalendarHelper.getCurrentShiChen()
+            _uiState.update {
+                it.copy(
+                    month = lunar.month,
+                    day = lunar.day,
+                    shiChen = shiChen,
+                )
+            }
+        } catch (_: Exception) {
+            // 农历转换失败时保持默认值
+        }
     }
 
     fun setMonth(month: Int) {
@@ -125,6 +154,9 @@ class DivinationViewModel : ViewModel() {
             it.copy(
                 resultPalace = result.finalPalace,
                 fullPath = result.fullPath,
+                calcMonth = month,
+                calcDay = day,
+                calcHour = hour,
                 animationPhase = AnimationPhase.COUNTING_MONTH,
                 isAnimating = true,
                 errorMessage = null,
@@ -191,6 +223,7 @@ class DivinationViewModel : ViewModel() {
 
     fun reset() {
         _uiState.value = DivinationUiState()
+        initializeWithCurrentLunarDate()
     }
 
     fun clearError() {

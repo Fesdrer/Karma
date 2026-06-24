@@ -250,19 +250,10 @@ private fun XiaoLiuRenContent(
 ) {
     val palacePositions = remember { mutableStateListOf<PalacePosition>() }
 
-    // 当前高亮的宫索引（根据动画阶段计算）
-    val highlightedIndex: Int? = if (state.fullPath.isNotEmpty() && state.isAnimating) {
-        state.fullPath.lastOrNull()
-    } else null
-
-    val resultIndex: Int? = state.resultPalace?.index?.index
-
     Box(modifier = modifier.background(Color.Black)) {
 
         // 层 1：三柱六宫 Canvas（始终显示在背景）
         XiaoLiuRenPillarCanvas(
-            highlightedIndex = highlightedIndex,
-            resultIndex = resultIndex,
             onPalacePositionsReady = { positions ->
                 palacePositions.clear()
                 palacePositions.addAll(positions)
@@ -275,6 +266,9 @@ private fun XiaoLiuRenContent(
                 fullPath = state.fullPath,
                 palacePositions = palacePositions.toList(),
                 animationPhase = state.animationPhase,
+                monthCount = state.calcMonth,
+                dayCount = state.calcDay,
+                hourCount = state.calcHour,
                 onPhaseComplete = onPhaseComplete,
             )
         }

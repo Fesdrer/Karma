@@ -40,6 +40,9 @@ fun XiaoLiuRenThreadCanvas(
     fullPath: List<Int>,
     palacePositions: List<PalacePosition>,
     animationPhase: AnimationPhase,
+    monthCount: Int = 0,
+    dayCount: Int = 0,
+    hourCount: Int = 0,
     onPhaseComplete: (AnimationPhase) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -47,7 +50,7 @@ fun XiaoLiuRenThreadCanvas(
     if (animationPhase == AnimationPhase.IDLE || animationPhase == AnimationPhase.COMPLETE) return
 
     val segments = remember(fullPath, palacePositions) {
-        buildSegments(fullPath, palacePositions)
+        buildSegments(fullPath, palacePositions, monthCount, dayCount)
     }
 
     val progress = remember { AnimProgress() }
@@ -224,17 +227,24 @@ fun XiaoLiuRenThreadCanvas(
     }
 }
 
-/** 构建路径段（含阶段标记） */
-private fun buildSegments(path: List<Int>, positions: List<PalacePosition>): List<AnimSegment> {
+/** 构建路径段（按实际步数分配阶段标记） */
+private fun buildSegments(
+    path: List<Int>,
+    positions: List<PalacePosition>,
+    monthCount: Int,
+    dayCount: Int,
+): List<AnimSegment> {
     if (path.size < 2) return emptyList()
+    // 各阶段的动画段数 = 步数 - 1（原地不动则为 0）
+    val monthSeg = (monthCount - 1).coerceAtLeast(0)
+    val daySeg = (dayCount - 1).coerceAtLeast(0)
     val segs = mutableListOf<AnimSegment>()
     for (i in 0 until path.size - 1) {
         val from = positions[path[i]]
         val to = positions[path[i + 1]]
-        val third = path.size / 3
         val phase = when {
-            i < third -> AnimationPhase.COUNTING_MONTH
-            i < third * 2 -> AnimationPhase.COUNTING_DAY
+            i < monthSeg -> AnimationPhase.COUNTING_MONTH
+            i < monthSeg + daySeg -> AnimationPhase.COUNTING_DAY
             else -> AnimationPhase.COUNTING_HOUR
         }
         segs.add(AnimSegment(from.centerX, from.centerY, to.centerX, to.centerY, phase))
