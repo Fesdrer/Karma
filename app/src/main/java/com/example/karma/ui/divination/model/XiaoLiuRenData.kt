@@ -159,8 +159,8 @@ object XiaoLiuRenPalaces {
             name = "小吉",
             fortuneLevel = FortuneLevel.GREAT_AUSPICIOUS,
             wuxing = "木",
-            direction = "西南（坤方）",
-            color = "—",
+            direction = "东方",
+            color = "青色",
             sixGods = "六合",
             verse = "小吉最吉昌，路上好商量。\n阴人来报喜，失物在坤方。\n行人即便至，交关甚是强。\n凡事皆和合，病者叩穹苍。",
             fortune = "六合和合之象，保持现状就会越来越好。凡事皆顺遂，出门在外也有好运气。女性有报喜之兆。",
@@ -227,12 +227,19 @@ object LunarCalendarHelper {
      *  可靠性优于手写查表算法，且时区、闰月处理更准确。
      */
     fun solarToLunar(year: Int, month: Int, day: Int): LunarDate {
+        // 使用中午 12:00 避免午夜跨日时区边界导致农历日差一天
         val gregCal = java.util.GregorianCalendar(year, month - 1, day)
+        gregCal.set(java.util.Calendar.HOUR_OF_DAY, 12)
+        gregCal.set(java.util.Calendar.MINUTE, 0)
+        gregCal.set(java.util.Calendar.SECOND, 0)
+        gregCal.set(java.util.Calendar.MILLISECOND, 0)
+
         val chineseCal = android.icu.util.ChineseCalendar()
         chineseCal.timeInMillis = gregCal.timeInMillis
 
         val extendedYear = chineseCal.get(android.icu.util.ChineseCalendar.EXTENDED_YEAR)
-        val lunarYear = extendedYear - android.icu.util.ChineseCalendar.CHINESE_EPOCH_OFFSET
+        // CHINESE_EPOCH_YEAR = 2637, EXTENDED_YEAR 基于此偏移
+        val lunarYear = extendedYear - 2637
         val lunarMonth = chineseCal.get(java.util.Calendar.MONTH) + 1
         val lunarDay = chineseCal.get(java.util.Calendar.DAY_OF_MONTH)
         val isLeap = chineseCal.get(android.icu.util.ChineseCalendar.IS_LEAP_MONTH) == 1

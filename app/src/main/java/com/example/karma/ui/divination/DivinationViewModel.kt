@@ -222,8 +222,21 @@ class DivinationViewModel : ViewModel() {
     // ====== 重置 ======
 
     fun reset() {
-        _uiState.value = DivinationUiState()
-        initializeWithCurrentLunarDate()
+        // 在单次原子更新中完成「重置为默认值 + 填充当前农历」
+        // 避免先设默认值再异步更新导致的中间态闪烁问题
+        try {
+            val lunar = LunarCalendarHelper.getCurrentLunarDate()
+            val shiChen = LunarCalendarHelper.getCurrentShiChen()
+            _uiState.update {
+                DivinationUiState().copy(
+                    month = lunar.month,
+                    day = lunar.day,
+                    shiChen = shiChen,
+                )
+            }
+        } catch (_: Exception) {
+            _uiState.value = DivinationUiState()
+        }
     }
 
     fun clearError() {
