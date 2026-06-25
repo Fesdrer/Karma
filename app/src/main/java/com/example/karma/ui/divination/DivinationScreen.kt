@@ -39,6 +39,8 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.divination.components.PalacePosition
+import com.example.karma.ui.divination.components.YarrowCanvas
+import com.example.karma.ui.divination.components.YarrowResultPanel
 import com.example.karma.ui.divination.components.XiaoLiuRenInputPanel
 import com.example.karma.ui.divination.components.XiaoLiuRenPillarCanvas
 import com.example.karma.ui.divination.components.XiaoLiuRenResultPanel
@@ -63,6 +65,12 @@ fun DivinationScreen(
     )
     val xlrState by xlrViewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // 大衍筮法 ViewModel（tab 1）
+    val yarrowViewModel: YarrowViewModel = viewModel(
+        factory = YarrowViewModel.Factory()
+    )
+    val yarrowState by yarrowViewModel.uiState.collectAsState()
 
     // 小六壬错误 Toast
     LaunchedEffect(xlrState.errorMessage) {
@@ -148,20 +156,20 @@ fun DivinationScreen(
                 }
             }
             1 -> {
-                // 大衍筮法 — 暂未开放
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(bottom = 72.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.Center,
-                ) {
-                    Text(
-                        text = "大衍筮法\n\n暂未开放",
-                        fontSize = 20.sp,
-                        color = Color(0xFF888888),
-                        textAlign = TextAlign.Center,
+                // 大衍筮法
+                Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                    YarrowCanvas(
+                        state = yarrowState,
+                        onUserTap = yarrowViewModel::onSplitTap,
+                        onPhaseComplete = yarrowViewModel::advancePhase,
+                        modifier = Modifier.fillMaxSize().padding(bottom = 52.dp),
                     )
+                    if (yarrowState.showResult && yarrowState.result != null) {
+                        YarrowResultPanel(
+                            result = yarrowState.result!!,
+                            onRetry = yarrowViewModel::reset,
+                        )
+                    }
                 }
             }
             2 -> {
