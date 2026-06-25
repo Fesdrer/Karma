@@ -11,28 +11,21 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.example.karma.ui.divination.AnimationPhase
 import kotlin.math.PI
 import kotlin.math.sin
 
-/** 拖尾轨迹点 */
 private data class TrailPoint(val x: Float, val y: Float)
 
-/** 扩散光环 */
 private class LightRing(
-    val x: Float,
-    val y: Float,
+    val x: Float, val y: Float,
     var radius: Float,
     var alpha: Float,
     var life: Float,
 )
 
-/** 用于 Canvas 内跨帧追踪的普通可变容器（不用 Compose state，避免触发重组） */
-private class IntRef(var value: Int)
-private class FloatRef(var value: Float)
-
-/** 动画进度状态 */
 private class AnimProgress(
     var phaseProgress: Float = 0f,
     var currentPhase: AnimationPhase = AnimationPhase.IDLE,
@@ -60,13 +53,16 @@ fun XiaoLiuRenThreadCanvas(
 
     val progress = remember { AnimProgress() }
     val trailBuffer = remember { ArrayDeque<TrailPoint>(40) }
-    // 普通 MutableList —— 在 Canvas draw lambda 中修改不会触发重组
     val rings = remember { mutableListOf<LightRing>() }
 
-    // 跨帧追踪段索引 / 段内进度 —— 同样使用普通容器
-    val lastSegIdx = remember { IntRef(-1) }
-    val lastSegProgress = remember { FloatRef(0f) }
-    val firstFrame = remember { IntRef(1) }
+    // 光环尺寸（像素），在 Composable 中一次性转换
+    val ringDp = with(LocalDensity.current) { 12.dp.toPx() to 80.dp.toPx() }
+    val ringStartPx = ringDp.first
+    val ringExpandPx = ringDp.second
+
+    fun spawnRing(x: Float, y: Float) {
+        rings.add(LightRing(x, y, ringStartPx, 0.7f, 1f))
+    }
 
     // 动画阶段时长常量
     val monthStepMs = 250L
@@ -84,8 +80,6 @@ fun XiaoLiuRenThreadCanvas(
         progress.phaseProgress = 0f
         progress.resultGlowProgress = 0f
         trailBuffer.clear()
-        rings.clear()
-        firstFrame.value = 1
 
         var activePhase = animationPhase
         var finished = false
@@ -93,6 +87,9 @@ fun XiaoLiuRenThreadCanvas(
         kotlinx.coroutines.delay(16)
         val startNano = System.nanoTime()
         var phaseStartMs = 0L
+
+        // 每个阶段独立的宫位追踪
+        var phaseSegIdx = -1
 
         while (!finished) {
             kotlinx.coroutines.delay(16)
@@ -103,6 +100,18 @@ fun XiaoLiuRenThreadCanvas(
                 AnimationPhase.COUNTING_MONTH -> {
                     val total = monthSteps * monthStepMs
                     progress.phaseProgress = if (total > 0) (phaseElapsed.toFloat() / total).coerceIn(0f, 1f) else 1f
+                    // 光环：当前走到第几个段（0..monthSteps）
+                    val cur = (progress.phaseProgress * monthSteps).toInt().coerceAtMost(monthSteps)
+                    if (cur != phaseSegIdx) {
+                        if (cur < monthSteps) {
+                            val s = segments[cur]
+                            spawnRing(s.fromX, s.fromY)
+                        } else {
+                            val s = segments[monthSteps - 1]
+                            spawnRing(s.toX, s.toY)
+                        }
+                        phaseSegIdx = cur
+                    }
                     if (phaseElapsed >= total) {
                         progress.phaseProgress = 1f
                         phaseStartMs = elapsed
@@ -115,12 +124,25 @@ fun XiaoLiuRenThreadCanvas(
                     if (phaseElapsed >= pauseMs) {
                         phaseStartMs = elapsed
                         activePhase = AnimationPhase.COUNTING_DAY
+                        phaseSegIdx = -1
                         trailBuffer.clear()
                     }
                 }
                 AnimationPhase.COUNTING_DAY -> {
+                    val offset = monthSteps
                     val total = daySteps * dayStepMs
                     progress.phaseProgress = if (total > 0) (phaseElapsed.toFloat() / total).coerceIn(0f, 1f) else 1f
+                    val cur = (progress.phaseProgress * daySteps).toInt().coerceAtMost(daySteps)
+                    if (cur != phaseSegIdx) {
+                        if (cur < daySteps) {
+                            val s = segments[offset + cur]
+                            spawnRing(s.fromX, s.fromY)
+                        } else {
+                            val s = segments[offset + daySteps - 1]
+                            spawnRing(s.toX, s.toY)
+                        }
+                        phaseSegIdx = cur
+                    }
                     if (phaseElapsed >= total) {
                         progress.phaseProgress = 1f
                         phaseStartMs = elapsed
@@ -133,12 +155,26 @@ fun XiaoLiuRenThreadCanvas(
                     if (phaseElapsed >= pauseMs) {
                         phaseStartMs = elapsed
                         activePhase = AnimationPhase.COUNTING_HOUR
+                        phaseSegIdx = -1
                         trailBuffer.clear()
                     }
                 }
                 AnimationPhase.COUNTING_HOUR -> {
+                    val offset = monthSteps + daySteps
                     val total = hourSteps * hourStepMs
                     progress.phaseProgress = if (total > 0) (phaseElapsed.toFloat() / total).coerceIn(0f, 1f) else 1f
+                    val cur = (progress.phaseProgress * hourSteps).toInt().coerceAtMost(hourSteps)
+                    if (cur != phaseSegIdx) {
+                        if (cur < hourSteps) {
+                            val s = segments[offset + cur]
+                            spawnRing(s.fromX, s.fromY)
+                        } else {
+                            val lastIdx = fullPath.last()
+                            val p = palacePositions[lastIdx]
+                            spawnRing(p.centerX, p.centerY)
+                        }
+                        phaseSegIdx = cur
+                    }
                     if (phaseElapsed >= total) {
                         progress.phaseProgress = 1f
                         phaseStartMs = elapsed
@@ -203,28 +239,7 @@ fun XiaoLiuRenThreadCanvas(
         val dotX = from.x + (to.x - from.x) * segProgress.coerceIn(0f, 1f)
         val dotY = from.y + (to.y - from.y) * segProgress.coerceIn(0f, 1f)
 
-        // ---- 检测光环发射时机 ----
-        // 起始帧：大安放大光环
-        if (firstFrame.value == 1 && currentSegIdx < segments.size) {
-            spawnRing(rings, segments[0].fromX, segments[0].fromY)
-            firstFrame.value = 0
-        }
-
-        // 段切换 = 到达新的 FROM 宫位 → 到达光环
-        if (currentSegIdx != lastSegIdx.value && currentSegIdx < segments.size) {
-            spawnRing(rings, segments[currentSegIdx].fromX, segments[currentSegIdx].fromY)
-            lastSegIdx.value = currentSegIdx
-        }
-
-        // segProgress 跨过阈值 → 离开光环
-        val departThreshold = 0.04f
-        if (currentSegIdx == lastSegIdx.value &&
-            lastSegProgress.value < departThreshold &&
-            segProgress >= departThreshold
-        ) {
-            spawnRing(rings, seg.fromX, seg.fromY)
-        }
-        lastSegProgress.value = segProgress
+        val isGlowPhase = progress.currentPhase == AnimationPhase.RESULT_GLOW
 
         // ---- 更新拖尾缓冲区 ----
         trailBuffer.addLast(TrailPoint(dotX, dotY))
@@ -233,17 +248,12 @@ fun XiaoLiuRenThreadCanvas(
         }
 
         // ---- 更新光环生命周期 ----
-        updateRings(rings)
+        updateRings(rings, ringStartPx, ringExpandPx)
 
         // ---- 绘制 ----
-        // 1. 光环（最底层）
         drawRings(rings)
-
-        // 2. 拖尾
         drawTrail(trailBuffer, dotX, dotY)
 
-        // 3. 光点
-        val isGlowPhase = progress.currentPhase == AnimationPhase.RESULT_GLOW
         val pulseScale = if (isGlowPhase) {
             1f + sin(progress.resultGlowProgress * PI * 3).toFloat() * 0.4f
         } else {
@@ -251,7 +261,6 @@ fun XiaoLiuRenThreadCanvas(
         }
         drawLightDot(dotX, dotY, pulseScale)
 
-        // 4. 结果发光
         if (isGlowPhase && fullPath.isNotEmpty()) {
             val resultIdx = fullPath.last()
             if (resultIdx in palacePositions.indices) {
@@ -266,23 +275,14 @@ fun XiaoLiuRenThreadCanvas(
     }
 }
 
-// ====== 光环系统 ======
+// ====== 光环更新（Canvas 中调用） ======
 
-private fun DrawScope.spawnRing(rings: MutableList<LightRing>, x: Float, y: Float) {
-    rings.add(LightRing(
-        x = x, y = y,
-        radius = 12.dp.toPx(),
-        alpha = 0.7f,
-        life = 1f,
-    ))
-}
-
-private fun DrawScope.updateRings(rings: MutableList<LightRing>) {
+private fun DrawScope.updateRings(rings: MutableList<LightRing>, startPx: Float, expandPx: Float) {
     val it = rings.iterator()
     while (it.hasNext()) {
         val ring = it.next()
         ring.life -= 0.022f
-        ring.radius = 12.dp.toPx() + (1f - ring.life) * 80.dp.toPx()
+        ring.radius = startPx + (1f - ring.life) * expandPx
         ring.alpha = (ring.life * 0.7f).coerceIn(0f, 1f)
         if (ring.life <= 0f) {
             it.remove()
@@ -295,14 +295,12 @@ private fun DrawScope.drawRings(rings: List<LightRing>) {
     for (ring in rings) {
         if (ring.alpha < 0.01f) continue
         val strokeWidth = (3.5.dp.toPx() * ring.life).coerceAtLeast(0.5.dp.toPx())
-        // 外发光层
         drawCircle(
             ringColor.copy(alpha = ring.alpha * 0.25f),
             radius = ring.radius,
             center = Offset(ring.x, ring.y),
             style = Stroke(width = strokeWidth * 3f, cap = StrokeCap.Round),
         )
-        // 主环
         drawCircle(
             ringColor.copy(alpha = ring.alpha),
             radius = ring.radius,
@@ -314,72 +312,32 @@ private fun DrawScope.drawRings(rings: List<LightRing>) {
 
 // ====== 光点绘制 ======
 
-/** 绘制光点：三层叠加（外光晕 → 中辉光 → 内核亮点），直径×2 */
 private fun DrawScope.drawLightDot(x: Float, y: Float, pulseScale: Float) {
     val center = Offset(x, y)
-
-    // 外层光晕
-    drawCircle(
-        Color(0xFFFFD700).copy(alpha = 0.12f),
-        radius = 32.dp.toPx() * pulseScale,
-        center = center,
-    )
-    // 中层辉光
-    drawCircle(
-        Color(0xFFFFD700).copy(alpha = 0.4f),
-        radius = 16.dp.toPx() * pulseScale,
-        center = center,
-    )
-    // 内核亮点（偏白，最亮）
-    drawCircle(
-        Color(0xFFFFF5E0).copy(alpha = 0.88f),
-        radius = 6.dp.toPx() * pulseScale,
-        center = center,
-    )
+    drawCircle(Color(0xFFFFD700).copy(alpha = 0.12f), radius = 32.dp.toPx() * pulseScale, center = center)
+    drawCircle(Color(0xFFFFD700).copy(alpha = 0.4f), radius = 16.dp.toPx() * pulseScale, center = center)
+    drawCircle(Color(0xFFFFF5E0).copy(alpha = 0.88f), radius = 6.dp.toPx() * pulseScale, center = center)
 }
 
 // ====== 拖尾绘制 ======
 
-/** 绘制拖尾：从光点向尾部，宽度和透明度逐渐衰减，与光点同步放大 */
-private fun DrawScope.drawTrail(
-    buffer: ArrayDeque<TrailPoint>,
-    dotX: Float,
-    dotY: Float,
-) {
+private fun DrawScope.drawTrail(buffer: ArrayDeque<TrailPoint>, dotX: Float, dotY: Float) {
     val size = buffer.size
     if (size < 2) return
-
     val points = buffer.toList() + TrailPoint(dotX, dotY)
     val n = points.size
     if (n < 2) return
-
     val baseWidth = 10.dp.toPx()
     val baseAlpha = 0.55f
-
     for (i in 0 until n - 1) {
         val t = i.toFloat() / (n - 1)
         val segWidth = baseWidth * t * t
         val segAlpha = baseAlpha * t * t
-
         if (segAlpha < 0.01f) continue
-
         val p1 = Offset(points[i].x, points[i].y)
         val p2 = Offset(points[i + 1].x, points[i + 1].y)
-
-        // 外发光层
-        drawLine(
-            Color(0xFFFFD700).copy(alpha = segAlpha * 0.25f),
-            start = p1, end = p2,
-            strokeWidth = segWidth * 3.5f,
-            cap = StrokeCap.Round,
-        )
-        // 主线
-        drawLine(
-            Color(0xFFFFD700).copy(alpha = segAlpha),
-            start = p1, end = p2,
-            strokeWidth = segWidth,
-            cap = StrokeCap.Round,
-        )
+        drawLine(Color(0xFFFFD700).copy(alpha = segAlpha * 0.25f), start = p1, end = p2, strokeWidth = segWidth * 3.5f, cap = StrokeCap.Round)
+        drawLine(Color(0xFFFFD700).copy(alpha = segAlpha), start = p1, end = p2, strokeWidth = segWidth, cap = StrokeCap.Round)
     }
 }
 
@@ -392,10 +350,8 @@ private data class AnimSegment(
 )
 
 private fun buildSegments(
-    path: List<Int>,
-    positions: List<PalacePosition>,
-    monthCount: Int,
-    dayCount: Int,
+    path: List<Int>, positions: List<PalacePosition>,
+    monthCount: Int, dayCount: Int,
 ): List<AnimSegment> {
     if (path.size < 2) return emptyList()
     val monthSeg = (monthCount - 1).coerceAtLeast(0)
