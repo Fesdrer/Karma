@@ -2,9 +2,7 @@ package com.example.karma.ui.divination
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
-import androidx.lifecycle.viewModelScope
 import com.example.karma.ui.divination.model.HexagramLine
-import com.example.karma.ui.divination.model.OneChange
 import com.example.karma.ui.divination.model.YarrowResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -12,31 +10,28 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 enum class YarrowPhase {
-    INTRO,          // 初始动画：50根→取1根旋转→移到顶部
-    IDLE,           // 等待用户点击
-    SPLITTING,      // 分二动画
-    HANGING_ONE,    // 挂一动画
-    COUNTING_FOURS, // 揲四动画
-    COLLECTING,     // 归奇动画
-    MERGING,        // 爻完成后剩余策合并
-    LINE_RESULT,    // 短暂显示爻结果
-    COMPLETE,       // 六爻完成
+    INTRO, IDLE,
+    SPLITTING,          // a[1..num]左移, a[num+1..n]右移
+    HANGING_ONE,        // a[num+1]缩短下移
+    GROUP_LEFT,         // 左堆每4根一组右移
+    COLLECT_LEFT,       // 左余缩短移到挂一左边
+    GROUP_RIGHT,        // 右堆每4根一组左移
+    COLLECT_RIGHT,      // 右余缩短移到挂一右边
+    STORING,            // 归奇堆伸长下移（b空→最左, b不空→贴b右侧）
+    MERGING,            // T<=2: a合并居中
+    LINE_END,           // T=3: 画爻, b→a, 49居中
+    COMPLETE,
 }
 
 data class YarrowUiState(
-    val changeNumber: Int = 1,
-    val totalSticks: Int = 49,
-    val leftCount: Int = 0,
-    val rightCount: Int = 0,
-    val hangOne: Boolean = false,
-    val leftRem: Int = 0,
-    val rightRem: Int = 0,
-    val collectedCount: Int = 0,
-    val collectedHistory: List<Int> = emptyList(),
-    val remainingSticks: Int = 49,
-    val lines: List<HexagramLine> = emptyList(),
+    val n: Int = 49,                             // a.size()
+    val num: Int = 0,                            // 分界点
+    val ln: Int = 0,                             // 左余
+    val rn: Int = 0,                             // 右余
+    val bSize: Int = 0,                          // b.size()
     val phase: YarrowPhase = YarrowPhase.INTRO,
-    val animProgress: Float = 0f,
+    val changeNumber: Int = 1,                   // T (1..18)
+    val lines: List<HexagramLine> = emptyList(),
     val showResult: Boolean = false,
     val result: YarrowResult? = null,
 )
@@ -46,113 +41,64 @@ class YarrowViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(YarrowUiState())
     val uiState: StateFlow<YarrowUiState> = _uiState.asStateFlow()
 
-    /** 用户点击 → 用点击的 x 比例作为分界线，执行一整变 */
-    fun onSplitTap(xRatio: Float) {
-        val state = _uiState.value
-        if (state.phase != YarrowPhase.IDLE) return
-
-        val result = performChange(state.totalSticks, xRatio.coerceIn(0.1f, 0.9f))
-        _uiState.update {
-            it.copy(
-                leftCount = result.leftCount,
-                rightCount = result.rightCount,
-                hangOne = true,
-                leftRem = result.leftRem,
-                rightRem = result.rightRem,
-                collectedCount = result.collected,
-                remainingSticks = result.remaining,
-                phase = YarrowPhase.SPLITTING,
-                animProgress = 0f,
-            )
-        }
+    // 用户点击 → 算num/ln/rn → 开始SPLITTING
+    fun onSplitTap(num: Int) {
+        val s = _uiState.value
+        if (s.phase != YarrowPhase.IDLE) return
+        val n = s.n
+        // ln=num%4; if(ln==0) ln=4;
+        val ln0 = num % 4; val ln = if (ln0 == 0) 4 else ln0
+        // rn=(n-num-1)%4; if(rn==0) rn=4;
+        val rn0 = (n - num - 1) % 4; val rn = if (rn0 == 0) 4 else rn0
+        _uiState.update { it.copy(num = num, ln = ln, rn = rn, phase = YarrowPhase.SPLITTING) }
     }
 
-    /** 动画阶段完成 → 推进到下一阶段 */
     fun advancePhase() {
         _uiState.update { s ->
             when (s.phase) {
-                YarrowPhase.INTRO -> s.copy(phase = YarrowPhase.IDLE, animProgress = 0f)
-                YarrowPhase.SPLITTING -> s.copy(phase = YarrowPhase.HANGING_ONE, animProgress = 0f)
-                YarrowPhase.HANGING_ONE -> s.copy(phase = YarrowPhase.COUNTING_FOURS, animProgress = 0f)
-                YarrowPhase.COUNTING_FOURS -> s.copy(phase = YarrowPhase.COLLECTING, animProgress = 0f)
-                YarrowPhase.COLLECTING -> {
-                    // 三变完成？
-                    val changesInLine = s.changeNumber % 3
-                    if (changesInLine == 0) {
-                        // 三变完成 → 算一爻
-                        val v = s.remainingSticks / 4 // 6/7/8/9
-                        val line = HexagramLine(
-                            value = v,
-                            isYang = v % 2 != 0,
-                            isChanging = v == 6 || v == 9,
-                        )
+                YarrowPhase.INTRO -> s.copy(phase = YarrowPhase.IDLE)
+                YarrowPhase.SPLITTING -> s.copy(phase = YarrowPhase.HANGING_ONE)
+                YarrowPhase.HANGING_ONE -> s.copy(phase = YarrowPhase.GROUP_LEFT)
+                YarrowPhase.GROUP_LEFT -> s.copy(phase = YarrowPhase.COLLECT_LEFT)
+                YarrowPhase.COLLECT_LEFT -> s.copy(phase = YarrowPhase.GROUP_RIGHT)
+                YarrowPhase.GROUP_RIGHT -> s.copy(phase = YarrowPhase.COLLECT_RIGHT)
+                YarrowPhase.COLLECT_RIGHT -> s.copy(phase = YarrowPhase.STORING)
+                YarrowPhase.STORING -> {
+                    val T = s.changeNumber % 3 // 1,2,0
+                    val collected = s.ln + 1 + s.rn
+                    if (T == 0) { // T=3
+                        // x=(num-ln)/4+(n-num-1-rn)/4
+                        val x = (s.num - s.ln) / 4 + (s.n - s.num - 1 - s.rn) / 4
+                        val line = HexagramLine(value = x, isYang = x % 2 != 0, isChanging = x == 6 || x == 9)
                         val newLines = s.lines + line
                         if (newLines.size >= 6) {
-                            // 六爻全 → 完成
-                            s.copy(
-                                lines = newLines,
-                                collectedHistory = s.collectedHistory + s.collectedCount,
-                                phase = YarrowPhase.COMPLETE,
-                                animProgress = 0f,
-                                showResult = true,
-                                result = YarrowResult(newLines),
-                            )
+                            s.copy(lines = newLines, phase = YarrowPhase.COMPLETE,
+                                showResult = true, result = YarrowResult(newLines))
                         } else {
-                            // 还有下一爻 → 合并
-                            s.copy(
-                                lines = newLines,
-                                collectedHistory = s.collectedHistory + s.collectedCount,
-                                phase = YarrowPhase.MERGING,
-                                animProgress = 0f,
-                            )
+                            s.copy(lines = newLines, phase = YarrowPhase.LINE_END, bSize = 0)
                         }
                     } else {
-                        // 这一爻还有变 → 回到等待
-                        s.copy(
-                            collectedHistory = s.collectedHistory + s.collectedCount,
-                            totalSticks = s.remainingSticks,
-                            leftCount = 0, rightCount = 0,
-                            hangOne = false, leftRem = 0, rightRem = 0,
-                            collectedCount = 0,
-                            phase = YarrowPhase.IDLE,
-                            animProgress = 0f,
-                            changeNumber = s.changeNumber + 1,
-                        )
+                        // T<=2: 把a中所有的合并在一起
+                        // collected从a移除加入b
+                        s.copy(n = s.n - collected, num = 0, ln = 0, rn = 0,
+                            bSize = s.bSize + collected,
+                            phase = YarrowPhase.MERGING)
                     }
                 }
                 YarrowPhase.MERGING -> {
-                    s.copy(
-                        totalSticks = 49,  // 新爻重新从49开始
-                        leftCount = 0, rightCount = 0,
-                        hangOne = false, leftRem = 0, rightRem = 0,
-                        collectedCount = 0, collectedHistory = emptyList(),
-                        phase = YarrowPhase.IDLE, animProgress = 0f,
-                        changeNumber = s.changeNumber + 1,
-                    )
+                    s.copy(phase = YarrowPhase.IDLE, changeNumber = s.changeNumber + 1)
+                }
+                YarrowPhase.LINE_END -> {
+                    // b中所有元素移动到a中，49个排列在中间
+                    s.copy(n = 49, num = 0, ln = 0, rn = 0, bSize = 0,
+                        phase = YarrowPhase.IDLE, changeNumber = s.changeNumber + 1)
                 }
                 else -> s
             }
         }
     }
 
-    fun reset() {
-        _uiState.value = YarrowUiState(phase = YarrowPhase.INTRO)
-    }
-
-    // ====== 算法 ======
-
-    private fun performChange(total: Int, splitRatio: Float): OneChange {
-        val left = (total * splitRatio).toInt().coerceIn(1, total - 2)
-        val right = total - left
-        val hang = 1
-        val ra = right - 1
-        val lr0 = left % 4;  val lr = if (lr0 == 0) 4 else lr0
-        val rr0 = ra % 4;    val rr = if (rr0 == 0) 4 else rr0
-        val col = hang + lr + rr
-        return OneChange(left, right, hang, lr, rr, col, total - col)
-    }
-
-    // ====== Factory ======
+    fun reset() { _uiState.value = YarrowUiState() }
 
     class Factory : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

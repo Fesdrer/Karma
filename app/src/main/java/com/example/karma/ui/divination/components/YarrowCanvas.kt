@@ -24,75 +24,57 @@ import kotlin.math.min
 
 @Composable
 fun YarrowCanvas(
-    state: YarrowUiState,
-    onUserTap: (Float) -> Unit,
-    onPhaseComplete: () -> Unit,
+    state: YarrowUiState, onUserTap: (Int) -> Unit, onPhaseComplete: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val D = LocalDensity.current; val TM = rememberTextMeasurer()
-    val prog = remember { Animatable(0f) }
+    val prog = remember(state.phase) { Animatable(0f) }
     val sw = with(D) { 3.dp.toPx() }; val sg = with(D) { 1.8.dp.toPx() }
     val step = sw + sg; val sh = with(D) { 90.dp.toPx() }
     val tjiY = with(D) { 60.dp.toPx() }; val tjiHalf = sh / 2f
     val wTop = with(D) { 180.dp.toPx() }; val wBot = wTop + sh; val wCY = (wTop + wBot) / 2f
-    val hangY = with(D) { 400.dp.toPx() }
-    val colY = with(D) { 520.dp.toPx() }
+    val hangY = with(D) { 400.dp.toPx() }; val colY = with(D) { 520.dp.toPx() }
     val lnB = with(D) { 660.dp.toPx() }; val lnH = with(D) { 36.dp.toPx() }
-    val mg = with(D) { 6.dp.toPx() }
+    val mg = with(D) { 6.dp.toPx() }; val lx = mg
 
     LaunchedEffect(state.phase) {
         val dur = when (state.phase) {
             YarrowPhase.INTRO -> 1200; YarrowPhase.SPLITTING -> 500; YarrowPhase.HANGING_ONE -> 400
-            YarrowPhase.COUNTING_FOURS -> 600; YarrowPhase.COLLECTING -> 500; YarrowPhase.MERGING -> 600
+            YarrowPhase.GROUP_LEFT -> 400; YarrowPhase.COLLECT_LEFT -> 400
+            YarrowPhase.GROUP_RIGHT -> 400; YarrowPhase.COLLECT_RIGHT -> 400
+            YarrowPhase.STORING -> 600; YarrowPhase.MERGING -> 500; YarrowPhase.LINE_END -> 600
             else -> 0
         }
-        if (dur > 0) { prog.snapTo(0f); prog.animateTo(1f, tween(dur)); onPhaseComplete() }
+        if (dur > 0) { prog.animateTo(1f, tween(dur)); onPhaseComplete() }
     }
 
-    Canvas(modifier = modifier.fillMaxSize()
-        .pointerInput(state.phase) {
-            if (state.phase == YarrowPhase.IDLE) detectTapGestures { onUserTap(it.x / size.width) }
+    Canvas(modifier = modifier.fillMaxSize().pointerInput(state.phase, state.n, step, sw, sg) {
+        if (state.phase == YarrowPhase.IDLE) detectTapGestures { tap ->
+            val cw = size.width.toFloat(); val cx2 = cw / 2f; val n2 = state.n
+            val wd2 = n2 * step - sg; val sx = cx2 - wd2 / 2f
+            val l = sx + sw / 2f; val r = sx + wd2 - sw / 2f
+            if (r > l) { val rt = ((tap.x - l) / (r - l)).coerceIn(0f, 1f); onUserTap(minOf(n2 - 2, maxOf(1, (rt * n2).toInt()))) }
         }
-    ) {
+    }) {
         val cw = size.width; val cx = cw / 2f; val p = prog.value
-        val total = state.totalSticks; val left = state.leftCount; val right = state.rightCount
-        val rWork = right - 1; val hi = left
-        val lr = state.leftRem; val rr = state.rightRem; val colN = 1 + lr + rr
+        val n = state.n; val num = state.num; val ln = state.ln; val rn = state.rn
+        val collected = ln + 1 + rn
 
-        // === 辅助 ===
-        fun wd(n: Int) = n * step - sg
-        fun stX(n: Int) = cx - wd(n) / 2f
-        fun row(n: Int, sx: Float) = (0 until n).map { sx + it * step + sw / 2f }
+        fun wd(k: Int) = k * step - sg
+        fun stX(k: Int) = cx - wd(k) / 2f
+        fun row(k: Int, sx: Float) = (0 until k).map { sx + it * step + sw / 2f }
         fun vs(x: Float, top: Float, bot: Float, a: Float = 1f) {
             drawLine(Color(0xFF4488ff).copy(alpha = a), Offset(x, top), Offset(x, bot), sw)
         }
         fun vh(x: Float, cy: Float, h: Float, a: Float = 1f) {
             drawLine(Color(0xFF4488ff).copy(alpha = a), Offset(x, cy - h / 2f), Offset(x, cy + h / 2f), sw)
         }
-
-        // 分组：rightToLeft=false → 左→右，余数在右；true → 右→左，余数在左
-        fun g4(n: Int, refX: Float, rightToLeft: Boolean): List<Float> {
-            if (n <= 0) return emptyList()
-            val xs = FloatArray(n)
-            if (rightToLeft) {
-                // 从右端开始向左排，每4根一组，余数在最左
-                var i = n - 1; var px = refX - sw / 2f  // 最右策中心
-                while (i >= 0) {
-                    val gs = min(4, i + 1)
-                    for (j in gs - 1 downTo 0) { xs[i - j] = px - (gs - 1 - j) * step }
-                    i -= gs
-                    px -= gs * step + step * 1.5f  // 组间额外间距
-                }
-            } else {
-                // 从左端开始向右排，每4根一组，余数在最右
-                var i = 0; var px = refX + sw / 2f
-                while (i < n) {
-                    val gs = min(4, n - i)
-                    for (j in 0 until gs) xs[i + j] = px + j * step
-                    i += gs
-                    px += gs * step + step * 1.5f
-                }
-            }
+        // g4(k, refX, false) = 从左到右4根一组，余数在最右
+        // g4(k, refX, true)  = 从右到左4根一组，余数在最左
+        fun g4(k: Int, refX: Float, rtl: Boolean): List<Float> {
+            if (k <= 0) return emptyList(); val xs = FloatArray(k)
+            if (rtl) { var i = k - 1; var px = refX - sw / 2f; while (i >= 0) { val g = min(4, i + 1); for (j in 0 until g) xs[i - j] = px - j * step; i -= g; px -= g * step + step * 1.5f } }
+            else { var i = 0; var px = refX + sw / 2f; while (i < k) { val g = min(4, k - i); for (j in 0 until g) xs[i + j] = px + j * step; i += g; px += g * step + step * 1.5f } }
             return xs.toList()
         }
 
@@ -102,118 +84,204 @@ fun YarrowCanvas(
             drawText(TM.measure("太极", style = TextStyle(fontSize = 10.sp, color = Color(0xFF555577))),
                 topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
         }
-
-        // === 归奇区历史累积（左下角） ===
-        val acc = state.collectedHistory.sum()
-        if (acc > 0 && state.phase != YarrowPhase.COMPLETE && state.phase != YarrowPhase.MERGING) {
-            row(acc, mg + sw / 2f).forEach { vs(it, colY - sh / 2f, colY + sh / 2f, 0.35f) }
+        // === b 区历史 ===
+        if (state.bSize > 0 && state.phase != YarrowPhase.LINE_END && state.phase != YarrowPhase.COMPLETE) {
+            row(state.bSize, lx + sw / 2f).forEach { vs(it, colY - sh / 2f, colY + sh / 2f, 0.35f) }
         }
 
-        // 左右堆的基准坐标
-        val lx = mg; val rEnd = cw - mg  // 左堆起点、右堆终点
+        val rEnd = cw - mg
 
-        // ====== 各阶段 ======
         when (state.phase) {
 
+            // ── INTRO：a[0]一边旋转90度一边移动到最上方 ──
             YarrowPhase.INTRO -> {
                 val xs50 = row(50, stX(50)); val ch = 25
                 val p1 = (p / 0.55f).coerceIn(0f, 1f); val p2 = ((p - 0.55f) / 0.45f).coerceIn(0f, 1f)
                 for (i in 0 until 50) {
                     if (i == ch) drawLine(Color(0xFF4488ff), Offset(lerp(xs50[i], cx - tjiHalf, p1), lerp(wTop, tjiY, p1)),
                         Offset(lerp(xs50[i], cx + tjiHalf, p1), lerp(wBot, tjiY, p1)), sw)
-                    else { val adj = if (i < ch) i else i - 1; vs(lerp(xs50[i], row(49, stX(49))[adj], p2), wTop, wBot) }
+                    else vs(lerp(xs50[i], row(49, stX(49))[if (i < ch) i else i - 1], p2), wTop, wBot)
                 }
                 if (p > 0.4f) drawText(TM.measure("太极", style = TextStyle(fontSize = 10.sp, color = Color(0xFF555577).copy(alpha = ((p - 0.4f) / 0.6f).coerceIn(0f, 1f)))),
                     topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
             }
 
+            // ── IDLE ──
             YarrowPhase.IDLE -> {
-                row(total, stX(total)).forEach { vs(it, wTop, wBot) }
-                drawText(TM.measure(if (state.lines.isEmpty()) "点击屏幕分策" else "第${state.changeNumber}变·第${state.lines.size + 1}爻·点击分策",
+                row(n, stX(n)).forEach { vs(it, wTop, wBot) }
+                drawText(TM.measure(if (state.lines.isEmpty()) "点击分策" else "第${state.changeNumber}变·第${state.lines.size + 1}爻·点击分策",
                     style = TextStyle(fontSize = 14.sp, color = Color(0xFF777777))), topLeft = Offset(cx - 100.dp.toPx(), wTop - 36.dp.toPx()))
             }
 
-            // ① SPLITTING：左堆去左边，右堆去右边，挂一不动
+            // ── SPLITTING：a[1..num]左移, a[num+1..n]右移 ──
             YarrowPhase.SPLITTING -> {
-                val from = row(total, stX(total))
-                val lTo = row(left, lx)
-                val rTo = row(rWork, rEnd - wd(rWork))  // 右堆靠右
-                for (i in 0 until left) vs(lerp(from[i], lTo[i], p), wTop, wBot)
-                for (i in 0 until rWork) vs(lerp(from[hi + 1 + i], rTo[i], p), wTop, wBot)
-                vs(from[hi], wTop, wBot)
+                val from = row(n, stX(n))
+                val leftTo = row(num, lx)
+                val rCnt = n - num; val rightTo = row(rCnt, rEnd - wd(rCnt))
+                for (i in 0 until num) vs(lerp(from[i], leftTo[i], p), wTop, wBot)
+                for (i in 0 until rCnt) vs(lerp(from[num + i], rightTo[i], p), wTop, wBot)
             }
 
-            // ② HANGING_ONE：挂一缩短下移
+            // ── HANGING_ONE：a[num+1]缩短下移 ──
             YarrowPhase.HANGING_ONE -> {
-                val lXs = row(left, lx)
-                val rXs = row(rWork, rEnd - wd(rWork))
-                lXs.forEach { vs(it, wTop, wBot) }; rXs.forEach { vs(it, wTop, wBot) }
-                val fromX = row(total, stX(total))[hi]
+                val leftTo = row(num, lx); val rCnt = n - num
+                val rightTo = row(rCnt, rEnd - wd(rCnt))
+                leftTo.forEach { vs(it, wTop, wBot) }
+                for (i in 1 until rCnt) vs(rightTo[i], wTop, wBot) // 跳过i=0=挂一
+                val hx = lerp(rightTo[0], cx, p); val hy = lerp(wCY, hangY, p)
+                val hh = lerp(sh, sh * 0.22f, p)
+                drawLine(Color(0xFF4488ff), Offset(hx, hy - hh / 2f), Offset(hx, hy + hh / 2f), sw)
+            }
+
+            // ── GROUP_LEFT：左堆每4根一组右移 ──
+            YarrowPhase.GROUP_LEFT -> {
+                val rCnt = n - num; val rightTo = row(rCnt, rEnd - wd(rCnt))
+                val lFrom = row(num, lx)
+                val lTo = g4(num, lx, false)
+                for (i in 0 until num) vs(lerp(lFrom[i], lTo[i], p), wTop, wBot)
+                // 右堆不动
+                for (i in 1 until rCnt) vs(rightTo[i], wTop, wBot)
+                val hh = sh * 0.22f; drawLine(Color(0xFF4488ff), Offset(cx, hangY - hh / 2f), Offset(cx, hangY + hh / 2f), sw)
+            }
+
+            // ── COLLECT_LEFT：左余缩短移到挂一左边 ──
+            YarrowPhase.COLLECT_LEFT -> {
+                val rCnt = n - num; val rightTo = row(rCnt, rEnd - wd(rCnt))
+                val lGrp = g4(num, lx, false)
+                val colXs = row(collected, stX(collected))
+                val hiCol = ln // 挂一在归奇排中的索引=左余数
+
+                for (i in 0 until num) {
+                    if (i >= num - ln) { // 左余
+                        val ci = i - (num - ln)
+                        val x = lerp(lGrp[i], colXs[ci], p)
+                        val y = lerp(wCY, hangY, p)
+                        vh(x, y, lerp(sh, sh * 0.22f, p), 0.5f)
+                    } else vs(lGrp[i], wTop, wBot)
+                }
+                // 右堆+挂一不动
+                for (i in 1 until rCnt) vs(rightTo[i], wTop, wBot)
                 val hh = sh * 0.22f
-                drawLine(Color(0xFF4488ff), Offset(lerp(fromX, cx, p), lerp(wCY, hangY, p) - hh / 2f),
-                    Offset(lerp(fromX, cx, p), lerp(wCY, hangY, p) + hh / 2f), sw)
+                drawLine(Color(0xFF4488ff), Offset(lerp(cx, colXs[hiCol], p), hangY - hh / 2f), Offset(lerp(cx, colXs[hiCol], p), hangY + hh / 2f), sw)
             }
 
-            // ③ COUNTING_FOURS：左向右分，右向左分
-            YarrowPhase.COUNTING_FOURS -> {
-                val lFrom = row(left, lx); val lTo = g4(left, lx, false)
-                val rFrom = row(rWork, rEnd - wd(rWork)); val rTo = g4(rWork, rEnd, true)
-                for (i in 0 until left) vs(lerp(lFrom[i], lTo[i], p), wTop, wBot)
-                for (i in 0 until rWork) vs(lerp(rFrom[i], rTo[i], p), wTop, wBot)
-                vh(cx, hangY, sh * 0.22f)
-            }
+            // ── GROUP_RIGHT：右堆每4根一组左移 ──
+            YarrowPhase.GROUP_RIGHT -> {
+                val lGrp = g4(num, lx, false)
+                val colXs = row(collected, stX(collected))
+                val hiCol = ln; val rw = n - num - 1
+                val rFrom = row(rw, rEnd - wd(rw))
+                val rTo = g4(rw, rEnd, true)
 
-            // ④ COLLECTING：余数缩短移到挂一同行
-            YarrowPhase.COLLECTING -> {
-                val lFrom = g4(left, lx, false); val rFrom = g4(rWork, rEnd, true)
-                val colXs = row(colN, stX(colN))  // 挂一居中，余数在两侧
-                val hiInCol = lr  // 挂一在归奇排中的位置
-
-                // 左堆：后 lr 根是余数 → 移到归奇排左侧
-                for (i in 0 until left) {
-                    val isR = i >= left - lr
-                    val y = if (isR) lerp(wCY, hangY, p) else wCY
-                    val h = if (isR) lerp(sh, sh * 0.22f, p) else sh
-                    val x = if (isR) lerp(lFrom[i], colXs[i - (left - lr)], p) else lFrom[i]
-                    if (isR) vh(x, y, h, 0.5f) else vh(x, y, h)
+                // 左堆+左余(已归位)
+                for (i in 0 until num) {
+                    if (i >= num - ln) vh(colXs[i - (num - ln)], hangY, sh * 0.22f, 0.5f)
+                    else vs(lGrp[i], wTop, wBot)
                 }
-                // 右堆工作策：前 rr 根是余数（最左边）→ 移到归奇排右侧
-                var ci = hiInCol + 1
-                for (i in 0 until rWork) {
-                    val isR = i < rr  // 右堆余数在最左边几根
-                    val y = if (isR) lerp(wCY, hangY, p) else wCY
-                    val h = if (isR) lerp(sh, sh * 0.22f, p) else sh
-                    val x = if (isR) lerp(rFrom[i], colXs[ci], p) else rFrom[i]
-                    if (isR) { vh(x, y, h, 0.5f); ci++ } else vh(x, y, h)
-                }
+                // 右堆分组
+                for (i in 0 until rw) vs(lerp(rFrom[i], rTo[i], p), wTop, wBot)
                 // 挂一
-                vh(lerp(cx, colXs[hiInCol], p), hangY, sh * 0.22f, lerp(1f, 0.5f, p))
+                vh(colXs[hiCol], hangY, sh * 0.22f, 1f)
             }
 
-            // ⑤ MERGING：归奇堆伸长下移左边 + 工作策合并回中央
+            // ── COLLECT_RIGHT：右余缩短移到挂一右边 ──
+            YarrowPhase.COLLECT_RIGHT -> {
+                val lGrp = g4(num, lx, false)
+                val colXs = row(collected, stX(collected))
+                val hiCol = ln; val rw = n - num - 1; val rGrp = g4(rw, rEnd, true)
+
+                for (i in 0 until num) {
+                    if (i >= num - ln) vh(colXs[i - (num - ln)], hangY, sh * 0.22f, 0.5f)
+                    else vs(lGrp[i], wTop, wBot)
+                }
+                var ci = hiCol + 1
+                for (i in 0 until rw) {
+                    if (i < rn) { // 右余
+                        val x = lerp(rGrp[i], colXs[ci], p)
+                        val y = lerp(wCY, hangY, p); ci++
+                        vh(x, y, lerp(sh, sh * 0.22f, p), 0.5f)
+                    } else vs(rGrp[i], wTop, wBot)
+                }
+                vh(colXs[hiCol], hangY, sh * 0.22f, 1f)
+            }
+
+            // ── STORING：归奇堆伸长下移 ──
+            YarrowPhase.STORING -> {
+                val lGrp = g4(num, lx, false); val rw = n - num - 1
+                val rGrp = g4(rw, rEnd, true)
+                val colXs = row(collected, stX(collected))
+                val lw2 = num - ln; val rw2 = rw - rn; val allW = lw2 + rw2
+                val mergedX = row(allW, stX(allW))
+                // b空→最左, b不空→贴b.back()右边
+                val colTarget = row(collected, lx + state.bSize * step + sw / 2f)
+
+                val p1 = (p / 0.5f).coerceIn(0f, 1f); val p2 = ((p - 0.5f) / 0.5f).coerceIn(0f, 1f)
+
+                // 段1: 工作策合并
+                for (i in 0 until lw2) vs(lerp(lGrp[i], mergedX[i], p1), wTop, wBot)
+                for (i in 0 until rw2) vs(lerp(rGrp[rn + i], mergedX[lw2 + i], p1), wTop, wBot)
+                for (i in 0 until collected) vh(colXs[i], hangY, sh * 0.22f, 0.5f)
+
+                // 段2: 归奇伸长下移
+                for (i in 0 until lw2) vs(mergedX[i], wTop, wBot)
+                for (i in 0 until rw2) vs(mergedX[lw2 + i], wTop, wBot)
+                for (i in 0 until collected) {
+                    val x = lerp(colXs[i], colTarget[i], p2)
+                    val y = lerp(hangY, colY, p2)
+                    vh(x, y, lerp(sh * 0.22f, sh, p2), 0.4f)
+                }
+            }
+
+            // ── MERGING：a中所有合并在一起排列在中间 ──
             YarrowPhase.MERGING -> {
-                val colXs = row(colN, stX(colN))
-                val colL = row(colN, mg + sw / 2f)
-                for (i in 0 until colN) { val x = lerp(colXs[i], colL[i], p); val y = lerp(hangY, colY, p); vh(x, y, lerp(sh * 0.22f, sh, p), 0.4f) }
-                // 工作策：从左右两边合并回中央
-                val rem = state.remainingSticks; val toXs = row(rem, stX(rem))
-                val lwCnt = left - lr; val rwCnt = rWork - rr
-                for (i in 0 until lwCnt) vs(lerp(row(left, lx)[i], toXs[i], p), wTop, wBot)
-                for (i in 0 until rwCnt) vs(lerp(row(rWork, rEnd - wd(rWork))[rr + i], toXs[lwCnt + i], p), wTop, wBot)
+                // n已被advancePhase减过collected，就是剩余工作策数
+                val toXs = row(n, stX(n))
+                val lw2 = num - ln; val rw2 = n - lw2
+                val fromXs = row(n, stX(n))
+                for (i in 0 until n) vs(lerp(fromXs[i], toXs[i], p), wTop, wBot)
             }
 
-            YarrowPhase.COMPLETE, YarrowPhase.LINE_RESULT -> {}
+            // ── LINE_END：b中所有元素移动到a中，49个排列在中间 ──
+            YarrowPhase.LINE_END -> {
+                val workN = n - collected      // a中剩余工作策数
+                val bTotal = 49 - workN         // b区总策数
+                val all49 = row(49, stX(49))
+
+                // bFrom: b区策在colY的当前位置
+                val bFrom = row(bTotal, lx + sw / 2f)
+                // workFrom: 工作策在STORING结束时的位置（合并后的中央）
+                val workFrom = row(workN, stX(workN))
+
+                val p1 = (p / 0.6f).coerceIn(0f, 1f)   // b→a 上移
+                val p2 = ((p - 0.6f) / 0.4f).coerceIn(0f, 1f) // 49均匀
+
+                // 段1：b区策上移到工作区，工作策保持
+                for (i in 0 until workN) vs(workFrom[i], wTop, wBot)
+                for (i in 0 until bTotal) {
+                    val x = lerp(bFrom[i], all49[workN + i], p1)
+                    val y = lerp(colY, wCY, p1); vs(x, lerp(colY - sh / 2f, wTop, p1), lerp(colY + sh / 2f, wBot, p1), 0.5f)
+                }
+
+                // 段2：全体49根均匀排列
+                for (i in 0 until 49) {
+                    val fromX = if (i < workN) lerp(workFrom[i], all49[i], p2)
+                                else lerp(all49[i] + (all49[i] - all49[workN]) * (1f - p2), all49[i], p2)
+                    vs(fromX, wTop, wBot)
+                }
+            }
+
+            YarrowPhase.COMPLETE -> {}
         }
 
         // === 爻线 ===
         for (i in state.lines.indices) {
-            val ln = state.lines[i]; val by = lnB + (5 - i) * lnH; val lw = 70.dp.toPx()
-            if (ln.isYang) drawLine(Color.White, Offset(cx - lw / 2, by), Offset(cx + lw / 2, by), 3.dp.toPx())
-            else { val g = 18.dp.toPx(); drawLine(Color.White, Offset(cx - lw / 2, by), Offset(cx - g / 2, by), 3.dp.toPx()); drawLine(Color.White, Offset(cx + g / 2, by), Offset(cx + lw / 2, by), 3.dp.toPx()) }
-            if (ln.isChanging) drawText(TM.measure(if (ln.isYang) "○" else "×", style = TextStyle(fontSize = 18.sp, color = Color(0xFFFFD700))),
-                topLeft = Offset(cx + lw / 2 + 10.dp.toPx(), by - 12.dp.toPx()))
+            val ln2 = state.lines[i]; val by = lnB + (5 - i) * lnH; val lw2 = 70.dp.toPx()
+            if (ln2.isYang) drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx())
+            else { val g = 18.dp.toPx(); drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx - g / 2, by), 3.dp.toPx()); drawLine(Color.White, Offset(cx + g / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx()) }
+            if (ln2.isChanging) drawText(TM.measure(if (ln2.isYang) "○" else "×", style = TextStyle(fontSize = 18.sp, color = Color(0xFFFFD700))),
+                topLeft = Offset(cx + lw2 / 2 + 10.dp.toPx(), by - 12.dp.toPx()))
             drawText(TM.measure(when (i) { 0 -> "初"; 1 -> "二"; 2 -> "三"; 3 -> "四"; 4 -> "五"; 5 -> "上"; else -> "" },
-                style = TextStyle(fontSize = 11.sp, color = Color(0xFF666666))), topLeft = Offset(cx - lw / 2 - 18.dp.toPx(), by - 8.dp.toPx()))
+                style = TextStyle(fontSize = 11.sp, color = Color(0xFF666666))), topLeft = Offset(cx - lw2 / 2 - 18.dp.toPx(), by - 8.dp.toPx()))
         }
     }
 }
