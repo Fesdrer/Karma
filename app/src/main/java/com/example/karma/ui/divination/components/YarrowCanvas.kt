@@ -45,7 +45,8 @@ fun YarrowCanvas(
             YarrowPhase.INTRO -> 1200; YarrowPhase.SPLITTING -> 500; YarrowPhase.HANGING_ONE -> 400
             YarrowPhase.GROUP_LEFT -> 400; YarrowPhase.COLLECT_LEFT -> 400
             YarrowPhase.GROUP_RIGHT -> 400; YarrowPhase.COLLECT_RIGHT -> 400
-            YarrowPhase.STORING -> 600; YarrowPhase.MERGING -> 500; YarrowPhase.LINE_END -> 600
+            YarrowPhase.STORING -> 600; YarrowPhase.FLASH_GROUPS -> 800
+            YarrowPhase.MERGING -> 600; YarrowPhase.LINE_END -> 800
             else -> 0
         }
         if (dur > 0) { prog.animateTo(1f, tween(dur)); onPhaseComplete() }
@@ -246,27 +247,25 @@ fun YarrowCanvas(
                 vh(colXs[hiCol], hangY, sh * 0.22f, 1f)
             }
 
-            // ── STORING：归奇堆伸长下移 ──
+            // ── STORING：仅归奇伸长下移到b区。工作策（不含余数）保持分组 ──
             YarrowPhase.STORING -> {
                 val lGrp = g4(num, lx, false); val rw = n - num - 1
                 val rGrp = g4(rw, rEnd, true)
                 val colXs = row(collected, stX(collected))
-                val lw2 = num - ln; val rw2 = rw - rn; val allW = lw2 + rw2
-                val mergedX = row(allW, stX(allW))
-                // b空→最左, b不空→贴b.back()右边
                 val colTarget = row(collected, lx + state.bSize * step + sw / 2f)
+                val lw2 = num - ln; val rw2 = rw - rn
 
                 if (p < 0.5f) {
                     val p1 = p / 0.5f
-                    // 段1: 工作策合并 + 归奇在hang行
-                    for (i in 0 until lw2) vs(lerp(lGrp[i], mergedX[i], p1), wTop, wBot)
-                    for (i in 0 until rw2) vs(lerp(rGrp[rn + i], mergedX[lw2 + i], p1), wTop, wBot)
+                    // 工作策（不含余数）保持分组
+                    for (i in 0 until lw2) vs(lGrp[i], wTop, wBot)
+                    for (i in 0 until rw2) vs(rGrp[rn + i], wTop, wBot)
+                    // 归奇在hang行
                     for (i in 0 until collected) vh(colXs[i], hangY, sh * 0.22f, 0.5f)
                 } else {
                     val p2 = (p - 0.5f) / 0.5f
-                    // 段2: 工作策在中央 + 归奇伸长下移
-                    for (i in 0 until lw2) vs(mergedX[i], wTop, wBot)
-                    for (i in 0 until rw2) vs(mergedX[lw2 + i], wTop, wBot)
+                    for (i in 0 until lw2) vs(lGrp[i], wTop, wBot)
+                    for (i in 0 until rw2) vs(rGrp[rn + i], wTop, wBot)
                     for (i in 0 until collected) {
                         val x = lerp(colXs[i], colTarget[i], p2)
                         val y = lerp(hangY, colY, p2)
@@ -275,49 +274,95 @@ fun YarrowCanvas(
                 }
             }
 
-            // ── MERGING：a中所有重叠到中间点，然后向左右两边散开 ──
+            // ── FLASH_GROUPS(T=3)：分组状态闪红光数出6/7/8/9 ──
+            YarrowPhase.FLASH_GROUPS -> {
+                val lGrp = g4(num, lx, false); val rw = n - num - 1
+                val rGrp = g4(rw, rEnd, true)
+                val lw2 = num - ln; val rw2 = rw - rn
+                // 工作策（不含余数）保持分组
+                for (i in 0 until lw2) vs(lGrp[i], wTop, wBot)
+                for (i in 0 until rw2) vs(rGrp[rn + i], wTop, wBot)
+                // b区
+                row(state.bSize, lx + sw / 2f).forEach { vs(it, colY - sh / 2f, colY + sh / 2f, 0.35f) }
+
+                val lGs = (num - ln) / 4
+                val rGs = (n - num - 1 - rn) / 4
+                val totalGs = lGs + rGs
+                if (totalGs > 0) {
+                    val gIdx = (p * totalGs).toInt().coerceAtMost(totalGs - 1)
+                    val gP = (p * totalGs - gIdx)
+                    val alpha = (kotlin.math.sin(gP * kotlin.math.PI.toFloat()) * 0.6f).coerceIn(0f, 1f)
+
+                    // 当前组的4根在分组位置中的起止索引（右组需跳过余数rn）
+                    val xs4 = if (gIdx < lGs) {
+                        val s = gIdx * 4; lGrp.slice(s..s + 3)
+                    } else {
+                        val s = rn + (gIdx - lGs) * 4; rGrp.slice(s..s + 3)
+                    }
+                    val gx1 = xs4.first() - sw / 2f - 2.dp.toPx()
+                    val gx2 = xs4.last() + sw / 2f + 2.dp.toPx()
+                    val gy1 = wTop - 8.dp.toPx()
+                    val gy2 = wBot + 8.dp.toPx()
+                    val glowR = 12.dp.toPx() * (1f + gP.toFloat())
+                    drawRoundRect(Color.Red.copy(alpha = alpha * 0.3f),
+                        Offset(gx1 - glowR, gy1 - glowR), Size(gx2 - gx1 + glowR * 2f, gy2 - gy1 + glowR * 2f),
+                        CornerRadius(6.dp.toPx()))
+                    drawRoundRect(Color.Red.copy(alpha = alpha),
+                        Offset(gx1, gy1), Size(gx2 - gx1, gy2 - gy1),
+                        CornerRadius(4.dp.toPx()), style = Stroke(2.dp.toPx()))
+                }
+            }
+
+            // ── MERGING(T<=2)：工作策从分组位置汇聚中心点，然后散开 ──
             YarrowPhase.MERGING -> {
+                // n已被advancePhase减少，num/ln/rn保留
+                val oldN = n + ln + 1 + rn // 收集前的n
+                val lGrp = g4(num, lx, false)
+                val rWorkCnt = oldN - num - 1 // 右工作策(含余数)
+                val rGrp = g4(rWorkCnt, rEnd, true)
+                val lw2 = num - ln; val rw2 = rWorkCnt - rn
                 val toXs = row(n, stX(n))
-                // 从STORING末尾位置：工作策在mergedX(中央)。collected已移入b。
-                // 段1 (0→0.5): 所有策汇聚到中心点重叠
-                // 段2 (0.5→1): 从中心点向两边散开到均匀排列
+
                 if (p < 0.5f) {
                     val p1 = p / 0.5f
-                    // 工作策从当前位置汇聚到中心
-                    val fromWork = row(n, stX(n))
-                    for (i in 0 until n) vs(lerp(fromWork[i], cx, p1), wTop, wBot)
+                    for (i in 0 until lw2) vs(lerp(lGrp[i], cx, p1), wTop, wBot)
+                    for (i in 0 until rw2) vs(lerp(rGrp[rn + i], cx, p1), wTop, wBot)
                 } else {
                     val p2 = (p - 0.5f) / 0.5f
                     for (i in 0 until n) vs(lerp(cx, toXs[i], p2), wTop, wBot)
                 }
             }
 
-            // ── LINE_END：b→中心重叠, a→中心重叠, 全体向左右散开 ──
+            // ── LINE_END(T=3)：b→中心重叠, a分组→中心重叠, 全体散开 ──
             YarrowPhase.LINE_END -> {
-                val workN = n - collected
+                val lGrp = g4(num, lx, false); val rw = n - num - 1
+                val rGrp = g4(rw, rEnd, true)
+                val lw2 = num - ln; val rw2 = rw - rn
+                val workN = lw2 + rw2
                 val bTotal = 49 - workN
                 val all49 = row(49, stX(49))
                 val bFrom = row(bTotal, lx + sw / 2f)
-                val workFrom = row(workN, stX(workN))
 
                 if (p < 0.33f) {
-                    // 段1: b中所有元素移动到第一行的中间，并重叠在中间点
                     val p1 = p / 0.33f
-                    for (i in 0 until workN) vs(workFrom[i], wTop, wBot)
+                    // a保持分组不动
+                    for (i in 0 until lw2) vs(lGrp[i], wTop, wBot)
+                    for (i in 0 until rw2) vs(rGrp[rn + i], wTop, wBot)
+                    // b→中心重叠
                     for (i in 0 until bTotal) {
                         val x = lerp(bFrom[i], cx, p1)
                         val y = lerp(colY, wCY, p1)
                         vs(x, lerp(colY - sh / 2f, wTop, p1), lerp(colY + sh / 2f, wBot, p1), 0.5f)
                     }
                 } else if (p < 0.66f) {
-                    // 段2: a中所有元素移动中间，并重叠在中间点
                     val p2 = (p - 0.33f) / 0.33f
-                    for (i in 0 until workN) vs(lerp(workFrom[i], cx, p2), wTop, wBot)
-                    // b已全部重叠在cx(中心点)，保持不动
+                    // a分组→中心重叠
+                    for (i in 0 until lw2) vs(lerp(lGrp[i], cx, p2), wTop, wBot)
+                    for (i in 0 until rw2) vs(lerp(rGrp[rn + i], cx, p2), wTop, wBot)
                     for (i in 0 until bTotal) vs(cx, wTop, wBot, 0.5f)
                 } else {
-                    // 段3: b→a(已在中心), a中所有元素向左右两边散开
                     val p3 = (p - 0.66f) / 0.34f
+                    // 全体散开
                     for (i in 0 until 49) vs(lerp(cx, all49[i], p3), wTop, wBot)
                 }
             }

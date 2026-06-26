@@ -19,6 +19,7 @@ enum class YarrowPhase {
     GROUP_RIGHT,        // 右堆每4根一组左移
     COLLECT_RIGHT,      // 右余缩短移到挂一右边
     STORING,            // 归奇堆伸长下移（b空→最左, b不空→贴b右侧）
+    FLASH_GROUPS,       // 每组4根闪出扩散型红光
     MERGING,            // T<=2: a合并居中
     LINE_END,           // T=3: 画爻, b→a, 49居中
     COMPLETE,
@@ -69,25 +70,24 @@ class YarrowViewModel : ViewModel() {
                 YarrowPhase.GROUP_RIGHT -> s.copy(phase = YarrowPhase.COLLECT_RIGHT)
                 YarrowPhase.COLLECT_RIGHT -> s.copy(phase = YarrowPhase.STORING)
                 YarrowPhase.STORING -> {
-                    val T = s.changeNumber % 3 // 1,2,0
-                    val collected = s.ln + 1 + s.rn
-                    if (T == 0) { // T=3
-                        // x=(num-ln)/4+(n-num-1-rn)/4
-                        val x = (s.num - s.ln) / 4 + (s.n - s.num - 1 - s.rn) / 4
-                        val line = HexagramLine(value = x, isYang = x % 2 != 0, isChanging = x == 6 || x == 9)
-                        val newLines = s.lines + line
-                        if (newLines.size >= 6) {
-                            s.copy(lines = newLines, phase = YarrowPhase.COMPLETE,
-                                showResult = true, result = YarrowResult(newLines))
-                        } else {
-                            s.copy(lines = newLines, phase = YarrowPhase.LINE_END, bSize = 0)
-                        }
+                    val T = s.changeNumber % 3
+                    if (T == 0) s.copy(phase = YarrowPhase.FLASH_GROUPS)
+                    else {
+                        val collected = s.ln + 1 + s.rn
+                        s.copy(n = s.n - collected, bSize = s.bSize + collected, phase = YarrowPhase.MERGING)
+                        // 注意：保留num/ln/rn，MERGING需要它们计算分组位置
+                    }
+                }
+                YarrowPhase.FLASH_GROUPS -> {
+                    // x = (num-ln)/4 + (n-num-1-rn)/4  // 数出来的组数=6,7,8,9
+                    val x = (s.num - s.ln) / 4 + (s.n - s.num - 1 - s.rn) / 4
+                    val line = HexagramLine(value = x, isYang = x % 2 != 0, isChanging = x == 6 || x == 9)
+                    val newLines = s.lines + line
+                    if (newLines.size >= 6) {
+                        s.copy(lines = newLines, phase = YarrowPhase.COMPLETE,
+                            showResult = true, result = YarrowResult(newLines))
                     } else {
-                        // T<=2: 把a中所有的合并在一起
-                        // collected从a移除加入b
-                        s.copy(n = s.n - collected, num = 0, ln = 0, rn = 0,
-                            bSize = s.bSize + collected,
-                            phase = YarrowPhase.MERGING)
+                        s.copy(lines = newLines, phase = YarrowPhase.LINE_END, bSize = 0)
                     }
                 }
                 YarrowPhase.MERGING -> {
