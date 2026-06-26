@@ -47,6 +47,10 @@ fun EventPanel(
     onCustomBadDeedChanged: (String) -> Unit,
     onCustomGoodResultChanged: (String) -> Unit,
     modifier: Modifier = Modifier,
+    // 计时按钮
+    timerEnabled: Boolean = false,
+    selectedScore: Float? = null,
+    onStartTimer: () -> Unit = {},
 ) {
     val scrollState = rememberScrollState()
 
@@ -105,6 +109,39 @@ fun EventPanel(
                 customPlaceholder = "自定义善果...",
                 onCustomChanged = onCustomGoodResultChanged,
             )
+        }
+
+        // 计时按钮
+        Spacer(Modifier.height(6.dp))
+        val scoreText = selectedScore?.let {
+            if (it >= 0) "+${it}" else "${it}"
+        } ?: ""
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(8.dp))
+                .background(
+                    if (timerEnabled) Color(0xFF1a3a5c)
+                    else Color(0xFF111122)
+                )
+                .clickable(enabled = timerEnabled) { onStartTimer() }
+                .padding(vertical = 10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (timerEnabled) {
+                Text(
+                    text = "▶ 开始计时  $scoreText",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF69f0ae),
+                )
+            } else {
+                Text(
+                    text = "选择分数与事件",
+                    fontSize = 11.sp,
+                    color = Color(0xFF555555),
+                )
+            }
         }
     }
 }

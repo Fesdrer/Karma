@@ -33,6 +33,7 @@ fun MainScreen(
     onNavigateToPrayer: () -> Unit,
     onNavigateToDivination: () -> Unit,
     onNavigateToSettings: () -> Unit,
+    onNavigateToTimer: (score: Float, event: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: MainViewModel = viewModel(
@@ -122,6 +123,13 @@ fun MainScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
+                    timerEnabled = state.selectedScore != null && state.selectedEvent != null,
+                    selectedScore = state.selectedScore,
+                    onStartTimer = {
+                        val s = state.selectedScore ?: return@EventPanel
+                        val e = state.selectedEvent ?: return@EventPanel
+                        onNavigateToTimer(s, e)
+                    },
                 )
             }
 
