@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 
 enum class YarrowPhase {
+    WAITING,            // 开始前等待按钮点击
     INTRO, IDLE,
     SPLITTING,          // a[1..num]左移, a[num+1..n]右移
     HANGING_ONE,        // a[num+1]缩短下移
@@ -29,7 +30,7 @@ data class YarrowUiState(
     val ln: Int = 0,                             // 左余
     val rn: Int = 0,                             // 右余
     val bSize: Int = 0,                          // b.size()
-    val phase: YarrowPhase = YarrowPhase.INTRO,
+    val phase: YarrowPhase = YarrowPhase.WAITING,
     val changeNumber: Int = 1,                   // T (1..18)
     val lines: List<HexagramLine> = emptyList(),
     val showResult: Boolean = false,
@@ -42,6 +43,10 @@ class YarrowViewModel : ViewModel() {
     val uiState: StateFlow<YarrowUiState> = _uiState.asStateFlow()
 
     // 用户点击 → 算num/ln/rn → 开始SPLITTING
+    fun startDivination() {
+        _uiState.update { if (it.phase == YarrowPhase.WAITING) it.copy(phase = YarrowPhase.INTRO) else it }
+    }
+
     fun onSplitTap(num: Int) {
         val s = _uiState.value
         if (s.phase != YarrowPhase.IDLE) return
@@ -98,7 +103,7 @@ class YarrowViewModel : ViewModel() {
         }
     }
 
-    fun reset() { _uiState.value = YarrowUiState() }
+    fun reset() { _uiState.value = YarrowUiState(phase = YarrowPhase.WAITING) }
 
     class Factory : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")

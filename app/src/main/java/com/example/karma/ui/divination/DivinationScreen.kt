@@ -160,7 +160,10 @@ fun DivinationScreen(
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                     YarrowCanvas(
                         state = yarrowState,
-                        onUserTap = yarrowViewModel::onSplitTap,
+                        onUserTap = { num ->
+                            if (yarrowState.phase == YarrowPhase.WAITING) yarrowViewModel.startDivination()
+                            else yarrowViewModel.onSplitTap(num)
+                        },
                         onPhaseComplete = yarrowViewModel::advancePhase,
                         modifier = Modifier.fillMaxSize().padding(bottom = 52.dp),
                     )

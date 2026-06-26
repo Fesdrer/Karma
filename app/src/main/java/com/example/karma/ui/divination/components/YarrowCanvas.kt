@@ -9,8 +9,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -34,7 +38,7 @@ fun YarrowCanvas(
     val tjiY = with(D) { 60.dp.toPx() }; val tjiHalf = sh / 2f
     val wTop = with(D) { 180.dp.toPx() }; val wBot = wTop + sh; val wCY = (wTop + wBot) / 2f
     val hangY = with(D) { 400.dp.toPx() }; val colY = with(D) { 520.dp.toPx() }
-    val lnB = with(D) { 660.dp.toPx() }; val lnH = with(D) { 36.dp.toPx() }
+    val lnB = with(D) { 570.dp.toPx() }; val lnH = with(D) { 16.dp.toPx() }
     val mg = with(D) { 6.dp.toPx() }; val lx = mg
 
     LaunchedEffect(state.phase) {
@@ -49,6 +53,7 @@ fun YarrowCanvas(
     }
 
     Canvas(modifier = modifier.fillMaxSize().pointerInput(state.phase, state.n, step, sw, sg) {
+        if (state.phase == YarrowPhase.WAITING) detectTapGestures { onUserTap(0) }
         if (state.phase == YarrowPhase.IDLE) detectTapGestures { tap ->
             val cw = size.width.toFloat(); val cx2 = cw / 2f; val n2 = state.n
             val wd2 = n2 * step - sg; val sx = cx2 - wd2 / 2f
@@ -56,6 +61,7 @@ fun YarrowCanvas(
             if (r > l) { val rt = ((tap.x - l) / (r - l)).coerceIn(0f, 1f); onUserTap(minOf(n2 - 2, maxOf(1, (rt * n2).toInt()))) }
         }
     }) {
+        drawRect(Color.Black)
         val cw = size.width; val cx = cw / 2f; val p = prog.value
         val n = state.n; val num = state.num; val ln = state.ln; val rn = state.rn
         val collected = ln + 1 + rn
@@ -79,7 +85,7 @@ fun YarrowCanvas(
         }
 
         // === 太极 ===
-        if (state.phase != YarrowPhase.INTRO) {
+        if (state.phase != YarrowPhase.INTRO && state.phase != YarrowPhase.WAITING) {
             drawLine(Color(0xFF4488ff), Offset(cx - tjiHalf, tjiY), Offset(cx + tjiHalf, tjiY), 3.dp.toPx())
             drawText(TM.measure("太极", style = TextStyle(fontSize = 10.sp, color = Color(0xFF555577))),
                 topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
@@ -92,6 +98,30 @@ fun YarrowCanvas(
         val rEnd = cw - mg
 
         when (state.phase) {
+
+            // ── WAITING：开始按钮 ──
+            YarrowPhase.WAITING -> {
+                val bw = 260.dp.toPx(); val bh = 120.dp.toPx()
+                val bx = cx - bw / 2f; val by = wCY - bh / 2f
+                // 外框
+                drawRoundRect(Color(0xFFb8860b).copy(alpha = 0.8f), Offset(bx, by), Size(bw, bh),
+                    CornerRadius(16.dp.toPx()), style = Stroke(2.dp.toPx()))
+                drawRoundRect(Color(0xFF1a1a2e), Offset(bx + 3, by + 3), Size(bw - 6, bh - 6),
+                    CornerRadius(14.dp.toPx()))
+                // 文字
+                val title = "大衍之数五十"
+                val sub = "其用四十有九"
+                val btn = "☰  开始占筮  ☰"
+                val ts = TextStyle(fontSize = 22.sp, color = Color(0xFFdaa520))
+                val ss = TextStyle(fontSize = 15.sp, color = Color(0xFFaa8844))
+                val bs = TextStyle(fontSize = 20.sp, color = Color(0xFFffd700))
+                val tw = TM.measure(title, style = ts).size.width.toFloat()
+                val sw2 = TM.measure(sub, style = ss).size.width.toFloat()
+                val bw2 = TM.measure(btn, style = bs).size.width.toFloat()
+                drawText(TM.measure(title, style = ts), topLeft = Offset(cx - tw / 2f, by + 14.dp.toPx()))
+                drawText(TM.measure(sub, style = ss), topLeft = Offset(cx - sw2 / 2f, by + 44.dp.toPx()))
+                drawText(TM.measure(btn, style = bs), topLeft = Offset(cx - bw2 / 2f, by + 72.dp.toPx()))
+            }
 
             // ── INTRO：a[0]一边旋转90度一边移动到最上方 ──
             YarrowPhase.INTRO -> {
@@ -109,8 +139,20 @@ fun YarrowCanvas(
             // ── IDLE ──
             YarrowPhase.IDLE -> {
                 row(n, stX(n)).forEach { vs(it, wTop, wBot) }
-                drawText(TM.measure(if (state.lines.isEmpty()) "点击分策" else "第${state.changeNumber}变·第${state.lines.size + 1}爻·点击分策",
-                    style = TextStyle(fontSize = 14.sp, color = Color(0xFF777777))), topLeft = Offset(cx - 100.dp.toPx(), wTop - 36.dp.toPx()))
+                val isFirst = state.lines.isEmpty() && state.changeNumber == 1
+                val title = if (isFirst) "大衍之数五十，其用四十有九" else "第${state.changeNumber}变 · 第${state.lines.size + 1}爻"
+                val sub = if (isFirst) "分而为二以象两 · 点击分策" else "点击屏幕分策"
+                // 按钮边框
+                val bw = 240.dp.toPx(); val bh = 56.dp.toPx()
+                val bx = cx - bw / 2f; val by = wTop - 80.dp.toPx()
+                drawRoundRect(Color(0xFFb8860b).copy(alpha = 0.6f), Offset(bx, by), Size(bw, bh),
+                    CornerRadius(12.dp.toPx()), style = Stroke(1.5.dp.toPx()))
+                drawRoundRect(Color(0xFFb8860b).copy(alpha = 0.12f), Offset(bx + 2, by + 2), Size(bw - 4, bh - 4),
+                    CornerRadius(10.dp.toPx()))
+                drawText(TM.measure(title, style = TextStyle(fontSize = 15.sp, color = Color(0xFFdaa520))),
+                    topLeft = Offset(cx - TM.measure(title, style = TextStyle(fontSize = 15.sp)).size.width / 2f, by + 8.dp.toPx()))
+                drawText(TM.measure(sub, style = TextStyle(fontSize = 11.sp, color = Color(0xFF888888))),
+                    topLeft = Offset(cx - TM.measure(sub, style = TextStyle(fontSize = 11.sp)).size.width / 2f, by + 30.dp.toPx()))
             }
 
             // ── SPLITTING：a[1..num]左移, a[num+1..n]右移 ──
@@ -215,20 +257,22 @@ fun YarrowCanvas(
                 // b空→最左, b不空→贴b.back()右边
                 val colTarget = row(collected, lx + state.bSize * step + sw / 2f)
 
-                val p1 = (p / 0.5f).coerceIn(0f, 1f); val p2 = ((p - 0.5f) / 0.5f).coerceIn(0f, 1f)
-
-                // 段1: 工作策合并
-                for (i in 0 until lw2) vs(lerp(lGrp[i], mergedX[i], p1), wTop, wBot)
-                for (i in 0 until rw2) vs(lerp(rGrp[rn + i], mergedX[lw2 + i], p1), wTop, wBot)
-                for (i in 0 until collected) vh(colXs[i], hangY, sh * 0.22f, 0.5f)
-
-                // 段2: 归奇伸长下移
-                for (i in 0 until lw2) vs(mergedX[i], wTop, wBot)
-                for (i in 0 until rw2) vs(mergedX[lw2 + i], wTop, wBot)
-                for (i in 0 until collected) {
-                    val x = lerp(colXs[i], colTarget[i], p2)
-                    val y = lerp(hangY, colY, p2)
-                    vh(x, y, lerp(sh * 0.22f, sh, p2), 0.4f)
+                if (p < 0.5f) {
+                    val p1 = p / 0.5f
+                    // 段1: 工作策合并 + 归奇在hang行
+                    for (i in 0 until lw2) vs(lerp(lGrp[i], mergedX[i], p1), wTop, wBot)
+                    for (i in 0 until rw2) vs(lerp(rGrp[rn + i], mergedX[lw2 + i], p1), wTop, wBot)
+                    for (i in 0 until collected) vh(colXs[i], hangY, sh * 0.22f, 0.5f)
+                } else {
+                    val p2 = (p - 0.5f) / 0.5f
+                    // 段2: 工作策在中央 + 归奇伸长下移
+                    for (i in 0 until lw2) vs(mergedX[i], wTop, wBot)
+                    for (i in 0 until rw2) vs(mergedX[lw2 + i], wTop, wBot)
+                    for (i in 0 until collected) {
+                        val x = lerp(colXs[i], colTarget[i], p2)
+                        val y = lerp(hangY, colY, p2)
+                        vh(x, y, lerp(sh * 0.22f, sh, p2), 0.4f)
+                    }
                 }
             }
 
@@ -252,21 +296,17 @@ fun YarrowCanvas(
                 // workFrom: 工作策在STORING结束时的位置（合并后的中央）
                 val workFrom = row(workN, stX(workN))
 
-                val p1 = (p / 0.6f).coerceIn(0f, 1f)   // b→a 上移
-                val p2 = ((p - 0.6f) / 0.4f).coerceIn(0f, 1f) // 49均匀
-
-                // 段1：b区策上移到工作区，工作策保持
-                for (i in 0 until workN) vs(workFrom[i], wTop, wBot)
-                for (i in 0 until bTotal) {
-                    val x = lerp(bFrom[i], all49[workN + i], p1)
-                    val y = lerp(colY, wCY, p1); vs(x, lerp(colY - sh / 2f, wTop, p1), lerp(colY + sh / 2f, wBot, p1), 0.5f)
-                }
-
-                // 段2：全体49根均匀排列
-                for (i in 0 until 49) {
-                    val fromX = if (i < workN) lerp(workFrom[i], all49[i], p2)
-                                else lerp(all49[i] + (all49[i] - all49[workN]) * (1f - p2), all49[i], p2)
-                    vs(fromX, wTop, wBot)
+                if (p < 0.6f) {
+                    val p1 = p / 0.6f
+                    for (i in 0 until workN) vs(workFrom[i], wTop, wBot)
+                    for (i in 0 until bTotal) {
+                        val x = lerp(bFrom[i], all49[workN + i], p1)
+                        val y = lerp(colY, wCY, p1)
+                        vs(x, lerp(colY - sh / 2f, wTop, p1), lerp(colY + sh / 2f, wBot, p1), 0.5f)
+                    }
+                } else {
+                    val p2 = (p - 0.6f) / 0.4f
+                    for (i in 0 until 49) vs(lerp(all49[i] + (all49[i] - cx) * (1f - p2), all49[i], p2), wTop, wBot)
                 }
             }
 
@@ -280,8 +320,6 @@ fun YarrowCanvas(
             else { val g = 18.dp.toPx(); drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx - g / 2, by), 3.dp.toPx()); drawLine(Color.White, Offset(cx + g / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx()) }
             if (ln2.isChanging) drawText(TM.measure(if (ln2.isYang) "○" else "×", style = TextStyle(fontSize = 18.sp, color = Color(0xFFFFD700))),
                 topLeft = Offset(cx + lw2 / 2 + 10.dp.toPx(), by - 12.dp.toPx()))
-            drawText(TM.measure(when (i) { 0 -> "初"; 1 -> "二"; 2 -> "三"; 3 -> "四"; 4 -> "五"; 5 -> "上"; else -> "" },
-                style = TextStyle(fontSize = 11.sp, color = Color(0xFF666666))), topLeft = Offset(cx - lw2 / 2 - 18.dp.toPx(), by - 8.dp.toPx()))
         }
     }
 }

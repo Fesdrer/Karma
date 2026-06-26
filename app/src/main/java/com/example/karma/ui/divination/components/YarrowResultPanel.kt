@@ -84,41 +84,24 @@ fun YarrowResultPanel(
                     contentAlignment = Alignment.Center,
                 ) {
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text("本卦", fontSize = 16.sp, color = TextSecondary)
-                        Spacer(Modifier.height(12.dp))
-                        // 从上爻到初爻（从上往下显示）
                         for (i in result.lines.indices.reversed()) {
                             val line = result.lines[i]
-                            val label = when (i) { 0 -> "初"; 1 -> "二"; 2 -> "三"; 3 -> "四"; 4 -> "五"; 5 -> "上" else -> "" }
-                            val color = if (line.isChanging) {
-                                if (line.isYang) Color(0xFFff9800) else Color(0xFFff5252)
-                            } else {
-                                TextPrimary
-                            }
+                            val symbol = if (line.isYang) "⚊" else "⚋"
+                            val mark = if (line.isChanging) (if (line.isYang) " ○" else " ×") else ""
+                            val color = if (line.isChanging) Color(0xFFFFD700) else TextPrimary
                             Text(
-                                text = "$label" + "爻  " + line.label,
-                                fontSize = 22.sp,
+                                text = "$symbol$mark",
+                                fontSize = 30.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = color,
                                 textAlign = TextAlign.Center,
                             )
-                            Spacer(Modifier.height(4.dp))
+                            Spacer(Modifier.height(2.dp))
                         }
                     }
                 }
 
                 Spacer(Modifier.height(16.dp))
-
-                // 变爻提示
-                val changingLines = result.lines.filter { it.isChanging }
-                if (changingLines.isNotEmpty()) {
-                    Text(
-                        text = "变爻：${changingLines.size} 爻变",
-                        fontSize = 14.sp,
-                        color = TextSecondary,
-                    )
-                    Spacer(Modifier.height(8.dp))
-                }
 
                 // 启示区域（留空）
                 Box(
