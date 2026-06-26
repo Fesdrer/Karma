@@ -2,7 +2,9 @@ package com.example.karma.ui.divination
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.example.karma.ui.divination.model.HexagramLibrary
 import com.example.karma.ui.divination.model.HexagramLine
+import com.example.karma.ui.divination.model.IntegrationEngine
 import com.example.karma.ui.divination.model.YarrowResult
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -84,8 +86,30 @@ class YarrowViewModel : ViewModel() {
                     val line = HexagramLine(value = x, isYang = x % 2 != 0, isChanging = x == 6 || x == 9)
                     val newLines = s.lines + line
                     if (newLines.size >= 6) {
+                        // 计算卦象启示
+                        val primary = HexagramLibrary.fromHexagramLines(newLines)
+                        val movingIndices = newLines.mapIndexedNotNull { idx, ln ->
+                            if (ln.isChanging) idx + 1 else null  // 1-based: 1=初爻
+                        }
+                        // 变卦：动爻阴阳翻转
+                        val transformedLines = newLines.map { ln ->
+                            if (ln.isChanging) HexagramLine(
+                                value = if (ln.value == 6) 8 else 7,  // 老阴变少阴，老阳变少阳
+                                isYang = !ln.isYang,
+                                isChanging = false
+                            ) else ln
+                        }
+                        val transformed = HexagramLibrary.fromHexagramLines(transformedLines)
+                        val integration = IntegrationEngine.calculate(primary, transformed)
+                        val result = YarrowResult(
+                            lines = newLines,
+                            primaryHexagram = primary,
+                            transformedHexagram = transformed,
+                            movingLines = movingIndices,
+                            integration = integration,
+                        )
                         s.copy(lines = newLines, phase = YarrowPhase.COMPLETE,
-                            showResult = true, result = YarrowResult(newLines))
+                            showResult = true, result = result)
                     } else {
                         s.copy(lines = newLines, phase = YarrowPhase.LINE_END, bSize = 0)
                     }

@@ -29,6 +29,10 @@ data class HexagramLine(
 /** 最终结果 */
 data class YarrowResult(
     val lines: List<HexagramLine>,  // 从初爻到上爻（6个）
+    val primaryHexagram: HexagramRevelation? = null,       // 本卦
+    val transformedHexagram: HexagramRevelation? = null,   // 变卦
+    val movingLines: List<Int> = emptyList(),              // 动爻序号（1-based: 1=初爻,6=上爻）
+    val integration: IntegrationResult? = null,            // 合解引擎结果
 )
 
 /** 一根策（蓝色线段） */
