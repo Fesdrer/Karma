@@ -2,7 +2,7 @@
 
 记录每日善恶因果，见证业力流转。一款以业力为主题的生活记录与可视化工具。
 
-> **版本**：3.2 | **技术栈**：Kotlin + Jetpack Compose + Material3 + Room | **最低 SDK**：Android 7.0
+> **版本**：3.3 | **技术栈**：Kotlin + Jetpack Compose + Material3 + Room | **最低 SDK**：Android 7.0
 
 ---
 
@@ -121,8 +121,10 @@
 ### 占卜（判断运势）
 
 底部三标签切换：
-- **气运测试**：点击「开始」→ 模拟 1000 次随机抛硬币（49% 正面概率），显示正面次数
-- **大衍筮法**、**小六壬**：预留功能，即将推出
+
+- **气运测试**（tab 0）：点击「开始」→ 模拟 1000 次随机抛硬币（49% 正面概率），显示正面次数
+- **大衍筮法**（tab 1）：最古老的周易起卦方法（揲蓍法）。以 50 根策模拟天地运行，经 18 变（6 爻 × 3 变）得出本卦与变卦。完成后展示四块启示：本卦｜变卦（Canvas 手绘六爻+阴阳线）、卦象总纲、六爻精解（动爻标 ★ 高亮）、变卦指向总结。卦库含 64 卦完整启示 + 体用生克合解引擎（五行生克 + 盛衰差值法），采用 load/release 模式（占卜开始时加载，完成/离开后释放内存）
+- **小六壬**（tab 2）：传统掌诀占卜（马前课），以月、日、时辰在手掌六宫上掐指推算吉凶。输入支持传统农历和任意数字双模式，动画采用移动光点+虚幻拖尾沿六宫路径游走，最终展示古卷轴风格结果卡（宫名/吉凶/五行/六神/口诀/五项启示）
 
 ---
 
@@ -210,7 +212,7 @@
 ```
 Kotlin + Jetpack Compose
 ├── UI Layer     → 5个 Compose Screen（主屏/历史/祈福/占卜/设置）
-├── ViewModel    → MainVM / HistoryVM / PrayerVM / SettingsVM
+├── ViewModel    → MainVM / HistoryVM / PrayerVM / DivinationVM / YarrowVM / SettingsVM
 ├── Repository   → KarmaRepository（业务逻辑 + 数据聚合）
 ├── Data Layer   → Room (HistoryEntry + KarmaSettings, 2 DAO)
 └── DI           → AppContainer（手动依赖注入）
@@ -218,11 +220,13 @@ Kotlin + Jetpack Compose
 
 ### 技术亮点
 
-- **纯 Canvas 渲染**：分数轴、业力轴、折线图、粒子动画全部手绘，零第三方图表依赖
+- **纯 Canvas 渲染**：分数轴、业力轴、折线图、卦爻线、三柱六宫、金线光点动画、粒子动画全部手绘，零第三方图表依赖
 - **非线性映射**：业力轴采用动态指数算法，`y ∝ x^exp`，exp 由 quarterValue 自动推导
 - **粒子引擎**：4 级粒子系统，含 Bezier 曲线、光环、火花、符文
 - **衰减追溯**：启动时自动补扣遗漏天数，支持算法回溯
 - **Flow 状态管理**：利用 Kotlin Flow combine 管理多数据源状态同步，解决 6+ 流类型推断限制
+- **体用生克引擎**：大衍筮法五行生克 + 盛衰差值法合解，64 卦完整启示库
+- **掌诀推算动画**：小六壬光点沿六宫顺时针游走 + 虚幻拖尾，7 秒完整推算流程
 
 ### 项目结构
 
@@ -237,6 +241,8 @@ app/src/main/java/com/example/karma/
 │   ├── history/             # 历史折线图
 │   ├── prayer/              # 祈福粒子动画
 │   ├── divination/          # 占卜
+│   │   ├── model/           # YarrowData / HexagramRevelation(64卦+合解引擎) / XiaoLiuRenData(六宫)
+│   │   └── components/      # YarrowCanvas / YarrowResultPanel / XiaoLiuRen三件套
 │   ├── settings/            # 设置页
 │   ├── navigation/          # NavGraph 路由
 │   ├── components/          # 通用组件
@@ -252,12 +258,43 @@ app/src/main/java/com/example/karma/
 ```bash
 ./gradlew assembleDebug          # 调试构建
 ./gradlew installDebug           # 安装到设备
-# APK 输出: app/build/outputs/apk/debug/Karma-v3.2.apk
+# APK 输出: app/build/outputs/apk/debug/Karma-v3.3.apk
 ```
 
 ---
 
 ## 📜 版本更新记录
+
+### v3.3 — 小六壬占卜 + 大衍筮法启示
+
+**新增**
+
+**小六壬占卜（完整功能）**
+- 传统掌诀占卜（马前课）：月+日+时辰 → 六宫掐指推算吉凶
+- 双输入模式：传统农历（月/日/时辰下拉选择）和任意数字（三个正整数），Toggle 切换
+- 三柱六宫 Canvas：三根中华风格柱子（AI 生成图片 + Canvas 文本叠加），每柱分上下两段对应六宫，背景漂浮金色粒子
+- 移动光点 + 虚幻拖尾动画：金色光点沿掐指路径顺时针游走，尾部留下 40 帧渐变消失的幻影轨迹，7 秒完成推算
+- 古卷轴风格结果卡：宫名（42sp 大字）、吉凶徽章（绿/红色底）、五行·方位·六神、五项启示（运势/财富/感情/事业/健康）、口诀原文
+- 六宫完整启示数据（硬编码传统文化知识，约 3KB）
+- 公历→农历自动转换（Android ICU ChineseCalendar，API 24+），支持当前时辰自动填充
+- 动画分阶段状态机：IDLE → COUNTING_MONTH → MONTH_PAUSE → COUNTING_DAY → DAY_PAUSE → COUNTING_HOUR → RESULT_GLOW → COMPLETE
+
+**大衍筮法启示显示**
+- 64 卦完整启示库（每卦含卦名、总纲、盛衰系数、趋势、上下卦五行、六爻精解），按伏羲先天序索引
+- Canvas 手绘六爻：阳爻一整条金色圆角线，阴爻中间留缺口，正方形布局，本卦｜变卦左右双栏
+- 体用生克合解引擎：五行循环生克（外力助我/制我/我在付出/掌控/内外同步）+ 盛衰差值趋势演算（5 级）
+- 启示展示分四块：主变卦信息 + 卦象总纲 + 六爻精解（动爻 ★ 高亮）+ 变卦指向总结
+- 动爻自动翻转生成变卦（老阴→阳，老阳→阴）
+- 卦库 load/release 模式：点击开始占卜时加载 64 卦数据（~50KB），完成/离开后释放，避免非占卜期间占用内存
+
+**优化**
+- 大衍筮法 ViewModel 仅在 tab 1 选中时懒加载（`viewModel()` 在 `when` 分支内部创建），切换 tab 自动释放
+- HexagramLibrary 双重检查锁定确保线程安全
+- 小六壬 Canvas 动画响应阶段切换，光点/拖尾/光环生命周期独立管理
+
+**修复**
+- HexagramLibrary 初始化 `ClassCastException`（`Array<HexagramRevelation?>.toList()` 无法强转 `Array<HexagramRevelation>`，改为直接校验 `data` 后强转）
+- `Trigram.name` 与 `Enum.name` 冲突 → 重命名为 `label`
 
 ### v3.2 — 灵活阶位与交互体验全面提升
 
