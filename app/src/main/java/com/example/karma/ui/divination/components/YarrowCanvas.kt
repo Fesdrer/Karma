@@ -275,42 +275,50 @@ fun YarrowCanvas(
                 }
             }
 
-            // ── MERGING：a中所有合并在一起排列在中间 ──
+            // ── MERGING：a中所有重叠到中间点，然后向左右两边散开 ──
             YarrowPhase.MERGING -> {
                 val toXs = row(n, stX(n))
-                // 从散开位置汇聚到中央
-                for (i in 0 until n) {
-                    val fromX = cx + (toXs[i] - cx) * (1.5f - p * 0.5f)
-                    vs(lerp(fromX, toXs[i], p), wTop, wBot)
+                // 从STORING末尾位置：工作策在mergedX(中央)。collected已移入b。
+                // 段1 (0→0.5): 所有策汇聚到中心点重叠
+                // 段2 (0.5→1): 从中心点向两边散开到均匀排列
+                if (p < 0.5f) {
+                    val p1 = p / 0.5f
+                    // 工作策从当前位置汇聚到中心
+                    val fromWork = row(n, stX(n))
+                    for (i in 0 until n) vs(lerp(fromWork[i], cx, p1), wTop, wBot)
+                } else {
+                    val p2 = (p - 0.5f) / 0.5f
+                    for (i in 0 until n) vs(lerp(cx, toXs[i], p2), wTop, wBot)
                 }
             }
 
-            // ── LINE_END：b中所有元素移动到a中，49个排列在中间 ──
+            // ── LINE_END：b→中心重叠, a→中心重叠, 全体向左右散开 ──
             YarrowPhase.LINE_END -> {
-                val workN = n - collected      // a中剩余工作策数
-                val bTotal = 49 - workN         // b区总策数
+                val workN = n - collected
+                val bTotal = 49 - workN
                 val all49 = row(49, stX(49))
-
-                // bFrom: b区策在colY的当前位置
                 val bFrom = row(bTotal, lx + sw / 2f)
-                // workFrom: 工作策在STORING结束时的位置（合并后的中央）
                 val workFrom = row(workN, stX(workN))
 
-                if (p < 0.6f) {
-                    val p1 = p / 0.6f
+                if (p < 0.33f) {
+                    // 段1: b中所有元素移动到第一行的中间，并重叠在中间点
+                    val p1 = p / 0.33f
                     for (i in 0 until workN) vs(workFrom[i], wTop, wBot)
                     for (i in 0 until bTotal) {
-                        val x = lerp(bFrom[i], all49[workN + i], p1)
+                        val x = lerp(bFrom[i], cx, p1)
                         val y = lerp(colY, wCY, p1)
                         vs(x, lerp(colY - sh / 2f, wTop, p1), lerp(colY + sh / 2f, wBot, p1), 0.5f)
                     }
+                } else if (p < 0.66f) {
+                    // 段2: a中所有元素移动中间，并重叠在中间点
+                    val p2 = (p - 0.33f) / 0.33f
+                    for (i in 0 until workN) vs(lerp(workFrom[i], cx, p2), wTop, wBot)
+                    // b已全部重叠在cx(中心点)，保持不动
+                    for (i in 0 until bTotal) vs(cx, wTop, wBot, 0.5f)
                 } else {
-                    val p2 = (p - 0.6f) / 0.4f
-                    // 从散开位置汇聚到均匀
-                    for (i in 0 until 49) {
-                        val fromX = cx + (all49[i] - cx) * (1.3f - p2 * 0.3f)
-                        vs(lerp(fromX, all49[i], p2), wTop, wBot)
-                    }
+                    // 段3: b→a(已在中心), a中所有元素向左右两边散开
+                    val p3 = (p - 0.66f) / 0.34f
+                    for (i in 0 until 49) vs(lerp(cx, all49[i], p3), wTop, wBot)
                 }
             }
 
