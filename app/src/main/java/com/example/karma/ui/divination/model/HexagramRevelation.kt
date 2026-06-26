@@ -118,8 +118,30 @@ object IntegrationEngine {
 
 object HexagramLibrary {
 
-    /** 按伏羲序（下卦*8+上卦）索引 */
-    private val hexagrams: Array<HexagramRevelation> = initHexagrams()
+    /** 按伏羲序（下卦*8+上卦）索引。null 表示未加载，调用 ensureLoaded() 后填充 */
+    @Volatile
+    private var hexagrams: Array<HexagramRevelation>? = null
+
+    /** 确保卦库已加载（幂等，线程安全）。在占卜开始时调用。 */
+    fun ensureLoaded() {
+        if (hexagrams == null) {
+            synchronized(this) {
+                if (hexagrams == null) {
+                    hexagrams = initHexagrams()
+                }
+            }
+        }
+    }
+
+    /** 释放卦库内存。在占卜结束后调用。 */
+    fun release() {
+        synchronized(this) {
+            hexagrams = null
+        }
+    }
+
+    private fun loaded(): Array<HexagramRevelation> =
+        hexagrams ?: throw IllegalStateException("HexagramLibrary not loaded, call ensureLoaded() first")
 
     /**
      * 从六爻二进制值获取卦象
@@ -127,7 +149,7 @@ object HexagramLibrary {
      */
     fun getByBinary(binaryValue: Int): HexagramRevelation {
         require(binaryValue in 0..63)
-        return hexagrams[binaryValue]
+        return loaded()[binaryValue]
     }
 
     /** 从六条阴阳爻获取卦象 */

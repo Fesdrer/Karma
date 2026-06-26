@@ -45,8 +45,9 @@ class YarrowViewModel : ViewModel() {
     private val _uiState = MutableStateFlow(YarrowUiState())
     val uiState: StateFlow<YarrowUiState> = _uiState.asStateFlow()
 
-    // 用户点击 → 算num/ln/rn → 开始SPLITTING
+    // 用户点击 → 加载卦库 → 开始SPLITTING
     fun startDivination() {
+        HexagramLibrary.ensureLoaded()
         _uiState.update { if (it.phase == YarrowPhase.WAITING) it.copy(phase = YarrowPhase.INTRO) else it }
     }
 
@@ -127,7 +128,15 @@ class YarrowViewModel : ViewModel() {
         }
     }
 
-    fun reset() { _uiState.value = YarrowUiState(phase = YarrowPhase.WAITING) }
+    fun reset() {
+        HexagramLibrary.release()
+        _uiState.value = YarrowUiState(phase = YarrowPhase.WAITING)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        HexagramLibrary.release()
+    }
 
     class Factory : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
