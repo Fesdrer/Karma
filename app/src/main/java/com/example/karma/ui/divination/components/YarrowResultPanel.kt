@@ -121,14 +121,18 @@ fun YarrowResultPanel(
 
                 Spacer(Modifier.height(12.dp))
 
-                // ===== 第三块：六爻精解 =====
+                // ===== 第三块：六爻精解（上爻→初爻，自上而下） =====
                 SectionBorder {
                     Column {
                         val movingSet = result.movingLines.toSet()
-                        Text("【六爻精解】（★为动爻，重点关注）", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Gold)
+                        val header = if (movingSet.isEmpty()) "【六爻精解】（静卦，无动爻）"
+                                     else "【六爻精解】（★为动爻，重点关注）"
+                        Text(header, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Gold)
                         Spacer(Modifier.height(8.dp))
-                        for (i in 0..5) {
-                            val isMoving = movingSet.contains(i + 1)
+                        // 从上爻(5)到初爻(0)，匹配卦象图中上爻在上、初爻在下的视觉方向
+                        for (i in 5 downTo 0) {
+                            val yaoIndex = i + 1  // 1-based: 1=初爻..6=上爻
+                            val isMoving = movingSet.contains(yaoIndex)
                             val star = if (isMoving) " ★" else ""
                             val revText = primary.revelations.getOrElse(i) { "" }
                             Row(
@@ -149,9 +153,13 @@ fun YarrowResultPanel(
                 Spacer(Modifier.height(12.dp))
 
                 // ===== 第四块：变卦指向总结 =====
+                val noChange = result.movingLines.isEmpty()
                 SectionBorder {
                     Text(
-                        text = "【变卦指向】变卦为${transformed.fullName}，提示最终外部环境将趋于${transformed.trend}，建议结合上述动爻焦点，权衡进退。",
+                        text = if (noChange)
+                            "【变卦指向】此卦无动爻，以静卦为断。本卦即是全部答案，当前气场维持${transformed.trend}态势，宜守不宜变。"
+                        else
+                            "【变卦指向】变卦为${transformed.fullName}，提示最终外部环境将趋于${transformed.trend}，建议结合上述动爻焦点，权衡进退。",
                         fontSize = 14.sp,
                         color = TextPrimary,
                         lineHeight = 22.sp,
@@ -178,15 +186,18 @@ fun YarrowResultPanel(
 
 // ==================== 子组件 ====================
 
-/** 从三画卦的数值值转换为六爻阴阳列表（下到上） */
+/** 从三画卦的伏羲先天序值转换为六爻阴阳列表（下到上）
+ * 伏羲序中 巽=3/震=4 与爻画二进制值(巽=4/震=3)交换，需要映射 */
 private fun trigramValueToLines(lowerVal: Int, upperVal: Int): List<Boolean> {
+    val lowerBin = Trigram.valueToYaoBinary(lowerVal)   // 伏羲序 → 爻画二进制
+    val upperBin = Trigram.valueToYaoBinary(upperVal)
     return listOf(
-        (lowerVal and 0b001) != 0,   // 初爻
-        (lowerVal and 0b010) != 0,   // 二爻
-        (lowerVal and 0b100) != 0,   // 三爻
-        (upperVal and 0b001) != 0,   // 四爻
-        (upperVal and 0b010) != 0,   // 五爻
-        (upperVal and 0b100) != 0,   // 上爻
+        (lowerBin and 0b001) != 0,   // 初爻
+        (lowerBin and 0b010) != 0,   // 二爻
+        (lowerBin and 0b100) != 0,   // 三爻
+        (upperBin and 0b001) != 0,   // 四爻
+        (upperBin and 0b010) != 0,   // 五爻
+        (upperBin and 0b100) != 0,   // 上爻
     )
 }
 

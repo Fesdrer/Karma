@@ -19,6 +19,17 @@ enum class Trigram(val value: Int, val label: String, val element: String, val u
         /** 从伏羲数值 0-7 映射到枚举 */
         private val map = entries.associateBy { it.value }
         fun fromValue(v: Int): Trigram = map[v]!!
+
+        // 爻画二进制（bit0=初爻,bit1=二爻,bit2=三爻）→ 伏羲序值
+        // 巽 binary=0b100=4 ↔ 伏羲序3，震 binary=0b011=3 ↔ 伏羲序4，其余相同
+        private val yaoToXianTian = intArrayOf(0, 1, 2, 4, 3, 5, 6, 7)
+        private val xianTianToYao = intArrayOf(0, 1, 2, 4, 3, 5, 6, 7)
+
+        /** 爻画二进制值 → 伏羲先天序值 */
+        fun yaoBinaryToValue(b: Int): Int = yaoToXianTian[b and 7]
+
+        /** 伏羲先天序值 → 爻画二进制值 */
+        fun valueToYaoBinary(v: Int): Int = xianTianToYao[v and 7]
     }
 }
 
@@ -146,10 +157,16 @@ object HexagramLibrary {
     /**
      * 从六爻二进制值获取卦象
      * @param binaryValue 0-63，从下到上：bit0=初爻  ... bit5=上爻（1为阳，0为阴）
+     *                    低3位=下卦值，高3位=上卦值，数据按 下卦*8+上卦 索引
      */
     fun getByBinary(binaryValue: Int): HexagramRevelation {
         require(binaryValue in 0..63)
-        return loaded()[binaryValue]
+        // 爻画二进制 → 伏羲先天序值（巽3/震4 映射与非映射不同）
+        val lowerBin = binaryValue and 0b111               // bits 0-2
+        val upperBin = (binaryValue shr 3) and 0b111        // bits 3-5
+        val lower = Trigram.yaoBinaryToValue(lowerBin)      // 伏羲序
+        val upper = Trigram.yaoBinaryToValue(upperBin)      // 伏羲序
+        return loaded()[lower * 8 + upper]
     }
 
     /** 从六条阴阳爻获取卦象 */

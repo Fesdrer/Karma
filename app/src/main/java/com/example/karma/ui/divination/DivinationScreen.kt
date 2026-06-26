@@ -165,6 +165,38 @@ fun DivinationScreen(
                         onPhaseComplete = yv::advancePhase,
                         modifier = Modifier.fillMaxSize().padding(bottom = 52.dp),
                     )
+                    // 十八变完成后，显示神圣"查看启示"按钮
+                    if (ys.phase == YarrowPhase.REVELATION_READY && ys.result != null) {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(
+                                    text = "✨ 大衍之数五十，其用四十有九 ✨",
+                                    fontSize = 16.sp,
+                                    color = Color(0xFFFFD700),
+                                    fontWeight = FontWeight.Bold,
+                                )
+                                Spacer(Modifier.height(16.dp))
+                                Button(
+                                    onClick = { yv.showRevelation() },
+                                    shape = RoundedCornerShape(16.dp),
+                                    colors = ButtonDefaults.buttonColors(
+                                        containerColor = Color(0xFFb8860b),
+                                        contentColor = Color.White,
+                                    ),
+                                    modifier = Modifier.height(56.dp).padding(horizontal = 16.dp),
+                                ) {
+                                    Text(
+                                        "🔮 查看启示",
+                                        fontSize = 20.sp,
+                                        fontWeight = FontWeight.Bold,
+                                    )
+                                }
+                            }
+                        }
+                    }
                     if (ys.showResult && ys.result != null) {
                         YarrowResultPanel(result = ys.result!!, onRetry = yv::reset)
                     }

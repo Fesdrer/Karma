@@ -91,7 +91,7 @@ fun YarrowCanvas(
                 topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
         }
         // === b 区历史 ===
-        if (state.bSize > 0 && state.phase != YarrowPhase.LINE_END && state.phase != YarrowPhase.COMPLETE) {
+        if (state.bSize > 0 && state.phase != YarrowPhase.LINE_END && state.phase != YarrowPhase.COMPLETE && state.phase != YarrowPhase.REVELATION_READY) {
             row(state.bSize, lx + sw / 2f).forEach { vs(it, colY - sh / 2f, colY + sh / 2f, 0.35f) }
         }
 
@@ -367,7 +367,7 @@ fun YarrowCanvas(
                 }
             }
 
-            YarrowPhase.COMPLETE -> {}
+            YarrowPhase.COMPLETE, YarrowPhase.REVELATION_READY -> {}
         }
 
         // === 爻线 ===

@@ -3,7 +3,8 @@
     "allow": [
       "Bash(./gradlew assembleDebug)",
       "Bash(./gradlew :app:compileDebugKotlin)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(node -e *)"
     ]
   }
 }

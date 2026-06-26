@@ -24,7 +24,8 @@ enum class YarrowPhase {
     FLASH_GROUPS,       // 每组4根闪出扩散型红光
     MERGING,            // T<=2: a合并居中
     LINE_END,           // T=3: 画爻, b→a, 49居中
-    COMPLETE,
+    REVELATION_READY,   // 18变完成，等待用户点击"查看启示"
+    COMPLETE,           // 启示面板已显示
 }
 
 data class YarrowUiState(
@@ -90,12 +91,12 @@ class YarrowViewModel : ViewModel() {
                         // 计算卦象启示
                         val primary = HexagramLibrary.fromHexagramLines(newLines)
                         val movingIndices = newLines.mapIndexedNotNull { idx, ln ->
-                            if (ln.isChanging) idx + 1 else null  // 1-based: 1=初爻
+                            if (ln.isChanging) idx + 1 else null  // 1-based: 1=初爻..6=上爻
                         }
-                        // 变卦：动爻阴阳翻转
+                        // 变卦：动爻阴阳翻转（无动爻则变卦=本卦）
                         val transformedLines = newLines.map { ln ->
                             if (ln.isChanging) HexagramLine(
-                                value = if (ln.value == 6) 8 else 7,  // 老阴变少阴，老阳变少阳
+                                value = if (ln.value == 6) 8 else 7,  // 老阴→少阳，老阳→少阴
                                 isYang = !ln.isYang,
                                 isChanging = false
                             ) else ln
@@ -109,12 +110,14 @@ class YarrowViewModel : ViewModel() {
                             movingLines = movingIndices,
                             integration = integration,
                         )
-                        s.copy(lines = newLines, phase = YarrowPhase.COMPLETE,
-                            showResult = true, result = result)
+                        // 18变完成，等待用户点击"查看启示"
+                        s.copy(lines = newLines, phase = YarrowPhase.REVELATION_READY,
+                            result = result)
                     } else {
                         s.copy(lines = newLines, phase = YarrowPhase.LINE_END, bSize = 0)
                     }
                 }
+                YarrowPhase.REVELATION_READY -> s  // 等待用户点击"查看启示"按钮
                 YarrowPhase.MERGING -> {
                     s.copy(phase = YarrowPhase.IDLE, changeNumber = s.changeNumber + 1)
                 }
@@ -131,6 +134,12 @@ class YarrowViewModel : ViewModel() {
     fun reset() {
         HexagramLibrary.release()
         _uiState.value = YarrowUiState(phase = YarrowPhase.WAITING)
+    }
+
+    /** 用户点击"查看启示"按钮 */
+    fun showRevelation() {
+        _uiState.update { if (it.phase == YarrowPhase.REVELATION_READY) it.copy(
+            showResult = true, phase = YarrowPhase.COMPLETE) else it }
     }
 
     override fun onCleared() {
