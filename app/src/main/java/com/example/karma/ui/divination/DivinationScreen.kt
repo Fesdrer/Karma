@@ -66,11 +66,7 @@ fun DivinationScreen(
     val xlrState by xlrViewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // 大衍筮法 ViewModel（tab 1）
-    val yarrowViewModel: YarrowViewModel = viewModel(
-        factory = YarrowViewModel.Factory()
-    )
-    val yarrowState by yarrowViewModel.uiState.collectAsState()
+    // 大衍筮法 ViewModel（在 tab 1 内部懒加载，避免影响其他 tab）
 
     // 小六壬错误 Toast
     LaunchedEffect(xlrState.errorMessage) {
@@ -156,22 +152,21 @@ fun DivinationScreen(
                 }
             }
             1 -> {
-                // 大衍筮法
+                // 大衍筮法 — ViewModel 在此内部创建，切换 tab 后自动释放
+                val yv: YarrowViewModel = viewModel(factory = YarrowViewModel.Factory())
+                val ys by yv.uiState.collectAsState()
                 Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
                     YarrowCanvas(
-                        state = yarrowState,
+                        state = ys,
                         onUserTap = { num ->
-                            if (yarrowState.phase == YarrowPhase.WAITING) yarrowViewModel.startDivination()
-                            else yarrowViewModel.onSplitTap(num)
+                            if (ys.phase == YarrowPhase.WAITING) yv.startDivination()
+                            else yv.onSplitTap(num)
                         },
-                        onPhaseComplete = yarrowViewModel::advancePhase,
+                        onPhaseComplete = yv::advancePhase,
                         modifier = Modifier.fillMaxSize().padding(bottom = 52.dp),
                     )
-                    if (yarrowState.showResult && yarrowState.result != null) {
-                        YarrowResultPanel(
-                            result = yarrowState.result!!,
-                            onRetry = yarrowViewModel::reset,
-                        )
+                    if (ys.showResult && ys.result != null) {
+                        YarrowResultPanel(result = ys.result!!, onRetry = yv::reset)
                     }
                 }
             }

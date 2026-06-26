@@ -13,7 +13,6 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
@@ -278,11 +277,12 @@ fun YarrowCanvas(
 
             // ── MERGING：a中所有合并在一起排列在中间 ──
             YarrowPhase.MERGING -> {
-                // n已被advancePhase减过collected，就是剩余工作策数
                 val toXs = row(n, stX(n))
-                val lw2 = num - ln; val rw2 = n - lw2
-                val fromXs = row(n, stX(n))
-                for (i in 0 until n) vs(lerp(fromXs[i], toXs[i], p), wTop, wBot)
+                // 从散开位置汇聚到中央
+                for (i in 0 until n) {
+                    val fromX = cx + (toXs[i] - cx) * (1.5f - p * 0.5f)
+                    vs(lerp(fromX, toXs[i], p), wTop, wBot)
+                }
             }
 
             // ── LINE_END：b中所有元素移动到a中，49个排列在中间 ──
@@ -306,7 +306,11 @@ fun YarrowCanvas(
                     }
                 } else {
                     val p2 = (p - 0.6f) / 0.4f
-                    for (i in 0 until 49) vs(lerp(all49[i] + (all49[i] - cx) * (1f - p2), all49[i], p2), wTop, wBot)
+                    // 从散开位置汇聚到均匀
+                    for (i in 0 until 49) {
+                        val fromX = cx + (all49[i] - cx) * (1.3f - p2 * 0.3f)
+                        vs(lerp(fromX, all49[i], p2), wTop, wBot)
+                    }
                 }
             }
 
