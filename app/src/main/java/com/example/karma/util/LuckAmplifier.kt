@@ -1,0 +1,159 @@
+package com.example.karma.util
+
+import com.example.karma.data.local.entity.HistoryEntryEntity
+import kotlin.math.abs
+import kotlin.math.exp
+import kotlin.math.sqrt
+
+/**
+ * 运气增幅值计算器。
+ *
+ * 公式：运气 = [K + c ∫₀ᵀ K'·e^{-at²} dt] / b
+ *
+ * 其中：
+ * - K  = 总业力 (totalScore)
+ * - K' = K 对时间 t（距现在的天数）的导数，分段恒定
+ * - a  = 9/(2T²)
+ * - c  = W / (10 · ∫₀¹ e^{-at²} dt)
+ * - b  = 普通好事分值
+ *
+ * K 在记录间线性变化（折线），K' 分段恒定（取前向时间导数 dK/dτ）。
+ * 积分只算到 T 天前，再往前 e^{-at²} 近似为 0，可忽略。
+ *
+ * 数学推导（τ=前向时间，t=τ_now-τ=距今天数，K'=dK/dt=-dK/dτ）：
+ *   原式 = ∫₀ᵀ K'(t)·e^{-at²} dt
+ *        = ∫₀ᵀ (-dK/dτ)·e^{-at²} dt = -∫ (dK/dτ)·e^{-at²}·(-dτ)   [dt=-dτ]
+ *        = ∫_{τ_now-T}^{τ_now} (dK/dτ)·e^{-a(τ_now-τ)²} dτ          [负负得正]
+ *   → 离散：Σ (K_new-K_old)/(τ_new-τ_old) · ∫_{t_new}^{t_old} e^{-at²} dt
+ */
+object LuckAmplifier {
+
+    /** 一天对应的毫秒数 */
+    private const val MS_PER_DAY: Double = 24.0 * 60.0 * 60.0 * 1000.0
+
+    // ============================================================
+    // erf(x) — Abramowitz & Stegun 7.1.26 近似
+    // 最大误差 < 1.5×10⁻⁷
+    // ============================================================
+
+    private const val ERF_P  = 0.3275911
+    private const val ERF_A1 =  0.254829592
+    private const val ERF_A2 = -0.284496736
+    private const val ERF_A3 =  1.421413741
+    private const val ERF_A4 = -1.453152027
+    private const val ERF_A5 =  1.061405429
+
+    /**
+     * 误差函数 erf(x) = 2/√π ∫₀ˣ e^{-u²} du
+     */
+    fun erf(x: Double): Double {
+        val sign = if (x >= 0) 1.0 else -1.0
+        val ax = abs(x)
+        val t = 1.0 / (1.0 + ERF_P * ax)
+        val t2 = t * t
+        val t3 = t2 * t
+        val t4 = t3 * t
+        val t5 = t4 * t
+        val poly = ERF_A1 * t + ERF_A2 * t2 + ERF_A3 * t3 + ERF_A4 * t4 + ERF_A5 * t5
+        return sign * (1.0 - poly * exp(-ax * ax))
+    }
+
+    // ============================================================
+    // ∫_{from}^{to} e^{-a·t²} dt
+    // ============================================================
+
+    /**
+     * 计算定积分 ∫_{from}^{to} e^{-a·t²} dt
+     *
+     * 解析解：√π/(2√a) · [erf(√a·to) - erf(√a·from)]
+     */
+    fun integralExpMinusAt2(a: Double, from: Double, to: Double): Double {
+        if (from >= to) return 0.0
+        if (a <= 0.0) return to - from  // 退化为矩形面积
+
+        val sqrtA = sqrt(a)
+        val coeff = sqrt(Math.PI) / (2.0 * sqrtA)
+        return coeff * (erf(sqrtA * to) - erf(sqrtA * from))
+    }
+
+    // ============================================================
+    // 运气增幅值计算
+    // ============================================================
+
+    /**
+     * 计算运气增幅值。
+     *
+     * @param totalScore     当前总业力 K
+     * @param historyEntries 全部历史记录（按 timestamp ASC 排序）
+     * @param T              T 天（参数：多少天后行为只通过总和影响）
+     * @param b              b 分（参数：普通好事分值）
+     * @param W              W 分（参数：最近一天降10分对应总分多少）
+     * @return 运气增幅值，保留两位小数
+     */
+    fun computeLuckAmplification(
+        totalScore: Float,
+        historyEntries: List<HistoryEntryEntity>,
+        T: Float,
+        b: Float,
+        W: Float,
+    ): Float {
+        // b ≤ 0 防护
+        if (b <= 0f) return totalScore
+        // 无记录或仅一条记录：无 K' 可算，integral = 0
+        if (historyEntries.size < 2) {
+            return roundTo2(totalScore.toDouble() / b.toDouble())
+        }
+
+        // 1. 计算 a、c
+        val a = 9.0 / (2.0 * T * T)
+        val cDenom = integralExpMinusAt2(a, 0.0, 1.0)   // ∫₀¹ e^{-at²} dt
+        val c = W.toDouble() / (10.0 * cDenom)
+
+        // 2. 以最后一条记录时间为"现在"（t=0），计算每条记录距现在的天数
+        val lastTimestamp = historyEntries.last().timestamp
+        data class Point(val tDays: Double, val karma: Float)
+
+        val points = historyEntries.map { entry ->
+            val tDays = (lastTimestamp - entry.timestamp) / MS_PER_DAY
+            Point(tDays, entry.totalAfter)
+        }.filter { it.tDays <= T.toDouble() }  // 只保留 T 天以内的
+
+        if (points.size < 2) {
+            return roundTo2(totalScore.toDouble() / b.toDouble())
+        }
+
+        // 3. 同 t 的记录塌缩为最终 K 值，然后按 t 升序排列
+        val sorted = points
+            .groupBy { it.tDays }
+            .map { (t, pts) -> Point(t, pts.last().karma) }
+            .sortedBy { it.tDays }
+
+        // 4. 逐段积分
+        var totalIntegral = 0.0
+        for (i in 0 until sorted.size - 1) {
+            val pI = sorted[i]      // 较新（t 较小）
+            val pJ = sorted[i + 1]  // 较旧（t 较大）
+
+            val dt = pJ.tDays - pI.tDays
+            if (dt <= 0.0) continue
+
+            val dK = pI.karma - pJ.karma          // ΔK（前向：K_new - K_old）
+            val kPrime = dK.toDouble() / dt        // K' = dK/dτ（前向时间导数）
+
+            val segIntegral = integralExpMinusAt2(a, pI.tDays, pJ.tDays)
+            totalIntegral += kPrime * segIntegral
+        }
+
+        // 5. 运气 = (K + c·integral) / b
+        val luck = (totalScore.toDouble() + c * totalIntegral) / b.toDouble()
+        return roundTo2(luck)
+    }
+
+    // ============================================================
+    // 辅助
+    // ============================================================
+
+    private fun roundTo2(value: Double): Float {
+        return (kotlin.math.round(value * 100.0) / 100.0).toFloat()
+    }
+}

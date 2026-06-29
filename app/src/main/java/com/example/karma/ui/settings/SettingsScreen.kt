@@ -58,6 +58,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
+import com.example.karma.util.LuckAmplifier
 import com.example.karma.ui.theme.BorderSubtle
 import kotlin.math.abs
 import kotlinx.coroutines.launch
@@ -145,6 +146,7 @@ fun SettingsScreen(
             EventSettingsCard(draft = draft, viewModel = viewModel)
             HistorySettingsCard(draft = draft, viewModel = viewModel)
             DecaySettingsCard(draft = draft, viewModel = viewModel)
+            LuckSettingsCard(draft = draft, viewModel = viewModel)
             ResetCard(viewModel = viewModel)
         }
     }
@@ -504,6 +506,125 @@ private fun DecaySettingsCard(
             fontSize = 12.sp,
             color = TextMuted,
         )
+    }
+}
+
+// ============================================================
+// LuckSettingsCard — 运气增幅
+// ============================================================
+
+@Composable
+private fun LuckSettingsCard(
+    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
+    viewModel: SettingsViewModel,
+) {
+    SettingsCard("运气增幅") {
+        // 总开关
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("启用运气增幅", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Switch(
+                checked = draft.luckEnabled,
+                onCheckedChange = { viewModel.updateLuckEnabled(it) },
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedThumbColor = Gold,
+                    checkedTrackColor = Gold.copy(alpha = 0.3f),
+                ),
+            )
+        }
+
+        if (draft.luckEnabled) {
+            Spacer(Modifier.height(12.dp))
+
+            // T — 天数（多少天后只通过总和影响）
+            Text("你觉得多少天以后的行为只能通过总和影响？", fontSize = 13.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            OutlinedTextField(
+                value = draft.luckT.toInt().toString(),
+                onValueChange = { v ->
+                    v.toFloatOrNull()?.let {
+                        if (it >= 1f && it <= 365f) viewModel.updateLuckT(it)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Gold,
+                    unfocusedBorderColor = BorderSubtle,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                ),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // b — 普通好事分值
+            Text("你觉得做一件普通的好事值多少分？", fontSize = 13.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            OutlinedTextField(
+                value = formatFloat(draft.luckB),
+                onValueChange = { v ->
+                    v.toFloatOrNull()?.let {
+                        if (it >= 0.1f && it <= 100f) viewModel.updateLuckB(it)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Gold,
+                    unfocusedBorderColor = BorderSubtle,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                ),
+            )
+
+            Spacer(Modifier.height(12.dp))
+
+            // W — 对应总分
+            Text("你觉得最近一天下降 10 分，对应总的多少分？", fontSize = 13.sp, color = TextSecondary)
+            Spacer(Modifier.height(4.dp))
+            OutlinedTextField(
+                value = formatFloat(draft.luckW),
+                onValueChange = { v ->
+                    v.toFloatOrNull()?.let {
+                        if (it >= 1f && it <= 1000f) viewModel.updateLuckW(it)
+                    }
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodyMedium,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = Gold,
+                    unfocusedBorderColor = BorderSubtle,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                ),
+            )
+
+            // 导出参数 a、c（只读）
+            Spacer(Modifier.height(12.dp))
+            val aVal = 9.0 / (2.0 * draft.luckT * draft.luckT)
+            val cIntegral = LuckAmplifier.integralExpMinusAt2(aVal, 0.0, 1.0)
+            val cVal = draft.luckW.toDouble() / (10.0 * cIntegral)
+            Text(
+                "a = ${String.format("%.6f", aVal)}    c = ${String.format("%.4f", cVal)}",
+                fontSize = 11.sp,
+                color = TextMuted,
+            )
+            Text(
+                "运气 = (总业力 + c × 近期波动积分) ÷ b",
+                fontSize = 11.sp,
+                color = TextMuted,
+            )
+        }
     }
 }
 

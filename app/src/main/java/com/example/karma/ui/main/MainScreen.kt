@@ -65,6 +65,7 @@ fun MainScreen(
                 totalScore = state.totalScore,
                 rank = state.rank,
                 ranks = state.ranks,
+                luckValue = state.luckValue,
             )
 
             Spacer(Modifier.height(12.dp))

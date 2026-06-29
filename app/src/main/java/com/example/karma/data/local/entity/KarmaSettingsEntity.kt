@@ -54,4 +54,10 @@ data class KarmaSettingsEntity(
 
     val rankThresholds: List<Float> = listOf(10f, 30f, 60f, 100f, 150f, 210f, 280f, 360f),
     val rankNames: List<String> = listOf("壹阶", "贰阶", "叁阶", "肆阶", "伍阶", "陆阶", "柒阶", "捌阶", "玖阶"),
+
+    // ===== 运气增幅 =====
+    val luckEnabled: Boolean = false,
+    val luckT: Float = 7f,
+    val luckB: Float = 1f,
+    val luckW: Float = 100f,
 )

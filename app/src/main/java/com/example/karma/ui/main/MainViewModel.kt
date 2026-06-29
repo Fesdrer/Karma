@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.karma.data.model.Rank
 import com.example.karma.data.repository.KarmaRepository
+import com.example.karma.util.LuckAmplifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -42,6 +43,8 @@ data class MainUiState(
     val message: String? = null,
     // ===== 计时可用（直接判断源 flow，绕过 combine 链延迟） =====
     val hasScoreAndEvent: Boolean = false,
+    // ===== 运气增幅 =====
+    val luckValue: Float? = null,
 )
 
 class MainViewModel(
@@ -77,12 +80,23 @@ class MainViewModel(
 
     val uiState: StateFlow<MainUiState> = combine(
         repository.settings,
+        repository.allHistory,
         _selectedPair,
         _message,
         _timerEnabled,
-    ) { settings, selection, msg, timerEnabled ->
+    ) { settings, history, selection, msg, timerEnabled ->
         // 缓存善果列表供 onConfirm 使用
         _currentGoodResultPresets = settings.goodResultPresets
+        // 运气增幅值：内联计算，避免二次 DB 读取
+        val luckValue = if (settings.luckEnabled) {
+            LuckAmplifier.computeLuckAmplification(
+                totalScore = settings.totalScore,
+                historyEntries = history,
+                T = settings.luckT,
+                b = settings.luckB,
+                W = settings.luckW,
+            )
+        } else null
         MainUiState(
             totalScore = settings.totalScore,
             rank = repository.getRank(settings.totalScore, settings),
@@ -112,6 +126,8 @@ class MainViewModel(
             message = msg,
             // _timerEnabled 在每次修改选择时同步更新，是 combine 的独立输入源
             hasScoreAndEvent = timerEnabled,
+            // 运气增幅
+            luckValue = luckValue,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
 

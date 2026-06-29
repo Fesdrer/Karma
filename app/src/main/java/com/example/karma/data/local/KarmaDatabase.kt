@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -88,6 +88,15 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN luckEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN luckT REAL NOT NULL DEFAULT 7.0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN luckB REAL NOT NULL DEFAULT 1.0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN luckW REAL NOT NULL DEFAULT 100.0")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -95,7 +104,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

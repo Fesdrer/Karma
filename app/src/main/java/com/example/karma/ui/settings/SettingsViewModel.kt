@@ -203,6 +203,20 @@ class SettingsViewModel(
         setDraft(_draft.value.copy(rankNames = names))
     }
 
+    // ===== 运气增幅 =====
+    fun updateLuckEnabled(v: Boolean) {
+        setDraft(_draft.value.copy(luckEnabled = v))
+    }
+    fun updateLuckT(v: Float) {
+        setDraft(_draft.value.copy(luckT = v))
+    }
+    fun updateLuckB(v: Float) {
+        setDraft(_draft.value.copy(luckB = v))
+    }
+    fun updateLuckW(v: Float) {
+        setDraft(_draft.value.copy(luckW = v))
+    }
+
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {

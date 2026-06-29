@@ -3,9 +3,11 @@ package com.example.karma.ui.main.components
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -27,6 +29,7 @@ fun Header(
     totalScore: Float,
     rank: Rank?,
     ranks: List<Rank> = emptyList(),
+    luckValue: Float? = null,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -34,51 +37,75 @@ fun Header(
             .fillMaxWidth()
             .clip(RoundedCornerShape(12.dp))
             .background(MaterialTheme.colorScheme.surfaceVariant)
-            .padding(horizontal = 14.dp, vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.Center,
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
         ) {
-            Text(
-                text = if (totalScore == totalScore.toInt().toFloat()) {
-                    totalScore.toInt().toString()
-                } else {
-                    String.format("%.1f", totalScore)
-                },
-                fontSize = 28.sp,
-                fontWeight = FontWeight.Bold,
-                color = if (totalScore < 0) {
-                    Color(0xFFff5252)
-                } else {
-                    Color(0xFFffd700)
-                },
-                textAlign = TextAlign.Center,
-            )
-
-            if (rank != null) {
-                Spacer(Modifier.width(10.dp))
-                val totalRanks = ranks.size
-                val textColor = if (totalRanks > 0 && rank.level <= totalRanks * 2 / 3)
-                    Color.White else Color(0xFFffd700)
-                val bgColor = Color(rank.colorHex).copy(alpha = 0.4f)
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
                 Text(
-                    text = rank.name,
-                    fontSize = 14.sp,
+                    text = if (totalScore == totalScore.toInt().toFloat()) {
+                        totalScore.toInt().toString()
+                    } else {
+                        String.format("%.1f", totalScore)
+                    },
+                    fontSize = 28.sp,
                     fontWeight = FontWeight.Bold,
-                    color = textColor,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(bgColor)
-                        .padding(horizontal = 12.dp, vertical = 2.dp),
+                    color = if (totalScore < 0) {
+                        Color(0xFFff5252)
+                    } else {
+                        Color(0xFFffd700)
+                    },
+                    textAlign = TextAlign.Center,
                 )
-            } else if (totalScore < 0) {
-                Spacer(Modifier.width(10.dp))
+
+                if (rank != null) {
+                    Spacer(Modifier.width(10.dp))
+                    val totalRanks = ranks.size
+                    val textColor = if (totalRanks > 0 && rank.level <= totalRanks * 2 / 3)
+                        Color.White else Color(0xFFffd700)
+                    val bgColor = Color(rank.colorHex).copy(alpha = 0.4f)
+                    Text(
+                        text = rank.name,
+                        fontSize = 14.sp,
+                        fontWeight = FontWeight.Bold,
+                        color = textColor,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(20.dp))
+                            .background(bgColor)
+                            .padding(horizontal = 12.dp, vertical = 2.dp),
+                    )
+                } else if (totalScore < 0) {
+                    Spacer(Modifier.width(10.dp))
+                    Text(
+                        text = "—",
+                        fontSize = 12.sp,
+                        color = Color(0xFF888888),
+                    )
+                }
+            }
+
+            // 运气增幅值 — 小字、不喧宾夺主
+            if (luckValue != null) {
+                Spacer(Modifier.height(2.dp))
+                val luckText = if (luckValue >= 0) {
+                    "运气 +" + String.format("%.2f", luckValue)
+                } else {
+                    "运气 " + String.format("%.2f", luckValue)
+                }
                 Text(
-                    text = "—",
+                    text = luckText,
                     fontSize = 12.sp,
-                    color = Color(0xFF888888),
+                    color = when {
+                        luckValue > 0f -> Color(0xFF66bb6a)
+                        luckValue < 0f -> Color(0xFFef5350)
+                        else -> Color(0xFF888888)
+                    },
                 )
             }
         }
