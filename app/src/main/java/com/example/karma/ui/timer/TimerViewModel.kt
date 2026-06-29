@@ -17,8 +17,8 @@ class TimerViewModel(
     fun onStop(elapsedMs: Long, onComplete: (Float) -> Unit) {
         val totalSeconds = elapsedMs / 1000.0
         val totalMinutes = totalSeconds / 60.0
-        // delta = round((minutes / 15 * score) * 2) / 2  即取最近 0.5
-        val product = (totalMinutes / 15.0) * selectedScore
+        // delta = round((minutes / 60 * score) * 2) / 2  即取最近 0.5
+        val product = (totalMinutes / 60.0) * selectedScore
         val rounded = round(product * 2.0) / 2.0
         val delta = rounded.toFloat()
 

@@ -40,6 +40,8 @@ data class MainUiState(
     val guideLineColor: Long = 0xFFFFD700L,
     // ===== 消息 =====
     val message: String? = null,
+    // ===== 计时可用（直接判断源 flow，绕过 combine 链延迟） =====
+    val hasScoreAndEvent: Boolean = false,
 )
 
 class MainViewModel(
@@ -105,6 +107,10 @@ class MainViewModel(
             guideLineWidth = settings.guideLineWidth,
             guideLineColor = settings.guideLineColor,
             message = msg,
+            // 直接读源 StateFlow 值，避免 combine 链延迟导致 UI 判断滞后
+            hasScoreAndEvent = (_customScore.value != null || _selectedScore.value != null) &&
+                    (_customGoodDeedEvent.value != null || _customBadDeedEvent.value != null ||
+                    _customGoodResultEvent.value != null || _selectedEvent.value != null),
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
 
@@ -191,6 +197,14 @@ class MainViewModel(
             _customGoodResultEvent.value = null
         }
     }
+
+    /** 直接读源 StateFlow，获取当前选中分数（绕过 combine 链延迟） */
+    fun getSelectedScore(): Float? = _customScore.value ?: _selectedScore.value
+
+    /** 直接读源 StateFlow，获取当前选中事件（绕过 combine 链延迟） */
+    fun getSelectedEvent(): String? =
+        _customGoodDeedEvent.value ?: _customBadDeedEvent.value
+            ?: _customGoodResultEvent.value ?: _selectedEvent.value
 
     // ★ 清除消息
     fun clearMessage() {

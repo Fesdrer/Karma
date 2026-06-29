@@ -123,11 +123,11 @@ fun MainScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    timerEnabled = state.selectedScore != null && state.selectedEvent != null,
+                    timerEnabled = state.hasScoreAndEvent,
                     selectedScore = state.selectedScore,
                     onStartTimer = {
-                        val s = state.selectedScore ?: return@EventPanel
-                        val e = state.selectedEvent ?: return@EventPanel
+                        val s = viewModel.getSelectedScore() ?: return@EventPanel
+                        val e = viewModel.getSelectedEvent() ?: return@EventPanel
                         onNavigateToTimer(s, e)
                     },
                 )

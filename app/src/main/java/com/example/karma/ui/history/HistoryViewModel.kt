@@ -114,7 +114,10 @@ class HistoryViewModel(
             }
             ViewMode.WEEK -> {
                 cal.timeInMillis = focusDate
-                cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                // 安全计算周一：手动往前推，避免 Calendar.DAY_OF_WEEK.set 在周日上跳到下一周
+                val dow = cal.get(Calendar.DAY_OF_WEEK)
+                val daysFromMonday = if (dow == Calendar.SUNDAY) 6 else dow - Calendar.MONDAY
+                cal.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
                 cal.set(Calendar.HOUR_OF_DAY, 0)
                 cal.set(Calendar.MINUTE, 0)
                 cal.set(Calendar.SECOND, 0)
@@ -245,7 +248,10 @@ class HistoryViewModel(
                 cal.get(Calendar.YEAR), cal.get(Calendar.MONTH) + 1, cal.get(Calendar.DAY_OF_MONTH))
             ViewMode.WEEK -> {
                 val monCal = cal.clone() as Calendar
-                monCal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                // 安全计算周一：手动往前推，避免 Calendar.DAY_OF_WEEK.set 在周日上跳到下一周
+                val dow = monCal.get(Calendar.DAY_OF_WEEK)
+                val daysFromMonday = if (dow == Calendar.SUNDAY) 6 else dow - Calendar.MONDAY
+                monCal.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
                 // 先算周一，再 +6 天得周日，避免 locale 下 SUNDAY 作为一周首日的 bug
                 val sunCal = monCal.clone() as Calendar
                 sunCal.add(Calendar.DAY_OF_MONTH, 6)
