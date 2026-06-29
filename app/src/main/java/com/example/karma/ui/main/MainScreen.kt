@@ -137,7 +137,7 @@ fun MainScreen(
 
             // Footer
             Footer(
-                confirmEnabled = state.selectedScore != null && state.selectedEvent != null,
+                confirmEnabled = state.hasScoreAndEvent,
                 prayerEnabled = state.totalScore >= 30f,
                 onConfirm = { viewModel.onConfirm() },
                 onPrayer = onNavigateToPrayer,

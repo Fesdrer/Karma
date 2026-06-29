@@ -55,6 +55,8 @@ class MainViewModel(
     private val _customBadDeedEvent = MutableStateFlow<String?>(null)
     private val _customGoodResultEvent = MutableStateFlow<String?>(null)
     private val _message = MutableStateFlow<String?>(null)
+    /** 独立状态：是否有选中的分数+事件。每次变更时手动同步，不依赖 combine 链。 */
+    private val _timerEnabled = MutableStateFlow(false)
 
     // 缓存当前善果预设列表，用于 onConfirm 时判断是否加前缀
     private var _currentGoodResultPresets: List<String> = emptyList()
@@ -77,7 +79,8 @@ class MainViewModel(
         repository.settings,
         _selectedPair,
         _message,
-    ) { settings, selection, msg ->
+        _timerEnabled,
+    ) { settings, selection, msg, timerEnabled ->
         // 缓存善果列表供 onConfirm 使用
         _currentGoodResultPresets = settings.goodResultPresets
         MainUiState(
@@ -107,10 +110,8 @@ class MainViewModel(
             guideLineWidth = settings.guideLineWidth,
             guideLineColor = settings.guideLineColor,
             message = msg,
-            // 直接读源 StateFlow 值，避免 combine 链延迟导致 UI 判断滞后
-            hasScoreAndEvent = (_customScore.value != null || _selectedScore.value != null) &&
-                    (_customGoodDeedEvent.value != null || _customBadDeedEvent.value != null ||
-                    _customGoodResultEvent.value != null || _selectedEvent.value != null),
+            // _timerEnabled 在每次修改选择时同步更新，是 combine 的独立输入源
+            hasScoreAndEvent = timerEnabled,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
 
@@ -119,6 +120,7 @@ class MainViewModel(
     fun selectScore(score: Float) {
         _selectedScore.value = score
         _customScore.value = null
+        updateTimerEnabled()
     }
 
     fun selectEvent(event: String) {
@@ -126,6 +128,7 @@ class MainViewModel(
         _customGoodDeedEvent.value = null
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
+        updateTimerEnabled()
     }
 
     fun onCustomScoreChanged(text: String) {
@@ -136,6 +139,7 @@ class MainViewModel(
         } else {
             _customScore.value = null
         }
+        updateTimerEnabled()
     }
 
     fun onCustomGoodDeedEventChanged(text: String) {
@@ -148,6 +152,7 @@ class MainViewModel(
         } else {
             _customGoodDeedEvent.value = null
         }
+        updateTimerEnabled()
     }
 
     fun onCustomBadDeedEventChanged(text: String) {
@@ -160,6 +165,7 @@ class MainViewModel(
         } else {
             _customBadDeedEvent.value = null
         }
+        updateTimerEnabled()
     }
 
     fun onCustomGoodResultEventChanged(text: String) {
@@ -172,6 +178,7 @@ class MainViewModel(
         } else {
             _customGoodResultEvent.value = null
         }
+        updateTimerEnabled()
     }
 
     fun onConfirm() {
@@ -187,21 +194,35 @@ class MainViewModel(
                 || _customGoodResultEvent.value != null
         val event = if (isGoodResult) "善果：$rawEvent" else rawEvent
 
+        // 同步清除所有选择（即时禁用按钮，不等 launch）
+        _selectedScore.value = null
+        _selectedEvent.value = null
+        _customScore.value = null
+        _customGoodDeedEvent.value = null
+        _customBadDeedEvent.value = null
+        _customGoodResultEvent.value = null
+        updateTimerEnabled()
+
         viewModelScope.launch {
             repository.addHistoryEntry(score, event, "record")
-            _selectedScore.value = null
-            _selectedEvent.value = null
-            _customScore.value = null
-            _customGoodDeedEvent.value = null
-            _customBadDeedEvent.value = null
-            _customGoodResultEvent.value = null
         }
     }
 
-    /** 直接读源 StateFlow，获取当前选中分数（绕过 combine 链延迟） */
+    /** 同步更新 _timerEnabled，每次修改选择后调用。值未变时跳过发射。 */
+    private fun updateTimerEnabled() {
+        val hasScore = _customScore.value != null || _selectedScore.value != null
+        val hasEvent = _customGoodDeedEvent.value != null || _customBadDeedEvent.value != null ||
+                _customGoodResultEvent.value != null || _selectedEvent.value != null
+        val newValue = hasScore && hasEvent
+        if (newValue != _timerEnabled.value) {
+            _timerEnabled.value = newValue
+        }
+    }
+
+    /** 直接读源 StateFlow，获取当前选中分数 */
     fun getSelectedScore(): Float? = _customScore.value ?: _selectedScore.value
 
-    /** 直接读源 StateFlow，获取当前选中事件（绕过 combine 链延迟） */
+    /** 直接读源 StateFlow，获取当前选中事件 */
     fun getSelectedEvent(): String? =
         _customGoodDeedEvent.value ?: _customBadDeedEvent.value
             ?: _customGoodResultEvent.value ?: _selectedEvent.value
