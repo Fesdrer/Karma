@@ -177,9 +177,11 @@ private fun ScoreSettingsCard(
         Text("显示范围", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
+            var scoreAxisRangeMinText by remember(draft.scoreAxisRangeMin) { mutableStateOf(formatFloat(draft.scoreAxisRangeMin)) }
             OutlinedTextField(
-                value = formatFloat(draft.scoreAxisRangeMin),
+                value = scoreAxisRangeMinText,
                 onValueChange = { v ->
+                    scoreAxisRangeMinText = v
                     v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMin(it) }
                 },
                 modifier = Modifier.width(70.dp),
@@ -196,9 +198,11 @@ private fun ScoreSettingsCard(
             Spacer(Modifier.width(4.dp))
             Text("  ~  ", color = TextMuted)
             Spacer(Modifier.width(4.dp))
+            var scoreAxisRangeMaxText by remember(draft.scoreAxisRangeMax) { mutableStateOf(formatFloat(draft.scoreAxisRangeMax)) }
             OutlinedTextField(
-                value = formatFloat(draft.scoreAxisRangeMax),
+                value = scoreAxisRangeMaxText,
                 onValueChange = { v ->
+                    scoreAxisRangeMaxText = v
                     v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMax(it) }
                 },
                 modifier = Modifier.width(70.dp),
@@ -542,9 +546,11 @@ private fun LuckSettingsCard(
             // T — 天数（多少天后只通过总和影响）
             Text("你觉得多少天以后的行为只能通过总和影响？", fontSize = 13.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
+            var luckTText by remember(draft.luckT) { mutableStateOf(draft.luckT.toInt().toString()) }
             OutlinedTextField(
-                value = draft.luckT.toInt().toString(),
+                value = luckTText,
                 onValueChange = { v ->
+                    luckTText = v
                     v.toFloatOrNull()?.let {
                         if (it >= 1f && it <= 365f) viewModel.updateLuckT(it)
                     }
@@ -566,9 +572,11 @@ private fun LuckSettingsCard(
             // b — 普通好事分值
             Text("你觉得做一件普通的好事值多少分？", fontSize = 13.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
+            var luckBText by remember(draft.luckB) { mutableStateOf(formatFloat(draft.luckB)) }
             OutlinedTextField(
-                value = formatFloat(draft.luckB),
+                value = luckBText,
                 onValueChange = { v ->
+                    luckBText = v
                     v.toFloatOrNull()?.let {
                         if (it >= 0.1f && it <= 100f) viewModel.updateLuckB(it)
                     }
@@ -590,9 +598,11 @@ private fun LuckSettingsCard(
             // W — 对应总分
             Text("你觉得最近一天下降 10 分，对应总的多少分？", fontSize = 13.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
+            var luckWText by remember(draft.luckW) { mutableStateOf(formatFloat(draft.luckW)) }
             OutlinedTextField(
-                value = formatFloat(draft.luckW),
+                value = luckWText,
                 onValueChange = { v ->
+                    luckWText = v
                     v.toFloatOrNull()?.let {
                         if (it >= 1f && it <= 1000f) viewModel.updateLuckW(it)
                     }
@@ -831,9 +841,11 @@ private fun RankSettingsCard(
                         if (isLast) {
                             Text("∞", fontSize = 14.sp, color = TextMuted)
                         } else {
+                            var rankThresholdText by remember(threshold) { mutableStateOf(formatFloat(threshold)) }
                             OutlinedTextField(
-                                value = formatFloat(threshold),
+                                value = rankThresholdText,
                                 onValueChange = { v ->
+                                    rankThresholdText = v
                                     v.toFloatOrNull()?.let { viewModel.updateRankThreshold(i, it) }
                                 },
                                 modifier = Modifier.width(52.dp),
