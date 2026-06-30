@@ -111,11 +111,11 @@ object LuckAmplifier {
 
         // 2. 以最后一条记录时间为"现在"（t=0），计算每条记录距现在的天数
         val lastTimestamp = historyEntries.last().timestamp
-        data class Point(val tDays: Double, val karma: Float)
+        data class Point(val tDays: Double, val karma: Float, val event: String = "")
 
         val points = historyEntries.map { entry ->
             val tDays = (lastTimestamp - entry.timestamp) / MS_PER_DAY
-            Point(tDays, entry.totalAfter)
+            Point(tDays, entry.totalAfter, entry.event)
         }.filter { it.tDays <= T.toDouble() }  // 只保留 T 天以内的
 
         if (points.size < 2) {
@@ -125,7 +125,7 @@ object LuckAmplifier {
         // 3. 同 t 的记录塌缩为最终 K 值，然后按 t 升序排列
         val sorted = points
             .groupBy { it.tDays }
-            .map { (t, pts) -> Point(t, pts.last().karma) }
+            .map { (t, pts) -> val p = pts.last(); Point(t, p.karma, p.event) }
             .sortedBy { it.tDays }
 
         // 4. 逐段积分
@@ -133,6 +133,9 @@ object LuckAmplifier {
         for (i in 0 until sorted.size - 1) {
             val pI = sorted[i]      // 较新（t 较小）
             val pJ = sorted[i + 1]  // 较旧（t 较大）
+
+            // 善果或祈福是消耗业力的行为，其对应斜率段不参与运气波动计算
+            if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：")) continue
 
             val dt = pJ.tDays - pI.tDays
             if (dt <= 0.0) continue
