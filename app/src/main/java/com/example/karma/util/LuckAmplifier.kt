@@ -24,7 +24,9 @@ import kotlin.math.sqrt
  * 对每对相邻点 (t_i < t_{i+1}) 计算前向导数 K' = (K_i - K_{i+1})/(t_{i+1} - t_i)，
  * 然后累加 K' · ∫_{t_i}^{min(t_{i+1}, T)} e^{-at²} dt（在 T 处截断）。
  *
- * 若一段的较新端点为"善果：…"或"祈福：…"（消耗业力行为），跳过该段的积分贡献。
+ * 若一段的任一端点为"善果：…"或"祈福：…"（消耗业力行为），跳过该段的积分贡献。
+ * 只跳较新端点不够——若较旧端点是消费事件，其 K 值被人为压低，
+ * 导致 K' = (K_i - K_j)/dt 虚高，消耗业力反而增加运气。
  */
 object LuckAmplifier {
 
@@ -98,14 +100,23 @@ object LuckAmplifier {
         W: Float,
     ): Float {
         // b ≤ 0 防护
-        if (b <= 0f) return totalScore
+        if (b <= 0f) return roundTo2(totalScore.toDouble())
         // 无记录或仅一条记录：无 K' 可算，integral = 0
         if (historyEntries.size < 2) {
             return roundTo2(totalScore.toDouble() / b.toDouble())
         }
 
+        // T ≤ 0 防护：无有效时间窗口，积分置零
+        if (T <= 0f) {
+            return roundTo2(totalScore.toDouble() / b.toDouble())
+        }
+
         // 1. 计算 a、c
         val a = 9.0 / (2.0 * T * T)
+        // a 溢出防护（T 极端小导致 a → ∞）
+        if (!a.isFinite()) {
+            return roundTo2(totalScore.toDouble() / b.toDouble())
+        }
         val cDenom = integralExpMinusAt2(a, 0.0, 1.0)   // ∫₀¹ e^{-at²} dt
         val c = W.toDouble() / (10.0 * cDenom)
 
@@ -138,8 +149,9 @@ object LuckAmplifier {
             // 段已完全超出 T 范围，后续段也都超出，停止
             if (pI.tDays >= Td) break
 
-            // 善果或祈福是消耗业力的行为，其对应斜率段不参与运气波动计算
-            if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：")) continue
+            // 善果或祈福是消耗业力的行为，段任一端点为此类事件则跳过
+            if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：") ||
+                pJ.event.startsWith("善果：") || pJ.event.startsWith("祈福：")) continue
 
             val dt = pJ.tDays - pI.tDays    // 前向时间差（天）
             if (dt <= 0.0) continue
