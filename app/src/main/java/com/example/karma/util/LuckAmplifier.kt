@@ -21,8 +21,8 @@ import kotlin.math.sqrt
  * 积分只算到 T 天前，再往前 e^{-aτ²} 近似为 0，可忽略。
  *
  * 实现方式：将记录按距今天数 t = τ_now - τ 转换为点列 (t_i, K_i)，
- * 对每对相邻点 (t_i < t_{i+1}) 计算前向导数 K' = (K_{i+1} - K_i)/(t_{i+1} - t_i)，
- * 然后累加 K' · ∫_{t_i}^{t_{i+1}} e^{-at²} dt。
+ * 对每对相邻点 (t_i < t_{i+1}) 计算前向导数 K' = (K_i - K_{i+1})/(t_{i+1} - t_i)，
+ * 然后累加 K' · ∫_{t_i}^{min(t_{i+1}, T)} e^{-at²} dt（在 T 处截断）。
  *
  * 若一段的较新端点为"善果：…"或"祈福：…"（消耗业力行为），跳过该段的积分贡献。
  */
@@ -116,10 +116,6 @@ object LuckAmplifier {
         val points = historyEntries.map { entry ->
             val tDays = (lastTimestamp - entry.timestamp) / MS_PER_DAY
             Point(tDays, entry.totalAfter, entry.event)
-        }.filter { it.tDays <= T.toDouble() }  // 只保留 T 天以内的
-
-        if (points.size < 2) {
-            return roundTo2(totalScore.toDouble() / b.toDouble())
         }
 
         // 3. 同 t 的记录塌缩为最终 K 值，然后按 t 升序排列
@@ -128,11 +124,19 @@ object LuckAmplifier {
             .map { (t, pts) -> val p = pts.last(); Point(t, p.karma, p.event) }
             .sortedBy { it.tDays }
 
-        // 4. 逐段积分
+        if (sorted.size < 2) {
+            return roundTo2(totalScore.toDouble() / b.toDouble())
+        }
+
+        // 4. 逐段积分（在 T 处截断：段跨越 T 边界时积分只到 T）
         var totalIntegral = 0.0
+        val Td = T.toDouble()
         for (i in 0 until sorted.size - 1) {
             val pI = sorted[i]      // 较新（t 较小）
             val pJ = sorted[i + 1]  // 较旧（t 较大）
+
+            // 段已完全超出 T 范围，后续段也都超出，停止
+            if (pI.tDays >= Td) break
 
             // 善果或祈福是消耗业力的行为，其对应斜率段不参与运气波动计算
             if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：")) continue
@@ -143,7 +147,9 @@ object LuckAmplifier {
             val dK = pI.karma - pJ.karma          // 前向 ΔK（K_new - K_old）
             val kPrime = dK.toDouble() / dt        // K' = dK/dτ（前向时间导数）
 
-            val segIntegral = integralExpMinusAt2(a, pI.tDays, pJ.tDays)
+            // 在 T 处截断：若段跨越 T 边界，积分上限截断到 T
+            val segEnd = if (pJ.tDays > Td) Td else pJ.tDays
+            val segIntegral = integralExpMinusAt2(a, pI.tDays, segEnd)
             totalIntegral += kPrime * segIntegral
         }
 
