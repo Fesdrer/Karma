@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -184,7 +185,7 @@ private fun ScoreSettingsCard(
                     scoreAxisRangeMinText = v
                     v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMin(it) }
                 },
-                modifier = Modifier.width(70.dp),
+                modifier = Modifier.widthIn(min = 70.dp),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -205,7 +206,7 @@ private fun ScoreSettingsCard(
                     scoreAxisRangeMaxText = v
                     v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMax(it) }
                 },
-                modifier = Modifier.width(70.dp),
+                modifier = Modifier.widthIn(min = 70.dp),
                 singleLine = true,
                 textStyle = MaterialTheme.typography.bodyMedium,
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -848,7 +849,7 @@ private fun RankSettingsCard(
                                     rankThresholdText = v
                                     v.toFloatOrNull()?.let { viewModel.updateRankThreshold(i, it) }
                                 },
-                                modifier = Modifier.width(52.dp),
+                                modifier = Modifier.widthIn(min = 52.dp),
                                 singleLine = true,
                                 textStyle = MaterialTheme.typography.bodySmall,
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
@@ -1033,7 +1034,7 @@ private fun ColorTextField(
             filtered.toIntOrNull()?.let { onValueChange(it) }
         },
         label = { Text(label, color = TextMuted) },
-        modifier = Modifier.width(70.dp),
+        modifier = Modifier.widthIn(min = 70.dp),
         singleLine = true,
         textStyle = MaterialTheme.typography.bodyMedium,
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
