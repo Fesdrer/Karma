@@ -8,23 +8,23 @@ import kotlin.math.sqrt
 /**
  * 运气增幅值计算器。
  *
- * 公式：运气 = [K + c ∫₀ᵀ K'·e^{-at²} dt] / b
+ * 公式：运气 = [K + c ∫₀ᵀ K'(τ)·e^{-aτ²} dτ] / b
  *
  * 其中：
- * - K  = 总业力 (totalScore)
- * - K' = K 对时间 t（距现在的天数）的导数，分段恒定
- * - a  = 9/(2T²)
- * - c  = W / (10 · ∫₀¹ e^{-at²} dt)
- * - b  = 普通好事分值
+ * - K   = 总业力 (totalScore)
+ * - K'  = dK/dτ（前向时间导数），分段恒定
+ * - a   = 9/(2T²)
+ * - c   = W / (10 · ∫₀¹ e^{-aτ²} dτ)
+ * - b   = 普通好事分值
  *
- * K 在记录间线性变化（折线），K' 分段恒定（取前向时间导数 dK/dτ）。
- * 积分只算到 T 天前，再往前 e^{-at²} 近似为 0，可忽略。
+ * K 在记录间线性变化（折线），K' = dK/dτ 分段恒定。
+ * 积分只算到 T 天前，再往前 e^{-aτ²} 近似为 0，可忽略。
  *
- * 数学推导（τ=前向时间，t=τ_now-τ=距今天数，K'=dK/dt=-dK/dτ）：
- *   原式 = ∫₀ᵀ K'(t)·e^{-at²} dt
- *        = ∫₀ᵀ (-dK/dτ)·e^{-at²} dt = -∫ (dK/dτ)·e^{-at²}·(-dτ)   [dt=-dτ]
- *        = ∫_{τ_now-T}^{τ_now} (dK/dτ)·e^{-a(τ_now-τ)²} dτ          [负负得正]
- *   → 离散：Σ (K_new-K_old)/(τ_new-τ_old) · ∫_{t_new}^{t_old} e^{-at²} dt
+ * 实现方式：将记录按距今天数 t = τ_now - τ 转换为点列 (t_i, K_i)，
+ * 对每对相邻点 (t_i < t_{i+1}) 计算前向导数 K' = (K_{i+1} - K_i)/(t_{i+1} - t_i)，
+ * 然后累加 K' · ∫_{t_i}^{t_{i+1}} e^{-at²} dt。
+ *
+ * 若一段的较新端点为"善果：…"或"祈福：…"（消耗业力行为），跳过该段的积分贡献。
  */
 object LuckAmplifier {
 
@@ -137,10 +137,10 @@ object LuckAmplifier {
             // 善果或祈福是消耗业力的行为，其对应斜率段不参与运气波动计算
             if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：")) continue
 
-            val dt = pJ.tDays - pI.tDays
+            val dt = pJ.tDays - pI.tDays    // 前向时间差（天）
             if (dt <= 0.0) continue
 
-            val dK = pI.karma - pJ.karma          // ΔK（前向：K_new - K_old）
+            val dK = pI.karma - pJ.karma          // 前向 ΔK（K_new - K_old）
             val kPrime = dK.toDouble() / dt        // K' = dK/dτ（前向时间导数）
 
             val segIntegral = integralExpMinusAt2(a, pI.tDays, pJ.tDays)
