@@ -20,10 +20,11 @@ enum class Trigram(val value: Int, val label: String, val element: String, val u
         private val map = entries.associateBy { it.value }
         fun fromValue(v: Int): Trigram = map[v]!!
 
-        // 爻画二进制（bit0=初爻,bit1=二爻,bit2=三爻）→ 伏羲序值
-        // 巽 binary=0b100=4 ↔ 伏羲序3，震 binary=0b011=3 ↔ 伏羲序4，其余相同
-        private val yaoToXianTian = intArrayOf(0, 1, 2, 4, 3, 5, 6, 7)
-        private val xianTianToYao = intArrayOf(0, 1, 2, 4, 3, 5, 6, 7)
+        // 爻画二进制（阳=1, 阴=0, bit0=初爻）→ 伏羲先天序值
+        // 震 binary=0b001=1 ↔ 伏羲序4，兑 binary=0b011=3 ↔ 伏羲序6
+        // 艮 binary=0b100=4 ↔ 伏羲序1，巽 binary=0b110=6 ↔ 伏羲序3
+        private val yaoToXianTian = intArrayOf(0, 4, 2, 6, 1, 5, 3, 7)
+        private val xianTianToYao = intArrayOf(0, 4, 2, 6, 1, 5, 3, 7)
 
         /** 爻画二进制值 → 伏羲先天序值 */
         fun yaoBinaryToValue(b: Int): Int = yaoToXianTian[b and 7]

@@ -149,9 +149,8 @@ object LuckAmplifier {
             // 段已完全超出 T 范围，后续段也都超出，停止
             if (pI.tDays >= Td) break
 
-            // 善果或祈福是消耗业力的行为，段任一端点为此类事件则跳过
-            if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：") ||
-                pJ.event.startsWith("善果：") || pJ.event.startsWith("祈福：")) continue
+            // 善果、祈福、业力衰减是消耗业力的行为，段任一端点为此类事件则跳过
+            if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：") || pI.event == "业力衰减") continue
 
             val dt = pJ.tDays - pI.tDays    // 前向时间差（天）
             if (dt <= 0.0) continue

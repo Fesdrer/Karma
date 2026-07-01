@@ -96,7 +96,7 @@ class YarrowViewModel : ViewModel() {
                         // 变卦：动爻阴阳翻转（无动爻则变卦=本卦）
                         val transformedLines = newLines.map { ln ->
                             if (ln.isChanging) HexagramLine(
-                                value = if (ln.value == 6) 8 else 7,  // 老阴→少阳，老阳→少阴
+                                value = if (ln.value == 6) 7 else 8,  // 老阴→少阳(7)，老阳→少阴(8)
                                 isYang = !ln.isYang,
                                 isChanging = false
                             ) else ln
