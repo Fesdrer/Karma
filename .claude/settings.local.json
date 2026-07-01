@@ -4,7 +4,8 @@
       "Bash(./gradlew assembleDebug)",
       "Bash(./gradlew :app:compileDebugKotlin)",
       "WebSearch",
-      "Bash(node -e *)"
+      "Bash(node -e *)",
+      "Bash(./gradlew assembleRelease)"
     ]
   }
 }

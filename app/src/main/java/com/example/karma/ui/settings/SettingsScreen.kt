@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -953,7 +954,7 @@ private fun RankSettingsCard(
 }
 
 // ============================================================
-// ColorPickerDialog — RGB 输入 + 实时预览
+// ColorPickerDialog — HSV 滑块取色器
 // ============================================================
 
 @Composable
@@ -962,17 +963,26 @@ private fun ColorPickerDialog(
     onColorSelected: (Long) -> Unit,
     onDismiss: () -> Unit,
 ) {
-    // 从 currentColor (0xAARRGGBB) 提取 R/G/B
-    val initialR = ((currentColor shr 16) and 0xFF).toInt()
-    val initialG = ((currentColor shr 8) and 0xFF).toInt()
-    val initialB = (currentColor and 0xFF).toInt()
+    // Long(0xAARRGGBB) → HSV
+    val initialHsv = remember {
+        val r = ((currentColor shr 16) and 0xFF).toInt()
+        val g = ((currentColor shr 8) and 0xFF).toInt()
+        val b = (currentColor and 0xFF).toInt()
+        FloatArray(3).also { android.graphics.Color.RGBToHSV(r, g, b, it) }
+    }
 
-    var r by remember { mutableStateOf(initialR.coerceIn(0, 255)) }
-    var g by remember { mutableStateOf(initialG.coerceIn(0, 255)) }
-    var b by remember { mutableStateOf(initialB.coerceIn(0, 255)) }
+    var hue by remember { mutableStateOf(initialHsv[0]) }
+    var saturation by remember { mutableStateOf(initialHsv[1]) }
+    var value by remember { mutableStateOf(initialHsv[2]) }
 
-    val previewColor = remember(r, g, b) {
-        0xFF000000L or (r.toLong() shl 16) or (g.toLong() shl 8) or b.toLong()
+    // HSV → Long(0xAARRGGBB)
+    val longColor by remember(hue, saturation, value) {
+        derivedStateOf {
+            val intColor = android.graphics.Color.HSVToColor(
+                floatArrayOf(hue, saturation, value),
+            )
+            intColor.toLong() and 0xFFFFFFFFL
+        }
     }
 
     AlertDialog(
@@ -985,27 +995,38 @@ private fun ColorPickerDialog(
                     modifier = Modifier
                         .size(64.dp)
                         .clip(RoundedCornerShape(8.dp))
-                        .background(Color(previewColor))
+                        .background(Color(longColor))
                         .border(2.dp, BorderSubtle, RoundedCornerShape(8.dp)),
                 )
 
                 Spacer(Modifier.height(16.dp))
 
-                // R / G / B 三输入框
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    ColorTextField("R", r, { r = it.coerceIn(0, 255) })
-                    ColorTextField("G", g, { g = it.coerceIn(0, 255) })
-                    ColorTextField("B", b, { b = it.coerceIn(0, 255) })
-                }
+                // 色相滑块
+                HueSliderComponent(hue = hue, onHueChange = { hue = it })
+                Spacer(Modifier.height(12.dp))
+
+                // 饱和度滑块
+                SaturationSliderComponent(
+                    saturation = saturation,
+                    hue = hue,
+                    value = value,
+                    onSaturationChange = { saturation = it },
+                )
+                Spacer(Modifier.height(12.dp))
+
+                // 明度滑块
+                ValueSliderComponent(
+                    value = value,
+                    hue = hue,
+                    saturation = saturation,
+                    onValueChange = { value = it },
+                )
             }
         },
         confirmButton = {
             Button(
                 onClick = {
-                    onColorSelected(previewColor)
+                    onColorSelected(longColor)
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
@@ -1019,33 +1040,145 @@ private fun ColorPickerDialog(
 }
 
 @Composable
-private fun ColorTextField(
-    label: String,
-    value: Int,
-    onValueChange: (Int) -> Unit,
+private fun HueSliderComponent(
+    hue: Float,
+    onHueChange: (Float) -> Unit,
 ) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("色相", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text("${hue.toInt()}°", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+        }
+        Spacer(Modifier.height(2.dp))
+        // 彩虹渐变色参考条
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(
+                    Brush.horizontalGradient(
+                        colors = listOf(
+                            Color(0xFFFF0000), // 0° 红
+                            Color(0xFFFFFF00), // 60° 黄
+                            Color(0xFF00FF00), // 120° 绿
+                            Color(0xFF00FFFF), // 180° 青
+                            Color(0xFF0000FF), // 240° 蓝
+                            Color(0xFFFF00FF), // 300° 紫
+                            Color(0xFFFF0000), // 360° 红
+                        ),
+                    ),
+                ),
+        )
+        Slider(
+            value = hue,
+            onValueChange = onHueChange,
+            valueRange = 0f..360f,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Gold,
+                activeTrackColor = Gold,
+                inactiveTrackColor = BorderSubtle,
+            ),
+        )
+    }
+}
 
-    OutlinedTextField(
-        value = text,
-        onValueChange = { newText ->
-            val filtered = newText.filter { it.isDigit() }
-            text = filtered
-            filtered.toIntOrNull()?.let { onValueChange(it) }
-        },
-        label = { Text(label, color = TextMuted) },
-        modifier = Modifier.widthIn(min = 70.dp),
-        singleLine = true,
-        textStyle = MaterialTheme.typography.bodyMedium,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
-        colors = OutlinedTextFieldDefaults.colors(
-            focusedBorderColor = Gold,
-            unfocusedBorderColor = BorderSubtle,
-            focusedTextColor = TextPrimary,
-            unfocusedTextColor = TextPrimary,
-            cursorColor = Gold,
-        ),
-    )
+@Composable
+private fun SaturationSliderComponent(
+    saturation: Float,
+    hue: Float,
+    value: Float,
+    onSaturationChange: (Float) -> Unit,
+) {
+    val gradientColors = remember(hue, value) {
+        val gray = android.graphics.Color.HSVToColor(floatArrayOf(hue, 0f, value))
+        val full = android.graphics.Color.HSVToColor(floatArrayOf(hue, 1f, value))
+        listOf(
+            Color(gray.toLong() and 0xFFFFFFFFL),
+            Color(full.toLong() and 0xFFFFFFFFL),
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("饱和度", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text("${(saturation * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+        }
+        Spacer(Modifier.height(2.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Brush.horizontalGradient(gradientColors)),
+        )
+        Slider(
+            value = saturation,
+            onValueChange = onSaturationChange,
+            valueRange = 0f..1f,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Gold,
+                activeTrackColor = Gold,
+                inactiveTrackColor = BorderSubtle,
+            ),
+        )
+    }
+}
+
+@Composable
+private fun ValueSliderComponent(
+    value: Float,
+    hue: Float,
+    saturation: Float,
+    onValueChange: (Float) -> Unit,
+) {
+    val gradientColors = remember(hue, saturation) {
+        val full = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, 1f))
+        listOf(
+            Color.Black,
+            Color(full.toLong() and 0xFFFFFFFFL),
+        )
+    }
+
+    Column(modifier = Modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("明度", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
+            Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+        }
+        Spacer(Modifier.height(2.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(6.dp)
+                .clip(RoundedCornerShape(3.dp))
+                .background(Brush.horizontalGradient(gradientColors)),
+        )
+        Slider(
+            value = value,
+            onValueChange = onValueChange,
+            valueRange = 0f..1f,
+            modifier = Modifier.fillMaxWidth(),
+            colors = SliderDefaults.colors(
+                thumbColor = Gold,
+                activeTrackColor = Gold,
+                inactiveTrackColor = BorderSubtle,
+            ),
+        )
+    }
 }
 
 // ============================================================
