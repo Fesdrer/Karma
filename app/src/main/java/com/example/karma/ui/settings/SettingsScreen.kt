@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
@@ -985,6 +986,49 @@ private fun ColorPickerDialog(
         }
     }
 
+    // 从 HSV 导出 R/G/B 整数值
+    val currentR by remember(hue, saturation, value) {
+        derivedStateOf {
+            val c = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
+            (c shr 16) and 0xFF
+        }
+    }
+    val currentG by remember(hue, saturation, value) {
+        derivedStateOf {
+            val c = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
+            (c shr 8) and 0xFF
+        }
+    }
+    val currentB by remember(hue, saturation, value) {
+        derivedStateOf {
+            val c = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
+            c and 0xFF
+        }
+    }
+
+    // RGB → HSV 转换回调
+    val onRChange: (Int) -> Unit = { r ->
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV(r, currentG, currentB, hsv)
+        hue = hsv[0]
+        saturation = hsv[1]
+        value = hsv[2]
+    }
+    val onGChange: (Int) -> Unit = { g ->
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV(currentR, g, currentB, hsv)
+        hue = hsv[0]
+        saturation = hsv[1]
+        value = hsv[2]
+    }
+    val onBChange: (Int) -> Unit = { b ->
+        val hsv = FloatArray(3)
+        android.graphics.Color.RGBToHSV(currentR, currentG, b, hsv)
+        hue = hsv[0]
+        saturation = hsv[1]
+        value = hsv[2]
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("选择颜色", color = Gold) },
@@ -1021,6 +1065,22 @@ private fun ColorPickerDialog(
                     saturation = saturation,
                     onValueChange = { value = it },
                 )
+
+                // 分隔线 + R/G/B 数字输入
+                Spacer(Modifier.height(8.dp))
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(BorderSubtle.copy(alpha = 0.3f)),
+                )
+                Spacer(Modifier.height(8.dp))
+
+                RGBTextField(label = "R", currentValue = currentR, onValueChange = onRChange)
+                Spacer(Modifier.height(4.dp))
+                RGBTextField(label = "G", currentValue = currentG, onValueChange = onGChange)
+                Spacer(Modifier.height(4.dp))
+                RGBTextField(label = "B", currentValue = currentB, onValueChange = onBChange)
             }
         },
         confirmButton = {
@@ -1179,6 +1239,60 @@ private fun ValueSliderComponent(
             ),
         )
     }
+}
+
+// ============================================================
+// RGBTextField — 允许空值的数字输入框
+// ============================================================
+
+@Composable
+private fun RGBTextField(
+    label: String,
+    currentValue: Int,
+    onValueChange: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var text by remember { mutableStateOf(currentValue.toString()) }
+    val isFocused = remember { mutableStateOf(false) }
+
+    // 滑块拖动时同步到文本（不覆盖用户正在编辑的字段）
+    LaunchedEffect(currentValue) {
+        if (!isFocused.value) {
+            text = currentValue.toString()
+        }
+    }
+
+    OutlinedTextField(
+        value = text,
+        onValueChange = { newText ->
+            val filtered = newText.filter { it.isDigit() }
+            text = filtered
+            if (filtered.isNotEmpty()) {
+                filtered.toIntOrNull()?.let { v ->
+                    if (v in 0..255) onValueChange(v)
+                }
+            }
+        },
+        label = { Text(label, color = TextMuted) },
+        modifier = modifier
+            .widthIn(min = 56.dp)
+            .onFocusChanged { focusState ->
+                isFocused.value = focusState.isFocused
+                if (!focusState.isFocused && text.isEmpty()) {
+                    text = currentValue.toString()
+                }
+            },
+        singleLine = true,
+        textStyle = MaterialTheme.typography.bodySmall,
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+        colors = OutlinedTextFieldDefaults.colors(
+            focusedBorderColor = Gold,
+            unfocusedBorderColor = BorderSubtle,
+            focusedTextColor = TextPrimary,
+            unfocusedTextColor = TextPrimary,
+            cursorColor = Gold,
+        ),
+    )
 }
 
 // ============================================================

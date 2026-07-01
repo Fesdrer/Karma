@@ -218,22 +218,28 @@ class KarmaRepository(
     // ---- Import / Export ----
 
     suspend fun exportJson(): String {
+        val gson = com.google.gson.Gson()
         val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
         val history = historyDao.getAllEntriesList()
-        val data = mapOf(
-            "totalScore" to settings.totalScore,
-            "history" to history.map { entry ->
-                mapOf(
-                    "id" to entry.id,
-                    "timestamp" to entry.timestamp,
-                    "delta" to entry.delta,
-                    "event" to entry.event,
-                    "type" to entry.type,
-                    "totalAfter" to entry.totalAfter,
-                )
-            }
-        )
-        return com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(data)
+
+        val root = com.google.gson.JsonObject()
+        root.addProperty("totalScore", settings.totalScore.toDouble())
+        root.add("settings", gson.toJsonTree(settings))
+
+        val historyArray = com.google.gson.JsonArray()
+        for (entry in history) {
+            val obj = com.google.gson.JsonObject()
+            obj.addProperty("id", entry.id)
+            obj.addProperty("timestamp", entry.timestamp)
+            obj.addProperty("delta", entry.delta.toDouble())
+            obj.addProperty("event", entry.event)
+            obj.addProperty("type", entry.type)
+            obj.addProperty("totalAfter", entry.totalAfter.toDouble())
+            historyArray.add(obj)
+        }
+        root.add("history", historyArray)
+
+        return com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root)
     }
 
     suspend fun exportCsv(): String {
@@ -262,10 +268,21 @@ class KarmaRepository(
     private suspend fun importJson(raw: String): Boolean {
         val gson = com.google.gson.Gson()
         val map = gson.fromJson(raw, Map::class.java)
-        val totalScore = (map["totalScore"] as? Number)?.toFloat() ?: return false
-        val historyRaw = map["history"] as? List<*> ?: return false
 
-        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        // 新格式：settings 键存在 → 整体替换全部设置
+        val settingsRaw = map["settings"]
+        if (settingsRaw != null) {
+            val settingsJson = gson.toJson(settingsRaw)
+            val importedSettings = gson.fromJson(settingsJson, KarmaSettingsEntity::class.java)
+            settingsDao.upsertSettings(importedSettings)
+        } else {
+            // 旧格式：只更新 totalScore
+            val totalScore = (map["totalScore"] as? Number)?.toFloat() ?: return false
+            val currentSettings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+            settingsDao.upsertSettings(currentSettings.copy(totalScore = totalScore))
+        }
+
+        val historyRaw = map["history"] as? List<*> ?: return false
         historyDao.deleteAll()
         val entries = historyRaw.mapNotNull { item ->
             val h = item as? Map<*, *> ?: return@mapNotNull null
@@ -279,7 +296,6 @@ class KarmaRepository(
             )
         }
         historyDao.insertAll(entries)
-        settingsDao.upsertSettings(settings.copy(totalScore = totalScore))
         return true
     }
 
