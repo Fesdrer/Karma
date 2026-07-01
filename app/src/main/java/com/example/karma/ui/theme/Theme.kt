@@ -61,7 +61,7 @@ fun KarmaTheme(
 
             content()
 
-            // 氛围覆盖层：天地玄黄 — 极淡金辉（内容之上，不影响可读性）
+            // 氛围覆盖层：天地玄黄 — 极淡暗金辉光（内容之上，不影响可读性）
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -69,8 +69,8 @@ fun KarmaTheme(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,       // 顶部透明
-                                Color(0x12B8860B),       // 中段 7% 暗金
-                                Color(0x25B8860B),       // 底部 15% 暖土金
+                                Color(0x15B8860B),       // 中段 ~8% 暗金
+                                Color(0x30B8860B),       // 底部 ~19% 暖土金
                             )
                         )
                     )

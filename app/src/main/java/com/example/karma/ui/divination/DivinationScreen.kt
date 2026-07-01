@@ -80,8 +80,7 @@ fun DivinationScreen(
 
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .background(Color.Black),
+            .fillMaxSize(),
     ) {
         // Back button
         Box(
@@ -155,7 +154,7 @@ fun DivinationScreen(
                 // 大衍筮法 — ViewModel 在此内部创建，切换 tab 后自动释放
                 val yv: YarrowViewModel = viewModel(factory = YarrowViewModel.Factory())
                 val ys by yv.uiState.collectAsState()
-                Box(modifier = Modifier.fillMaxSize().background(Color.Black)) {
+                Box(modifier = Modifier.fillMaxSize()) {
                     YarrowCanvas(
                         state = ys,
                         onUserTap = { num ->
@@ -288,7 +287,7 @@ private fun XiaoLiuRenContent(
 ) {
     val palacePositions = remember { mutableStateListOf<PalacePosition>() }
 
-    Box(modifier = modifier.background(Color.Black)) {
+    Box(modifier = modifier) {
 
         // 层 1：三柱六宫 Canvas（始终显示在背景）
         XiaoLiuRenPillarCanvas(

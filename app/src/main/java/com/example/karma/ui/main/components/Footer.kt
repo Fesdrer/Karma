@@ -132,6 +132,6 @@ private fun FooterDivider() {
         modifier = Modifier
             .width(1.dp)
             .height(30.dp)
-            .background(Color(0xFF334444)),
+            .background(Color(0xFF333333)),
     )
 }

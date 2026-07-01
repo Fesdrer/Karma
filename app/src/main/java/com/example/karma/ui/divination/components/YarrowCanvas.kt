@@ -61,7 +61,7 @@ fun YarrowCanvas(
             if (r > l) { val rt = ((tap.x - l) / (r - l)).coerceIn(0f, 1f); onUserTap(minOf(n2 - 2, maxOf(1, (rt * n2).toInt()))) }
         }
     }) {
-        drawRect(Color.Black)
+        // 不画不透明背景——让 Theme.kt 的「地黄」暖光透出，匹配设置页面的金色过渡
         val cw = size.width; val cx = cw / 2f; val p = prog.value
         val n = state.n; val num = state.num; val ln = state.ln; val rn = state.rn
         val collected = ln + 1 + rn
@@ -104,7 +104,7 @@ fun YarrowCanvas(
                 val bw = 260.dp.toPx(); val bh = 120.dp.toPx()
                 val bx = cx - bw / 2f; val by = wCY - bh / 2f
                 // 外框
-                drawRoundRect(Color(0xFFb8860b).copy(alpha = 0.8f), Offset(bx, by), Size(bw, bh),
+                drawRoundRect(Color(0xFFffd700).copy(alpha = 0.8f), Offset(bx, by), Size(bw, bh),
                     CornerRadius(16.dp.toPx()), style = Stroke(2.dp.toPx()))
                 drawRoundRect(Color(0xFF0A0A0A), Offset(bx + 3, by + 3), Size(bw - 6, bh - 6),
                     CornerRadius(14.dp.toPx()))

@@ -90,8 +90,7 @@ fun TimerScreen(
 
     Box(
         modifier = modifier
-            .fillMaxSize()
-            .background(Color(0xFF0d0d1a)),
+            .fillMaxSize(),
     ) {
         Column(
             modifier = Modifier
