@@ -36,7 +36,7 @@ fun ChartTooltip(
     Column(
         modifier = modifier
             .widthIn(max = 220.dp)
-            .background(Color(0xFF0f3460), RoundedCornerShape(10.dp))
+            .background(Color(0xFF151515), RoundedCornerShape(10.dp))
             .border(1.dp, Color(0xFF334444), RoundedCornerShape(10.dp))
             .padding(12.dp),
     ) {

@@ -174,7 +174,7 @@ private fun ScoreAxisView(
         val axisX = w * 0.35f
 
         // ---- Background ----
-        drawRect(color = Color(0xFF0d1b2a).copy(alpha = 0.3f), size = size)
+        drawRect(color = Color(0xFF0A0A0A).copy(alpha = 0.3f), size = size)
 
         // ---- Axis vertical line ----
         drawLine(

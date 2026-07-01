@@ -47,7 +47,7 @@ fun ScoreEditModal(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        containerColor = Color(0xFF16213e),
+        containerColor = Color(0xFF1A1A1A),
         titleContentColor = Color(0xFFffd700),
         textContentColor = Color(0xFFe0e0e0),
         shape = RoundedCornerShape(16.dp),

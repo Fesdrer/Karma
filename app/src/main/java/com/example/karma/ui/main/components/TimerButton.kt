@@ -39,8 +39,8 @@ fun TimerButton(
             .height(44.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(
-                if (enabled) Color(0xFF1a3a5c)
-                else Color(0xFF16213e)
+                if (enabled) Color(0xFF1A1A1A)
+                else Color(0xFF1A1A1A)
             )
             .clickable(enabled = enabled) { onClick() },
         verticalAlignment = Alignment.CenterVertically,

@@ -36,7 +36,7 @@ fun Footer(
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 8.dp)
             .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF16213e)),
+            .background(Color(0xFF1A1A1A)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // 确认

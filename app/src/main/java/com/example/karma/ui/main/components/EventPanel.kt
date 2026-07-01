@@ -121,7 +121,7 @@ fun EventPanel(
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
                 .background(
-                    if (timerEnabled) Color(0xFF1a3a5c)
+                    if (timerEnabled) Color(0xFF1A1A1A)
                     else Color(0xFF111122)
                 )
                 .clickable(enabled = timerEnabled) { onStartTimer() }

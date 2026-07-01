@@ -22,7 +22,7 @@ import kotlin.math.sign
 
 private const val ANIM_DURATION = 400
 private val NEG_BG = Color(0xFF2d2d2d)
-private val CHART_BG = Color(0xFF0d1b2a)
+private val CHART_BG = Color(0xFF0A0A0A)
 
 @Composable
 fun AxisCanvas(

@@ -85,12 +85,11 @@ fun SettingsScreen(
 
     Scaffold(
         modifier = modifier,
-        containerColor = Color(0xFF1a1a2e),
+        containerColor = Color.Transparent,
         topBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF16213e))
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -113,7 +112,6 @@ fun SettingsScreen(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(Color(0xFF16213e))
                     .padding(16.dp),
             ) {
                 Button(
@@ -480,7 +478,7 @@ private fun DecaySettingsCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1a1a3e))
+                .background(Color(0xFF1A1A1A))
                 .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
                 .clickable { showTimePicker = true }
                 .padding(12.dp),
@@ -668,7 +666,7 @@ private fun ResetCard(viewModel: SettingsViewModel) {
                     Text("取消", color = TextSecondary)
                 }
             },
-            containerColor = Color(0xFF16213e),
+            containerColor = Color(0xFF1A1A1A),
         )
     }
 
@@ -903,7 +901,7 @@ private fun RankSettingsCard(
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF1a1a3e))
+                    .background(Color(0xFF1A1A1A))
                     .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
                     .clickable { viewModel.addRank() }
                     .padding(horizontal = 12.dp, vertical = 4.dp),
@@ -919,7 +917,7 @@ private fun RankSettingsCard(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .background(
-                        if (delActive) Color(0xFF4a90d9) else Color(0xFF1a1a3e)
+                        if (delActive) Color(0xFF4a90d9) else Color(0xFF1A1A1A)
                     )
                     .border(
                         1.dp,
@@ -1095,7 +1093,7 @@ private fun ColorPickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
         },
-        containerColor = Color(0xFF16213e),
+        containerColor = Color(0xFF1A1A1A),
     )
 }
 
@@ -1351,7 +1349,7 @@ private fun TimePickerDialog(
         dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
         },
-        containerColor = Color(0xFF16213e),
+        containerColor = Color(0xFF1A1A1A),
     )
 }
 

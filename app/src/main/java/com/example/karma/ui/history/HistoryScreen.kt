@@ -129,7 +129,7 @@ fun HistoryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF1a1a3e))
+                            .background(Color(0xFF1A1A1A))
                             .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
                             .clickable { viewModeExpanded = true }
                             .padding(horizontal = 12.dp, vertical = 5.dp),
@@ -179,7 +179,7 @@ fun HistoryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
-                            .background(Color(0xFF1a1a3e))
+                            .background(Color(0xFF1A1A1A))
                             .border(1.dp, Color(0xFF334444), RoundedCornerShape(8.dp))
                             .clickable { exportExpanded = true }
                             .padding(horizontal = 12.dp, vertical = 5.dp),
@@ -231,7 +231,7 @@ fun HistoryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1a1a3e))
+                            .background(Color(0xFF1A1A1A))
                             .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
                             .clickable { viewModel.navigatePrevious() }
                             .padding(horizontal = 8.dp, vertical = 3.dp),
@@ -253,8 +253,8 @@ fun HistoryScreen(
                     Spacer(Modifier.width(6.dp))
 
                     // ▶ 按钮
-                    val forwardBg = if (state.canGoForward) Color(0xFF1a1a3e)
-                    else Color(0xFF1a1a3e).copy(alpha = 0.4f)
+                    val forwardBg = if (state.canGoForward) Color(0xFF1A1A1A)
+                    else Color(0xFF1A1A1A).copy(alpha = 0.4f)
                     val forwardBorder = if (state.canGoForward) Color(0xFF334444)
                     else Color(0xFF334444).copy(alpha = 0.2f)
                     val forwardColor = if (state.canGoForward) Color(0xFFa0c4ff)
@@ -274,7 +274,7 @@ fun HistoryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1a1a3e))
+                            .background(Color(0xFF1A1A1A))
                             .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
                             .clickable { viewModel.resetFocusToToday() }
                             .padding(horizontal = 7.dp, vertical = 3.dp),
@@ -288,7 +288,7 @@ fun HistoryScreen(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
                             .background(
-                                if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF1a1a3e)
+                                if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF1A1A1A)
                             )
                             .border(
                                 1.dp,
@@ -319,7 +319,7 @@ fun HistoryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1a1a3e))
+                            .background(Color(0xFF1A1A1A))
                             .border(
                                 1.dp,
                                 if (zoomOutDisabled) Color(0xFF334444).copy(alpha = 0.2f)
@@ -343,7 +343,7 @@ fun HistoryScreen(
                             .clip(RoundedCornerShape(6.dp))
                             .background(
                                 if (state.isZoomEnabled) Color(0xFF4a90d9)
-                                else Color(0xFF1a1a3e)
+                                else Color(0xFF1A1A1A)
                             )
                             .border(
                                 1.dp,
@@ -364,7 +364,7 @@ fun HistoryScreen(
                     Box(
                         modifier = Modifier
                             .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1a1a3e))
+                            .background(Color(0xFF1A1A1A))
                             .border(
                                 1.dp,
                                 Color(0xFF334444).copy(alpha = 0.2f),
@@ -389,7 +389,7 @@ fun HistoryScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF0d1b2a)),
+                .background(Color(0xFF0A0A0A)),
         ) {
             val parentWidth = maxWidth
             val parentHeight = maxHeight

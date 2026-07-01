@@ -106,7 +106,7 @@ fun YarrowCanvas(
                 // 外框
                 drawRoundRect(Color(0xFFb8860b).copy(alpha = 0.8f), Offset(bx, by), Size(bw, bh),
                     CornerRadius(16.dp.toPx()), style = Stroke(2.dp.toPx()))
-                drawRoundRect(Color(0xFF1a1a2e), Offset(bx + 3, by + 3), Size(bw - 6, bh - 6),
+                drawRoundRect(Color(0xFF0A0A0A), Offset(bx + 3, by + 3), Size(bw - 6, bh - 6),
                     CornerRadius(14.dp.toPx()))
                 // 文字
                 val title = "大衍之数五十"

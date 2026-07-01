@@ -91,7 +91,7 @@ fun PrayerScreen(
                 Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
-                        .background(Color(0xFF16213e))
+                        .background(Color(0xFF1A1A1A))
                         .padding(32.dp)
                         .fillMaxWidth(0.9f),
                     horizontalAlignment = Alignment.CenterHorizontally,

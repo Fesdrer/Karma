@@ -4,12 +4,12 @@ import androidx.compose.ui.graphics.Color
 
 // ============ Karma Dark Theme Palette ============
 
-// Backgrounds
-val DarkNavy = Color(0xFF1a1a2e)
-val PanelBg = Color(0xFF16213e)
-val AccentBg = Color(0xFF0f3460)
-val NegBg = Color(0xFF2d2d2d)
-val ChartBg = Color(0xFF0d1b2a)
+// Backgrounds — 天玄地黄：纯黑基底 + 极暗暖色，无蓝色
+val DarkNavy = Color(0xFF0A0A0A)   // 纯黑背景（玄天）
+val PanelBg = Color(0xFF111111)    // 极深灰面板（原 #16213e 深蓝）
+val AccentBg = Color(0xFF151515)   // 近黑强调（原 #0f3460 深蓝）
+val NegBg = Color(0xFF2d2d2d)      // 灰色
+val ChartBg = Color(0xFF0A0A0A)    // 纯黑图表（原 #0d1b2a 深蓝）
 
 // Text
 val TextPrimary = Color(0xFFe0e0e0)
@@ -36,8 +36,8 @@ val BtnDisabledText = Color(0xFF666666)
 val BorderSubtle = Color(0xFF334444)
 
 // Button backgrounds
-val ScoreBtnBg = Color(0xFF1a1a3e)
-val ScoreBtnBgHover = Color(0xFF252550)
+val ScoreBtnBg = Color(0xFF111111)    // 极深灰按钮（原 #1a1a3e 深蓝）
+val ScoreBtnBgHover = Color(0xFF1A1A1A)
 
 // Rank colors (9 tiers)
 val Rank1 = Color(0xFF0055ff)

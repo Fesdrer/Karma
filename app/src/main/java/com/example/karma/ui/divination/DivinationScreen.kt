@@ -228,7 +228,7 @@ fun DivinationScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color(0xFF16213e))
+                .background(Color(0xFF1A1A1A))
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
@@ -240,7 +240,7 @@ fun DivinationScreen(
                         .clip(RoundedCornerShape(8.dp))
                         .background(
                             if (isSelected) Color(0xFF4a90d9)
-                            else Color(0xFF1a1a3e)
+                            else Color(0xFF1A1A1A)
                         )
                         .border(
                             1.dp,
