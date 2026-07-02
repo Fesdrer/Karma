@@ -59,9 +59,7 @@ fun KarmaTheme(
                     )
             )
 
-            content()
-
-            // 氛围覆盖层：天地玄黄 — 极淡暗金辉光（内容之上，不影响可读性）
+            // 氛围层：天地玄黄 — 极淡暗金辉光（内容之下，不影响内容颜色）
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -75,6 +73,8 @@ fun KarmaTheme(
                         )
                     )
             )
+
+            content()
         }
     }
 }
