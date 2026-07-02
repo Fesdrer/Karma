@@ -29,7 +29,7 @@ class MainActivity : ComponentActivity() {
         val appContainer = (application as KarmaApplication).container
 
         setContent {
-            KarmaTheme {
+            KarmaTheme(repository = appContainer.repository) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Transparent,

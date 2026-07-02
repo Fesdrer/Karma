@@ -55,6 +55,10 @@ data class KarmaSettingsEntity(
     val rankThresholds: List<Float> = listOf(10f, 30f, 60f, 100f, 150f, 210f, 280f, 360f),
     val rankNames: List<String> = listOf("壹阶", "贰阶", "叁阶", "肆阶", "伍阶", "陆阶", "柒阶", "捌阶", "玖阶"),
 
+    // ===== 背景渐变 =====
+    val themeGradientBaseColor: Long = 0xFF141923,   // 顶部色 (20,25,35)
+    val themeGradientAccentColor: Long = 0xFF3C2A05,  // 底部色 (60,42,5)
+
     // ===== 运气增幅 =====
     val luckEnabled: Boolean = false,
     val luckT: Float = 7f,

@@ -217,6 +217,14 @@ class SettingsViewModel(
         setDraft(_draft.value.copy(luckW = v))
     }
 
+    // ===== 背景渐变 =====
+    fun updateThemeGradientBaseColor(v: Long) {
+        setDraft(_draft.value.copy(themeGradientBaseColor = v))
+    }
+    fun updateThemeGradientAccentColor(v: Long) {
+        setDraft(_draft.value.copy(themeGradientAccentColor = v))
+    }
+
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {

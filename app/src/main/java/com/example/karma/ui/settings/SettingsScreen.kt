@@ -150,6 +150,7 @@ fun SettingsScreen(
             HistorySettingsCard(draft = draft, viewModel = viewModel)
             DecaySettingsCard(draft = draft, viewModel = viewModel)
             LuckSettingsCard(draft = draft, viewModel = viewModel)
+            BackgroundGradientCard(draft = draft, viewModel = viewModel)
             ResetCard(viewModel = viewModel)
         }
     }
@@ -637,6 +638,81 @@ private fun LuckSettingsCard(
                 color = TextMuted,
             )
         }
+    }
+}
+
+// ============================================================
+// BackgroundGradientCard — 背景渐变设置
+// ============================================================
+
+@Composable
+private fun BackgroundGradientCard(
+    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
+    viewModel: SettingsViewModel,
+) {
+    var showBaseColorPicker by remember { mutableStateOf(false) }
+    var showAccentColorPicker by remember { mutableStateOf(false) }
+
+    SettingsCard("背景渐变设置") {
+        // 起始色（顶部）
+        Text("渐变起始色（顶部）", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        ColorSwatch(
+            color = draft.themeGradientBaseColor,
+            onClick = { showBaseColorPicker = true },
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        // 结束色（底部）
+        Text("渐变结束色（底部）", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        ColorSwatch(
+            color = draft.themeGradientAccentColor,
+            onClick = { showAccentColorPicker = true },
+        )
+
+        // 渐变预览条
+        Spacer(Modifier.height(12.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(24.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(
+                    Brush.verticalGradient(
+                        colors = listOf(
+                            Color(draft.themeGradientBaseColor),
+                            Color(draft.themeGradientAccentColor),
+                        ),
+                    )
+                )
+                .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp)),
+        )
+    }
+
+    // 起始色选择器
+    if (showBaseColorPicker) {
+        ColorPickerDialog(
+            currentColor = draft.themeGradientBaseColor,
+            onColorSelected = {
+                viewModel.updateThemeGradientBaseColor(it)
+                showBaseColorPicker = false
+            },
+            onDismiss = { showBaseColorPicker = false },
+        )
+    }
+
+    // 氛围色选择器
+    if (showAccentColorPicker) {
+        ColorPickerDialog(
+            currentColor = draft.themeGradientAccentColor,
+            onColorSelected = {
+                viewModel.updateThemeGradientAccentColor(it)
+                showAccentColorPicker = false
+            },
+            onDismiss = { showAccentColorPicker = false },
+        )
     }
 }
 
