@@ -53,7 +53,7 @@ fun KarmaTheme(
                         Brush.verticalGradient(
                             colors = listOf(
                                 Color.Transparent,
-                                Color(0xFF1A0800), // 底部暗金辉光
+                                Color(0xFF1A1404), // 底部暗金辉光（暗金而非橙）
                             )
                         )
                     )
