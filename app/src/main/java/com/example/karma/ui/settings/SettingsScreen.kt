@@ -49,6 +49,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -67,6 +68,7 @@ import com.example.karma.di.AppContainer
 import com.example.karma.util.LuckAmplifier
 import com.example.karma.ui.theme.BorderSubtle
 import kotlin.math.abs
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.PanelBg
@@ -985,7 +987,7 @@ private fun RankSettingsCard(
                     .clickable { viewModel.addRank() }
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                Text("+", fontSize = 16.sp, color = Color(0xFFa0c4ff))
+                Text("+", fontSize = 16.sp, color = Gold)
             }
 
             Spacer(Modifier.width(8.dp))
@@ -996,11 +998,11 @@ private fun RankSettingsCard(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .background(
-                        if (delActive) Color(0xFF4a90d9) else Color(0xFF1A1A1A)
+                        if (delActive) Color(0xFFb8860b) else Color(0xFF1A1A1A)
                     )
                     .border(
                         1.dp,
-                        if (delActive) Color(0xFF4a90d9) else Color(0xFF334444),
+                        if (delActive) Color(0xFFb8860b) else Color(0xFF334444),
                         RoundedCornerShape(6.dp),
                     )
                     .clickable(enabled = count > 1) { viewModel.toggleDeleteMode() }
@@ -1011,7 +1013,7 @@ private fun RankSettingsCard(
                     color = when {
                         delActive -> Color.White
                         count <= 1 -> Color(0xFF666666)
-                        else -> Color(0xFFa0c4ff)
+                        else -> Gold
                     },
                 )
             }
@@ -1473,15 +1475,34 @@ private fun ScrollPicker(
         }
     }
 
-    // 选中值通过取模归一化到 base 范围；边缘检测跳回中间副本
+    // 选中值通过取模归一化到 base 范围
     LaunchedEffect(centerItemIndex) {
         onSelected(baseItems[centerItemIndex % baseSize])
-        // 边缘检测：接近边界时跳回中间（无动画）
-        if (centerItemIndex < baseSize) {
-            listState.scrollToItem(centerItemIndex + baseSize)
-        } else if (centerItemIndex >= baseSize * 2) {
-            listState.scrollToItem(centerItemIndex - baseSize)
-        }
+    }
+
+    // 停止滑动后自动吸附：让最近项对齐到视口中心。
+    // 注意：必须用 snapshotFlow 而非 LaunchedEffect(isScrollInProgress) 作 key，
+    // 否则 animateScrollToItem 触发 isScrollInProgress 变化 → LaunchedEffect 重启 → 协程被取消 → 动画中断。
+    LaunchedEffect(Unit) {
+        snapshotFlow { listState.isScrollInProgress }
+            .collect { scrolling ->
+                if (!scrolling) {
+                    delay(60)
+                    val info = listState.layoutInfo
+                    if (info.visibleItemsInfo.isEmpty()) return@collect
+                    val vc = info.viewportEndOffset / 2
+                    val closest = info.visibleItemsInfo.minByOrNull { i ->
+                        abs((i.offset + i.size / 2) - vc)
+                    } ?: return@collect
+                    val diff = closest.offset + closest.size / 2f - vc
+                    if (abs(diff) > 4f) {
+                        // animateScrollToItem 把目标放顶部；减 visibleItems/2 位置 → 目标落到第 3 位 = 中心
+                        val snapFirst = (closest.index - visibleItems / 2)
+                            .coerceIn(0, totalSize - 1)
+                        listState.animateScrollToItem(snapFirst)
+                    }
+                }
+            }
     }
 
     Box(
@@ -1505,11 +1526,7 @@ private fun ScrollPicker(
         ) {
             itemsIndexed(items) { index, value ->
                 val isCenter = index == centerItemIndex
-                Text(
-                    text = String.format("%02d", value),
-                    fontSize = if (isCenter) 22.sp else 14.sp,
-                    fontWeight = if (isCenter) FontWeight.Bold else FontWeight.Normal,
-                    color = if (isCenter) Color.White else TextMuted,
+                Box(
                     modifier = Modifier
                         .fillMaxWidth()
                         .height(itemHeight)
@@ -1517,8 +1534,16 @@ private fun ScrollPicker(
                             scope.launch { listState.animateScrollToItem(index) }
                             onSelected(baseItems[value % baseSize])
                         },
-                    textAlign = TextAlign.Center,
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = String.format("%02d", value),
+                        fontSize = if (isCenter) 22.sp else 14.sp,
+                        fontWeight = if (isCenter) FontWeight.Bold else FontWeight.Normal,
+                        color = if (isCenter) Color.White else TextMuted,
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }

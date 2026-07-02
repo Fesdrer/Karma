@@ -32,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -147,12 +148,13 @@ fun TimerScreen(
                         .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFF4a90d9),
+                        containerColor = Color(0xFFb8860b),
                         disabledContainerColor = Color(0xFF222244),
                     ),
                 ) {
                     Text(
                         text = if (isRunning) "暂停" else "继续",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
                         color = if (isActive) Color.White else Color(0xFF555555),
@@ -173,15 +175,16 @@ fun TimerScreen(
                         .height(52.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(
-                        containerColor = Color(0xFFd32f2f),
+                        containerColor = Color(0xFF333333),
                         disabledContainerColor = Color(0xFF222244),
                     ),
                 ) {
                     Text(
                         text = "停止",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 18.sp,
                         fontWeight = FontWeight.Bold,
-                        color = if (isActive) Color.White else Color(0xFF555555),
+                        color = if (isActive) Color(0xFF888888) else Color(0xFF555555),
                     )
                 }
             }

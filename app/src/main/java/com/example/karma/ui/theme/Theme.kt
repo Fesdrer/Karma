@@ -1,8 +1,10 @@
 package com.example.karma.ui.theme
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
@@ -11,6 +13,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.example.karma.R
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.repository.KarmaRepository
 
@@ -59,6 +64,20 @@ fun KarmaTheme(
                     )
                 ),
         ) {
+            // 背景装饰图：顶端贴状态栏下端，底端贴屏幕底
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .statusBarsPadding(),
+            ) {
+                Image(
+                    painter = painterResource(id = R.drawable.theme_bg),
+                    contentDescription = null,
+                    contentScale = ContentScale.FillBounds,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
             content()
         }
     }

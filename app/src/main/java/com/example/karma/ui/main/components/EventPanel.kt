@@ -192,6 +192,7 @@ private fun EventSection(
                             isSelected -> Color(0xFFffd700).copy(alpha = 0.1f)
                             title == "善业" -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "恶业" -> Color(0xFFff5252).copy(alpha = 0.08f)
+                            title == "善果" -> Color(0xFFffd700).copy(alpha = 0.08f)
                             else -> ScoreBtnBg
                         }
                     )

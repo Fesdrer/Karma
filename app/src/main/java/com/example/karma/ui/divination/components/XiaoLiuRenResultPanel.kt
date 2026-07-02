@@ -61,7 +61,7 @@ fun XiaoLiuRenResultPanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.65f))
+                .background(Color.Transparent)
                 .clickable(enabled = false) {}, // 阻止点击穿透
             contentAlignment = Alignment.Center,
         ) {
