@@ -101,6 +101,7 @@ fun PrayerScreen(
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFffd700),
+                        letterSpacing = 2.sp,
                     )
                     Spacer(Modifier.height(8.dp))
                     Text(

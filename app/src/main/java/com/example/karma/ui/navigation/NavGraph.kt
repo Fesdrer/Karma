@@ -1,5 +1,8 @@
 package com.example.karma.ui.navigation
 
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.runtime.Composable
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
@@ -21,7 +24,13 @@ fun KarmaNavGraph(
         navController = navController,
         startDestination = Screen.Main.route,
     ) {
-        composable(Screen.Main.route) {
+        composable(
+            route = Screen.Main.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) {
             MainScreen(
                 appContainer = appContainer,
                 onNavigateToHistory = {
@@ -41,31 +50,61 @@ fun KarmaNavGraph(
                 },
             )
         }
-        composable(Screen.History.route) {
+        composable(
+            route = Screen.History.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) {
             HistoryScreen(
                 appContainer = appContainer,
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Screen.Prayer.route) {
+        composable(
+            route = Screen.Prayer.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) {
             PrayerScreen(
                 appContainer = appContainer,
                 onComplete = { navController.popBackStack() },
             )
         }
-        composable(Screen.Settings.route) {
+        composable(
+            route = Screen.Settings.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) {
             SettingsScreen(
                 appContainer = appContainer,
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Screen.Divination.route) {
+        composable(
+            route = Screen.Divination.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) {
             DivinationScreen(
                 appContainer = appContainer,
                 onBack = { navController.popBackStack() },
             )
         }
-        composable(Screen.Timer.route) { backStackEntry ->
+        composable(
+            route = Screen.Timer.route,
+            enterTransition = { fadeIn(tween(300)) },
+            exitTransition = { fadeOut(tween(300)) },
+            popEnterTransition = { fadeIn(tween(300)) },
+            popExitTransition = { fadeOut(tween(300)) },
+        ) { backStackEntry ->
             val score = backStackEntry.arguments?.getString("score")?.toFloatOrNull() ?: 0f
             val event = backStackEntry.arguments?.getString("event")
                 ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""

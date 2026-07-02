@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -102,6 +103,7 @@ fun SettingsScreen(
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary,
+                    letterSpacing = 2.sp,
                 )
                 Spacer(Modifier.weight(1f))
                 // 占位使标题居中

@@ -31,6 +31,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -105,7 +106,7 @@ fun TimerScreen(
                 text = TimerService.formatTime(displayMs),
                 fontSize = 56.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color(0xFFFFD700), // 金色
+                color = Color(0xFFFFD700),
             )
 
             Spacer(Modifier.height(24.dp))
