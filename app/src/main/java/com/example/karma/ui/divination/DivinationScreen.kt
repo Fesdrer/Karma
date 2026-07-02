@@ -84,24 +84,26 @@ fun DivinationScreen(
         modifier = modifier
             .fillMaxSize(),
     ) {
-        // Back button
-        Box(
-            modifier = Modifier
-                .align(Alignment.TopStart)
-                .padding(start = 8.dp, top = 32.dp)
-                .clickable {
-                    if (!backHandled) {
-                        backHandled = true
-                        onBack()
-                    }
-                },
-        ) {
-            Text(
-                text = "← 返回",
-                fontSize = 18.sp,
-                color = Color(0xFFa0c4ff),
-                modifier = Modifier.padding(12.dp),
-            )
+        // Back button（大衍筮法 tab 不显示）
+        if (selectedTab != 1) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.TopStart)
+                    .padding(start = 8.dp, top = 32.dp)
+                    .clickable {
+                        if (!backHandled) {
+                            backHandled = true
+                            onBack()
+                        }
+                    },
+            ) {
+                Text(
+                    text = "← 返回",
+                    fontSize = 18.sp,
+                    color = Color(0xFFa0c4ff),
+                    modifier = Modifier.padding(12.dp),
+                )
+            }
         }
 
         // Center content — varies by tab
@@ -140,7 +142,7 @@ fun DivinationScreen(
                             .height(52.dp),
                         shape = RoundedCornerShape(12.dp),
                         colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFF4a90d9),
+                            containerColor = Color(0xFFb8860b),
                             contentColor = Color.White,
                         ),
                     ) {
@@ -241,12 +243,12 @@ fun DivinationScreen(
                         .weight(1f)
                         .clip(RoundedCornerShape(8.dp))
                         .background(
-                            if (isSelected) Color(0xFF4a90d9)
-                            else Color(0xFF1A1A1A)
+                            if (isSelected) Gold.copy(alpha = 0.2f)
+                            else Color.Transparent
                         )
                         .border(
                             1.dp,
-                            if (isSelected) Color(0xFF4a90d9) else Color(0xFF334444),
+                            if (isSelected) Gold else Color(0xFF334444),
                             RoundedCornerShape(8.dp),
                         )
                         .clickable { selectedTab = index }
@@ -257,7 +259,7 @@ fun DivinationScreen(
                         text = label,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isSelected) Color.White else Color(0xFFa0c4ff),
+                        color = if (isSelected) Gold else Color(0xFFa0c4ff),
                         textAlign = TextAlign.Center,
                         letterSpacing = 1.sp,
                         maxLines = 1,
