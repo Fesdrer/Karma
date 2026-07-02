@@ -18,6 +18,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -70,10 +71,10 @@ fun YarrowCanvas(
         fun stX(k: Int) = cx - wd(k) / 2f
         fun row(k: Int, sx: Float) = (0 until k).map { sx + it * step + sw / 2f }
         fun vs(x: Float, top: Float, bot: Float, a: Float = 1f) {
-            drawLine(Color(0xFF4488ff).copy(alpha = a), Offset(x, top), Offset(x, bot), sw)
+            drawLine(Color(0xFF00FF00).copy(alpha = a), Offset(x, top), Offset(x, bot), sw)
         }
         fun vh(x: Float, cy: Float, h: Float, a: Float = 1f) {
-            drawLine(Color(0xFF4488ff).copy(alpha = a), Offset(x, cy - h / 2f), Offset(x, cy + h / 2f), sw)
+            drawLine(Color(0xFF00FF00).copy(alpha = a), Offset(x, cy - h / 2f), Offset(x, cy + h / 2f), sw)
         }
         // g4(k, refX, false) = 从左到右4根一组，余数在最右
         // g4(k, refX, true)  = 从右到左4根一组，余数在最左
@@ -86,8 +87,8 @@ fun YarrowCanvas(
 
         // === 太极 ===
         if (state.phase != YarrowPhase.INTRO && state.phase != YarrowPhase.WAITING) {
-            drawLine(Color(0xFF4488ff), Offset(cx - tjiHalf, tjiY), Offset(cx + tjiHalf, tjiY), 3.dp.toPx())
-            drawText(TM.measure("太极", style = TextStyle(fontSize = 10.sp, color = Color(0xFF555577))),
+            drawLine(Color(0xFF00FF00), Offset(cx - tjiHalf, tjiY), Offset(cx + tjiHalf, tjiY), 3.dp.toPx())
+            drawText(TM.measure("太极", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 10.sp, color = Color(0xFF555577))),
                 topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
         }
         // === b 区历史 ===
@@ -112,9 +113,9 @@ fun YarrowCanvas(
                 val title = "大衍之数五十"
                 val sub = "其用四十有九"
                 val btn = "☰  开始占筮  ☰"
-                val ts = TextStyle(fontSize = 22.sp, color = Color(0xFFdaa520))
-                val ss = TextStyle(fontSize = 15.sp, color = Color(0xFFaa8844))
-                val bs = TextStyle(fontSize = 20.sp, color = Color(0xFFffd700))
+                val ts = TextStyle(fontFamily = FontFamily.Serif, fontSize = 22.sp, color = Color(0xFFdaa520))
+                val ss = TextStyle(fontFamily = FontFamily.Serif, fontSize = 15.sp, color = Color(0xFFaa8844))
+                val bs = TextStyle(fontFamily = FontFamily.Serif, fontSize = 20.sp, color = Color(0xFFffd700))
                 val tw = TM.measure(title, style = ts).size.width.toFloat()
                 val sw2 = TM.measure(sub, style = ss).size.width.toFloat()
                 val bw2 = TM.measure(btn, style = bs).size.width.toFloat()
@@ -128,11 +129,11 @@ fun YarrowCanvas(
                 val xs50 = row(50, stX(50)); val ch = 25
                 val p1 = (p / 0.55f).coerceIn(0f, 1f); val p2 = ((p - 0.55f) / 0.45f).coerceIn(0f, 1f)
                 for (i in 0 until 50) {
-                    if (i == ch) drawLine(Color(0xFF4488ff), Offset(lerp(xs50[i], cx - tjiHalf, p1), lerp(wTop, tjiY, p1)),
+                    if (i == ch) drawLine(Color(0xFF00FF00), Offset(lerp(xs50[i], cx - tjiHalf, p1), lerp(wTop, tjiY, p1)),
                         Offset(lerp(xs50[i], cx + tjiHalf, p1), lerp(wBot, tjiY, p1)), sw)
                     else vs(lerp(xs50[i], row(49, stX(49))[if (i < ch) i else i - 1], p2), wTop, wBot)
                 }
-                if (p > 0.4f) drawText(TM.measure("太极", style = TextStyle(fontSize = 10.sp, color = Color(0xFF555577).copy(alpha = ((p - 0.4f) / 0.6f).coerceIn(0f, 1f)))),
+                if (p > 0.4f) drawText(TM.measure("太极", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 10.sp, color = Color(0xFF555577).copy(alpha = ((p - 0.4f) / 0.6f).coerceIn(0f, 1f)))),
                     topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
             }
 
@@ -149,10 +150,10 @@ fun YarrowCanvas(
                     CornerRadius(12.dp.toPx()), style = Stroke(1.5.dp.toPx()))
                 drawRoundRect(Color(0xFFb8860b).copy(alpha = 0.12f), Offset(bx + 2, by + 2), Size(bw - 4, bh - 4),
                     CornerRadius(10.dp.toPx()))
-                drawText(TM.measure(title, style = TextStyle(fontSize = 15.sp, color = Color(0xFFdaa520))),
-                    topLeft = Offset(cx - TM.measure(title, style = TextStyle(fontSize = 15.sp)).size.width / 2f, by + 8.dp.toPx()))
-                drawText(TM.measure(sub, style = TextStyle(fontSize = 11.sp, color = Color(0xFF888888))),
-                    topLeft = Offset(cx - TM.measure(sub, style = TextStyle(fontSize = 11.sp)).size.width / 2f, by + 30.dp.toPx()))
+                drawText(TM.measure(title, style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 15.sp, color = Color(0xFFdaa520))),
+                    topLeft = Offset(cx - TM.measure(title, style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 15.sp)).size.width / 2f, by + 8.dp.toPx()))
+                drawText(TM.measure(sub, style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 11.sp, color = Color(0xFF888888))),
+                    topLeft = Offset(cx - TM.measure(sub, style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 11.sp)).size.width / 2f, by + 30.dp.toPx()))
             }
 
             // ── SPLITTING：a[1..num]左移, a[num+1..n]右移 ──
@@ -172,7 +173,7 @@ fun YarrowCanvas(
                 for (i in 1 until rCnt) vs(rightTo[i], wTop, wBot) // 跳过i=0=挂一
                 val hx = lerp(rightTo[0], cx, p); val hy = lerp(wCY, hangY, p)
                 val hh = lerp(sh, sh * 0.22f, p)
-                drawLine(Color(0xFF4488ff), Offset(hx, hy - hh / 2f), Offset(hx, hy + hh / 2f), sw)
+                drawLine(Color(0xFF00FF00), Offset(hx, hy - hh / 2f), Offset(hx, hy + hh / 2f), sw)
             }
 
             // ── GROUP_LEFT：左堆每4根一组右移 ──
@@ -183,7 +184,7 @@ fun YarrowCanvas(
                 for (i in 0 until num) vs(lerp(lFrom[i], lTo[i], p), wTop, wBot)
                 // 右堆不动
                 for (i in 1 until rCnt) vs(rightTo[i], wTop, wBot)
-                val hh = sh * 0.22f; drawLine(Color(0xFF4488ff), Offset(cx, hangY - hh / 2f), Offset(cx, hangY + hh / 2f), sw)
+                val hh = sh * 0.22f; drawLine(Color(0xFF00FF00), Offset(cx, hangY - hh / 2f), Offset(cx, hangY + hh / 2f), sw)
             }
 
             // ── COLLECT_LEFT：左余缩短移到挂一左边 ──
@@ -204,7 +205,7 @@ fun YarrowCanvas(
                 // 右堆+挂一不动
                 for (i in 1 until rCnt) vs(rightTo[i], wTop, wBot)
                 val hh = sh * 0.22f
-                drawLine(Color(0xFF4488ff), Offset(lerp(cx, colXs[hiCol], p), hangY - hh / 2f), Offset(lerp(cx, colXs[hiCol], p), hangY + hh / 2f), sw)
+                drawLine(Color(0xFF00FF00), Offset(lerp(cx, colXs[hiCol], p), hangY - hh / 2f), Offset(lerp(cx, colXs[hiCol], p), hangY + hh / 2f), sw)
             }
 
             // ── GROUP_RIGHT：右堆每4根一组左移 ──
@@ -375,7 +376,7 @@ fun YarrowCanvas(
             val ln2 = state.lines[i]; val by = lnB + (5 - i) * lnH; val lw2 = 70.dp.toPx()
             if (ln2.isYang) drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx())
             else { val g = 18.dp.toPx(); drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx - g / 2, by), 3.dp.toPx()); drawLine(Color.White, Offset(cx + g / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx()) }
-            if (ln2.isChanging) drawText(TM.measure(if (ln2.isYang) "○" else "×", style = TextStyle(fontSize = 18.sp, color = Color(0xFFFFD700))),
+            if (ln2.isChanging) drawText(TM.measure(if (ln2.isYang) "○" else "×", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 18.sp, color = Color(0xFFFFD700))),
                 topLeft = Offset(cx + lw2 / 2 + 10.dp.toPx(), by - 12.dp.toPx()))
         }
     }

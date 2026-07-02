@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
@@ -121,6 +123,7 @@ fun ScoreEditModal(
                                         fontSize = 15.sp,
                                     ),
                                     singleLine = true,
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                                     colors = OutlinedTextFieldDefaults.colors(
                                         focusedBorderColor = Color.Transparent,
                                         unfocusedBorderColor = Color.Transparent,
@@ -157,6 +160,7 @@ fun ScoreEditModal(
                             fontSize = 14.sp,
                         ),
                         singleLine = true,
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         shape = RoundedCornerShape(8.dp),
                         colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFFffd700),

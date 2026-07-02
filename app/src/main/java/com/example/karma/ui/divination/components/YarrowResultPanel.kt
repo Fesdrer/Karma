@@ -36,6 +36,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -68,7 +69,7 @@ fun YarrowResultPanel(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(Color.Black.copy(alpha = 0.7f))
+                .background(Color.Transparent)
                 .clickable(enabled = false) {},
             contentAlignment = Alignment.Center,
         ) {
@@ -84,7 +85,7 @@ fun YarrowResultPanel(
                 horizontalAlignment = Alignment.CenterHorizontally,
             ) {
                 // ===== 标题 =====
-                Text("【 大 衍 筮 法 】", fontSize = 22.sp, fontWeight = FontWeight.Bold, color = Gold, textAlign = TextAlign.Center)
+                Text("【 大 衍 筮 法 】", fontFamily = FontFamily.Serif, fontSize =22.sp, fontWeight = FontWeight.Bold, color = Gold, textAlign = TextAlign.Center)
 
                 // ===== 第一块：本卦 ｜ 变卦 =====
                 HexagramPairDisplay(
@@ -108,7 +109,7 @@ fun YarrowResultPanel(
                 // ===== 第二块：卦象总纲 =====
                 SectionBorder {
                     Column {
-                        Text("【卦象总纲】", fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Gold)
+                        Text("【卦象总纲】", fontFamily = FontFamily.Serif, fontSize =15.sp, fontWeight = FontWeight.Bold, color = Gold)
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = primary.summary,
@@ -127,7 +128,7 @@ fun YarrowResultPanel(
                         val movingSet = result.movingLines.toSet()
                         val header = if (movingSet.isEmpty()) "【六爻精解】（静卦，无动爻）"
                                      else "【六爻精解】（★为动爻，重点关注）"
-                        Text(header, fontSize = 15.sp, fontWeight = FontWeight.Bold, color = Gold)
+                        Text(header, fontFamily = FontFamily.Serif, fontSize =15.sp, fontWeight = FontWeight.Bold, color = Gold)
                         Spacer(Modifier.height(8.dp))
                         // 从上爻(5)到初爻(0)，匹配卦象图中上爻在上、初爻在下的视觉方向
                         for (i in 5 downTo 0) {
@@ -175,7 +176,7 @@ fun YarrowResultPanel(
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFb8860b), contentColor = Color.White),
                     modifier = Modifier.fillMaxWidth(0.6f).height(44.dp),
                 ) {
-                    Text("再来一次", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("再来一次", fontFamily = FontFamily.Serif, fontSize =16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(Modifier.height(8.dp))
@@ -256,7 +257,7 @@ private fun HexagramView(
 ) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         // 标题
-        Text(label, fontSize = 14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
+        Text(label, fontFamily = FontFamily.Serif, fontSize =14.sp, fontWeight = FontWeight.Bold, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
 
         // 六爻方块
@@ -279,12 +280,12 @@ private fun HexagramView(
         Spacer(Modifier.height(4.dp))
 
         // 名称
-        Text("$hexagramName（$fullName）", fontSize = 13.sp, fontWeight = FontWeight.Bold, color = Gold)
+        Text("$hexagramName（$fullName）", fontFamily = FontFamily.Serif, fontSize =13.sp, fontWeight = FontWeight.Bold, color = Gold)
         Spacer(Modifier.height(2.dp))
 
         // 上卦/下卦信息
-        Text("上卦：$upperLabel $upperElem", fontSize = 11.sp, color = TextSecondary)
-        Text("下卦：$lowerLabel $lowerElem", fontSize = 11.sp, color = TextSecondary)
+        Text("上卦：$upperLabel $upperElem", fontFamily = FontFamily.Serif, fontSize =11.sp, color = TextSecondary)
+        Text("下卦：$lowerLabel $lowerElem", fontFamily = FontFamily.Serif, fontSize =11.sp, color = TextSecondary)
     }
 }
 

@@ -36,6 +36,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -247,7 +248,7 @@ private fun TraditionalInputs(
             readOnly = true,
             enabled = enabled,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = monthExpanded) },
-            textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
+            textStyle = TextStyle(color = TextPrimary, fontFamily = FontFamily.Serif, fontSize =15.sp),
             shape = RoundedCornerShape(10.dp),
             colors = dropdownFieldColors(),
             modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -258,7 +259,7 @@ private fun TraditionalInputs(
         ) {
             for (m in 1..12) {
                 DropdownMenuItem(
-                    text = { Text("${LunarCalendarHelper.monthNames[m]}（$m）") },
+                    text = { Text("${LunarCalendarHelper.monthNames[m]}（$m）", fontFamily = FontFamily.Serif) },
                     onClick = {
                         onMonthChanged(m)
                         monthExpanded = false
@@ -283,7 +284,7 @@ private fun TraditionalInputs(
             readOnly = true,
             enabled = enabled,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dayExpanded) },
-            textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
+            textStyle = TextStyle(color = TextPrimary, fontFamily = FontFamily.Serif, fontSize =15.sp),
             shape = RoundedCornerShape(10.dp),
             colors = dropdownFieldColors(),
             modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -294,7 +295,7 @@ private fun TraditionalInputs(
         ) {
             for (d in 1..30) {
                 DropdownMenuItem(
-                    text = { Text("${LunarCalendarHelper.dayNames[d]}（$d）") },
+                    text = { Text("${LunarCalendarHelper.dayNames[d]}（$d）", fontFamily = FontFamily.Serif) },
                     onClick = {
                         onDayChanged(d)
                         dayExpanded = false
@@ -319,7 +320,7 @@ private fun TraditionalInputs(
             readOnly = true,
             enabled = enabled,
             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = scExpanded) },
-            textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp),
+            textStyle = TextStyle(color = TextPrimary, fontFamily = FontFamily.Serif, fontSize =15.sp),
             shape = RoundedCornerShape(10.dp),
             colors = dropdownFieldColors(),
             modifier = Modifier.fillMaxWidth().menuAnchor(),
@@ -330,7 +331,7 @@ private fun TraditionalInputs(
         ) {
             for (sc in ShiChen.entries) {
                 DropdownMenuItem(
-                    text = { Text("${sc.label} ${sc.timeRange}") },
+                    text = { Text("${sc.label} ${sc.timeRange}", fontFamily = FontFamily.Serif) },
                     onClick = {
                         onShiChenChanged(sc)
                         scExpanded = false
@@ -415,13 +416,13 @@ private fun NumberField(
         value = value,
         onValueChange = onValueChange,
         enabled = enabled,
-        label = { Text(label, fontSize = 12.sp) },
+        label = { Text(label, fontFamily = FontFamily.Serif, fontSize =12.sp) },
         placeholder = { Text("...", color = TextMuted) },
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Number,
             imeAction = ImeAction.Next,
         ),
-        textStyle = TextStyle(color = TextPrimary, fontSize = 15.sp, textAlign = TextAlign.Center),
+        textStyle = TextStyle(color = TextPrimary, fontFamily = FontFamily.Serif, fontSize =15.sp, textAlign = TextAlign.Center),
         singleLine = true,
         shape = RoundedCornerShape(10.dp),
         colors = OutlinedTextFieldDefaults.colors(

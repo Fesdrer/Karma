@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
@@ -33,6 +34,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -82,7 +84,8 @@ fun DivinationScreen(
 
     Box(
         modifier = modifier
-            .fillMaxSize(),
+            .fillMaxSize()
+            .statusBarsPadding(),
     ) {
         // Back button（大衍筮法 tab 不显示）
         if (selectedTab != 1) {
@@ -148,6 +151,7 @@ fun DivinationScreen(
                     ) {
                         Text(
                             text = if (luckResult == null) "开始" else "再来一次",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
                         )
@@ -177,6 +181,7 @@ fun DivinationScreen(
                             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                                 Text(
                                     text = "✨ 大衍之数五十，其用四十有九 ✨",
+                                    fontFamily = FontFamily.Serif,
                                     fontSize = 16.sp,
                                     color = Color(0xFFFFD700),
                                     fontWeight = FontWeight.Bold,
@@ -193,6 +198,7 @@ fun DivinationScreen(
                                 ) {
                                     Text(
                                         "🔮 查看启示",
+                                        fontFamily = FontFamily.Serif,
                                         fontSize = 20.sp,
                                         fontWeight = FontWeight.Bold,
                                     )

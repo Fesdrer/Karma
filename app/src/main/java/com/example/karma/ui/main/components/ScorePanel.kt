@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
@@ -121,6 +123,7 @@ fun ScorePanel(
             placeholder = { Text("自定义分数...", fontSize = 12.sp, color = Color(0xFF666666)) },
             textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
             singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
             shape = RoundedCornerShape(7.dp),
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = Color(0xFFffd700),

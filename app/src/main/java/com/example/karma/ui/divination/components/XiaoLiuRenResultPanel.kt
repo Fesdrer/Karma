@@ -27,6 +27,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -194,7 +195,7 @@ fun XiaoLiuRenResultPanel(
                     ),
                     modifier = Modifier.height(44.dp),
                 ) {
-                    Text("再来一次", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                    Text("再来一次", fontFamily = FontFamily.Serif, fontSize =16.sp, fontWeight = FontWeight.Bold)
                 }
 
                 Spacer(Modifier.height(8.dp))

@@ -2,6 +2,7 @@ package com.example.karma.ui.divination.components
 
 import android.graphics.BitmapFactory
 import android.graphics.Paint
+import android.graphics.Typeface
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -84,7 +85,7 @@ fun XiaoLiuRenPillarCanvas(
         val screenH = size.height
         val breath = breathTime.floatValue
 
-        // 图片拉伸铺满画布（上下接触顶边和底边）
+        // 图片拉伸铺满画布（上下接触顶边和底边，由父级 statusBarsPadding 保证顶部在状态栏下）
         val scaleX = screenW / IMG_W
         val contentH = IMG_H - IMG_CROP_BOTTOM
         val scaleY = screenH / contentH
@@ -184,6 +185,7 @@ private fun DrawScope.drawPillarSegment(
         textAlign = Paint.Align.CENTER
         isFakeBoldText = true
         isAntiAlias = true
+        typeface = Typeface.SERIF
     }
     drawContext.canvas.nativeCanvas.drawText(
         palaceName, rect.center.x, rect.center.y + 3.dp.toPx(), namePaint,
@@ -195,6 +197,7 @@ private fun DrawScope.drawPillarSegment(
         textSize = 10.dp.toPx()
         textAlign = Paint.Align.CENTER
         isAntiAlias = true
+        typeface = Typeface.SERIF
     }
     drawContext.canvas.nativeCanvas.drawText(
         sixGods, rect.center.x, rect.center.y + 22.dp.toPx(), godPaint,

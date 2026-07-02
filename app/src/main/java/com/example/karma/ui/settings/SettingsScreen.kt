@@ -55,6 +55,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
@@ -414,7 +415,7 @@ private fun EventSection(
                 .heightIn(min = 80.dp),
             singleLine = false,
             minLines = 3,
-            textStyle = MaterialTheme.typography.bodySmall,
+            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
             placeholder = { Text("输入${title}事件...") },
             colors = OutlinedTextFieldDefaults.colors(
                 focusedBorderColor = titleColor,
@@ -927,7 +928,7 @@ private fun RankSettingsCard(
                                 },
                                 modifier = Modifier.widthIn(min = 52.dp),
                                 singleLine = true,
-                                textStyle = MaterialTheme.typography.bodySmall,
+                                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
                                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                                 colors = OutlinedTextFieldDefaults.colors(
                                     focusedBorderColor = Gold,
@@ -1184,8 +1185,8 @@ private fun HueSliderComponent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("色相", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-            Text("${hue.toInt()}°", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+            Text("色相", style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif), color = TextSecondary)
+            Text("${hue.toInt()}°", style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif), color = TextPrimary)
         }
         Spacer(Modifier.height(2.dp))
         // 彩虹渐变色参考条
@@ -1244,8 +1245,8 @@ private fun SaturationSliderComponent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("饱和度", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-            Text("${(saturation * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+            Text("饱和度", style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif), color = TextSecondary)
+            Text("${(saturation * 100).toInt()}%", style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif), color = TextPrimary)
         }
         Spacer(Modifier.height(2.dp))
         Box(
@@ -1290,8 +1291,8 @@ private fun ValueSliderComponent(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text("明度", style = MaterialTheme.typography.bodySmall, color = TextSecondary)
-            Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.bodySmall, color = TextPrimary)
+            Text("明度", style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif), color = TextSecondary)
+            Text("${(value * 100).toInt()}%", style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif), color = TextPrimary)
         }
         Spacer(Modifier.height(2.dp))
         Box(
@@ -1357,7 +1358,7 @@ private fun RGBTextField(
                 }
             },
         singleLine = true,
-        textStyle = MaterialTheme.typography.bodySmall,
+        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         colors = OutlinedTextFieldDefaults.colors(
             focusedBorderColor = Gold,
