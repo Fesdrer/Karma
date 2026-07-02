@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
@@ -92,6 +93,7 @@ fun SettingsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .statusBarsPadding()
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -131,7 +133,7 @@ fun SettingsScreen(
                         disabledContentColor = Color(0xFF666666),
                     ),
                 ) {
-                    Text("保存设置", fontWeight = FontWeight.Bold)
+                    Text("保存设置", fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold)
                 }
             }
         },
@@ -757,8 +759,8 @@ private fun ResetCard(viewModel: SettingsViewModel) {
             ),
         ) {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("重置所有设置为默认", fontSize = 14.sp)
-                Text("（事件除外）", fontSize = 11.sp, color = Color(0xFFff5252).copy(alpha = 0.7f))
+                Text("重置所有设置为默认", fontFamily = FontFamily.Serif, fontSize = 14.sp)
+                Text("（事件除外）", fontFamily = FontFamily.Serif, fontSize = 11.sp, color = Color(0xFFff5252).copy(alpha = 0.7f))
             }
         }
     }
@@ -1106,7 +1108,7 @@ private fun ColorPickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择颜色", color = Gold) },
+        title = { Text("选择颜色", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
                 // 实时预览色块
@@ -1348,7 +1350,7 @@ private fun RGBTextField(
                 }
             }
         },
-        label = { Text(label, color = TextMuted) },
+        label = { Text(label, fontFamily = FontFamily.Serif, color = TextMuted) },
         modifier = modifier
             .widthIn(min = 56.dp)
             .onFocusChanged { focusState ->
@@ -1386,7 +1388,7 @@ private fun TimePickerDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择扣除时间", color = Gold) },
+        title = { Text("选择扣除时间", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Row(
                 modifier = Modifier.fillMaxWidth(),

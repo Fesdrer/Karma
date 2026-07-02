@@ -104,7 +104,7 @@ fun HistoryScreen(
                                 onBack()
                             }
                         }
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
                 ) {
                     Text("← 返回", fontSize = 14.sp, color = Color(0xFF888888))
                 }

@@ -148,13 +148,6 @@ fun ParticleEngineCanvas(
         val elapsed = state.elapsed
         val p = state.tier
 
-        // ---- Dark overlay ----
-        val fadeIn = min(elapsed / 300f, 1f)
-        drawRect(
-            color = Color.Black.copy(alpha = p.dark * fadeIn),
-            size = size,
-        )
-
         // ---- Divine central halo (tier 3) ----
         if (state.isDivine) {
             val haloR = baseScale * 0.08f + sin(elapsed / 800f) * baseScale * 0.03f

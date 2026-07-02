@@ -158,6 +158,7 @@ fun XiaoLiuRenInputPanel(
             ) {
                 Text(
                     text = "开始推算",
+                    fontFamily = FontFamily.Serif,
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
                 )

@@ -29,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -222,6 +223,7 @@ private fun EventSection(
 
         // Custom event input — compact, ~1.2x event item height
         val fieldTextStyle = TextStyle(
+            fontFamily = FontFamily.Serif,
             color = titleColor.copy(alpha = 0.8f),
             fontSize = 12.sp,
         )

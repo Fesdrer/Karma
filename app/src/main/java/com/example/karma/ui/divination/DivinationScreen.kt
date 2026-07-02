@@ -299,57 +299,61 @@ private fun XiaoLiuRenContent(
 ) {
     val palacePositions = remember { mutableStateListOf<PalacePosition>() }
 
-    Box(modifier = modifier) {
+    Box(modifier = Modifier.fillMaxSize()) {  // 全屏，不受底 padding 约束
 
-        // 层 1：三柱六宫 Canvas（始终显示在背景）
+        // 层 1：三柱六宫 Canvas — 全屏，图片贴到屏幕最底部
         XiaoLiuRenPillarCanvas(
             onPalacePositionsReady = { positions ->
                 palacePositions.clear()
                 palacePositions.addAll(positions)
             },
+            modifier = Modifier.fillMaxSize(),
         )
 
-        // 层 2：金线动画 Canvas（动画阶段显示）
-        if (state.isAnimating && state.fullPath.isNotEmpty() && palacePositions.size == 6) {
-            XiaoLiuRenThreadCanvas(
-                fullPath = state.fullPath,
-                palacePositions = palacePositions.toList(),
-                animationPhase = state.animationPhase,
-                monthCount = state.calcMonth,
-                dayCount = state.calcDay,
-                hourCount = state.calcHour,
-                onPhaseComplete = onPhaseComplete,
-            )
-        }
+        // 层 2-4：受底部 tab bar padding 约束
+        Box(modifier = modifier) {
+            // 层 2：金线动画 Canvas（动画阶段显示）
+            if (state.isAnimating && state.fullPath.isNotEmpty() && palacePositions.size == 6) {
+                XiaoLiuRenThreadCanvas(
+                    fullPath = state.fullPath,
+                    palacePositions = palacePositions.toList(),
+                    animationPhase = state.animationPhase,
+                    monthCount = state.calcMonth,
+                    dayCount = state.calcDay,
+                    hourCount = state.calcHour,
+                    onPhaseComplete = onPhaseComplete,
+                )
+            }
 
-        // 层 3：输入面板（IDLE 阶段显示）
-        if (state.animationPhase == AnimationPhase.IDLE) {
-            XiaoLiuRenInputPanel(
-                inputMode = state.inputMode,
-                month = state.month,
-                day = state.day,
-                shiChen = state.shiChen,
-                number1 = state.number1,
-                number2 = state.number2,
-                number3 = state.number3,
-                onInputModeChanged = onInputModeChanged,
-                onMonthChanged = onMonthChanged,
-                onDayChanged = onDayChanged,
-                onShiChenChanged = onShiChenChanged,
-                onNumber1Changed = onNumber1Changed,
-                onNumber2Changed = onNumber2Changed,
-                onNumber3Changed = onNumber3Changed,
-                onStartClick = onStartClick,
-                enabled = !state.isAnimating,
-            )
-        }
+            // 层 3：输入面板（IDLE 阶段显示）
+            if (state.animationPhase == AnimationPhase.IDLE) {
+                XiaoLiuRenInputPanel(
+                    inputMode = state.inputMode,
+                    month = state.month,
+                    day = state.day,
+                    shiChen = state.shiChen,
+                    number1 = state.number1,
+                    number2 = state.number2,
+                    number3 = state.number3,
+                    onInputModeChanged = onInputModeChanged,
+                    onMonthChanged = onMonthChanged,
+                    onDayChanged = onDayChanged,
+                    onShiChenChanged = onShiChenChanged,
+                    onNumber1Changed = onNumber1Changed,
+                    onNumber2Changed = onNumber2Changed,
+                    onNumber3Changed = onNumber3Changed,
+                    onStartClick = onStartClick,
+                    enabled = !state.isAnimating,
+                )
+            }
 
-        // 层 4：结果面板（COMPLETE 阶段显示）
-        if (state.animationPhase == AnimationPhase.COMPLETE && state.resultPalace != null) {
-            XiaoLiuRenResultPanel(
-                result = state.resultPalace!!,
-                onRetry = onRetry,
-            )
+            // 层 4：结果面板（COMPLETE 阶段显示）
+            if (state.animationPhase == AnimationPhase.COMPLETE && state.resultPalace != null) {
+                XiaoLiuRenResultPanel(
+                    result = state.resultPalace!!,
+                    onRetry = onRetry,
+                )
+            }
         }
     }
 }

@@ -267,32 +267,33 @@ class KarmaRepository(
 
     private suspend fun importJson(raw: String): Boolean {
         val gson = com.google.gson.Gson()
-        val map = gson.fromJson(raw, Map::class.java)
+
+        // 使用 JsonParser 直接解析，保留数字原始类型（避免 Map 中间步骤把 Long/Int 变成 Double）
+        val root = com.google.gson.JsonParser.parseString(raw).asJsonObject
 
         // 新格式：settings 键存在 → 整体替换全部设置
-        val settingsRaw = map["settings"]
-        if (settingsRaw != null) {
-            val settingsJson = gson.toJson(settingsRaw)
-            val importedSettings = gson.fromJson(settingsJson, KarmaSettingsEntity::class.java)
+        val settingsElement = root.get("settings")
+        if (settingsElement != null) {
+            val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
             settingsDao.upsertSettings(importedSettings)
         } else {
             // 旧格式：只更新 totalScore
-            val totalScore = (map["totalScore"] as? Number)?.toFloat() ?: return false
+            val totalScore = root.get("totalScore")?.asDouble?.toFloat() ?: return false
             val currentSettings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
             settingsDao.upsertSettings(currentSettings.copy(totalScore = totalScore))
         }
 
-        val historyRaw = map["history"] as? List<*> ?: return false
+        val historyArray = root.getAsJsonArray("history") ?: return false
         historyDao.deleteAll()
-        val entries = historyRaw.mapNotNull { item ->
-            val h = item as? Map<*, *> ?: return@mapNotNull null
+        val entries = historyArray.mapNotNull { element ->
+            val h = element.asJsonObject ?: return@mapNotNull null
             HistoryEntryEntity(
                 id = 0,
-                timestamp = (h["timestamp"] as? Number)?.toLong() ?: 0L,
-                delta = (h["delta"] as? Number)?.toFloat() ?: 0f,
-                event = (h["event"] as? String) ?: "",
-                type = (h["type"] as? String) ?: "record",
-                totalAfter = (h["totalAfter"] as? Number)?.toFloat() ?: 0f,
+                timestamp = h.get("timestamp")?.asLong ?: 0L,
+                delta = h.get("delta")?.asFloat ?: 0f,
+                event = h.get("event")?.asString ?: "",
+                type = h.get("type")?.asString ?: "record",
+                totalAfter = h.get("totalAfter")?.asFloat ?: 0f,
             )
         }
         historyDao.insertAll(entries)
