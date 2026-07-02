@@ -2,6 +2,7 @@ package com.example.karma.ui.main.components
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -33,6 +34,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.ui.theme.BorderSubtle
+import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
 import kotlin.math.abs
 import kotlin.math.roundToInt
@@ -51,8 +53,8 @@ fun ScorePanel(
 ) {
     Column(
         modifier = modifier
+            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
             .padding(horizontal = 8.dp, vertical = 8.dp),
     ) {
         // Title
@@ -173,9 +175,6 @@ private fun ScoreAxisView(
 
         // Axis X position — left-aligned so labels fit on the right
         val axisX = w * 0.35f
-
-        // ---- Background ----
-        drawRect(color = Color(0xFF0A0A0A).copy(alpha = 0.3f), size = size)
 
         // ---- Axis vertical line ----
         drawLine(

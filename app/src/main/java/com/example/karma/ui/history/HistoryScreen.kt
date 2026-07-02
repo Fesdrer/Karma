@@ -390,8 +390,8 @@ fun HistoryScreen(
         BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
-                .clip(RoundedCornerShape(16.dp))
-                .background(Color(0xFF0A0A0A)),
+                .border(1.dp, Color(0xFFffd700).copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                .clip(RoundedCornerShape(16.dp)),
         ) {
             val parentWidth = maxWidth
             val parentHeight = maxHeight

@@ -34,6 +34,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.ui.theme.BorderSubtle
+import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
 
 @Composable
@@ -56,8 +57,8 @@ fun EventPanel(
 
     Column(
         modifier = modifier
+            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surface)
             .padding(10.dp),
     ) {
         // Title

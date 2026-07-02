@@ -479,9 +479,8 @@ private fun DecaySettingsCard(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
+                .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFF1A1A1A))
-                .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
                 .clickable { showTimePicker = true }
                 .padding(12.dp),
             contentAlignment = Alignment.Center,
@@ -697,8 +696,8 @@ private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> U
     Column(
         modifier = Modifier
             .fillMaxWidth()
+            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .background(PanelBg)
             .padding(16.dp),
     ) {
         Text(
@@ -783,9 +782,8 @@ private fun RankSettingsCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(vertical = 2.dp)
+                    .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(8.dp))
                     .clip(RoundedCornerShape(8.dp))
-                    .background(PanelBg)
-                    .border(1.dp, BorderSubtle, RoundedCornerShape(8.dp))
                     .padding(12.dp),
             ) {
                 Column {

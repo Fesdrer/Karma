@@ -87,6 +87,7 @@ fun XiaoLiuRenInputPanel(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .verticalScroll(rememberScrollState())
+                .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(20.dp))
                 .clip(RoundedCornerShape(20.dp))
                 .background(PanelBg)
                 .padding(24.dp),

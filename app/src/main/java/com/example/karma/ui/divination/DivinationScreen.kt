@@ -40,6 +40,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.divination.components.PalacePosition
+import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.divination.components.YarrowCanvas
 import com.example.karma.ui.divination.components.YarrowResultPanel
 import com.example.karma.ui.divination.components.XiaoLiuRenInputPanel
@@ -228,7 +229,8 @@ fun DivinationScreen(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(Color(0xFF1A1A1A))
+                .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(12.dp))
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {

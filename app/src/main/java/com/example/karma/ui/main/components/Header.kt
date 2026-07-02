@@ -1,6 +1,7 @@
 package com.example.karma.ui.main.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -24,6 +25,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.data.model.Rank
+import com.example.karma.ui.theme.Gold
 
 @Composable
 fun Header(
@@ -36,8 +38,8 @@ fun Header(
     Box(
         modifier = modifier
             .fillMaxWidth()
+            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
             .clip(RoundedCornerShape(12.dp))
-            .background(MaterialTheme.colorScheme.surfaceVariant)
             .padding(horizontal = 14.dp, vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {

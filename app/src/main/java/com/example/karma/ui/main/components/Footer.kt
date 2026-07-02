@@ -1,6 +1,7 @@
 package com.example.karma.ui.main.components
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -19,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.karma.ui.theme.Gold
 
 @Composable
 fun Footer(
@@ -35,8 +37,8 @@ fun Footer(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 8.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(Color(0xFF1A1A1A)),
+            .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
+            .clip(RoundedCornerShape(10.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         // 确认
