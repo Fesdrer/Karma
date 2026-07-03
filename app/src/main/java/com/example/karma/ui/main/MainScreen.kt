@@ -42,10 +42,13 @@ fun MainScreen(
     )
     val state by viewModel.uiState.collectAsState()
 
+    // 数据就绪前不渲染任何内容，避免元素逐个出现的跳变
+    val s = state ?: return
+
     // Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
-    LaunchedEffect(state.message) {
-        state.message?.let {
+    LaunchedEffect(s.message) {
+        s.message?.let {
             snackbarHostState.showSnackbar(it)
             viewModel.clearMessage()
         }
@@ -64,10 +67,10 @@ fun MainScreen(
         ) {
             // Header
             Header(
-                totalScore = state.totalScore,
-                rank = state.rank,
-                ranks = state.ranks,
-                luckValue = state.luckValue,
+                totalScore = s.totalScore,
+                rank = s.rank,
+                ranks = s.ranks,
+                luckValue = s.luckValue,
             )
 
             Spacer(Modifier.height(12.dp))
@@ -80,12 +83,12 @@ fun MainScreen(
             ) {
                 // Left panel: Scores
                 ScorePanel(
-                    selectedScore = state.effectiveScore,
+                    selectedScore = s.effectiveScore,
                     onScoreSelected = { viewModel.selectScore(it) },
                     onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
-                    axisFontSize = state.scoreAxisFontSize,
-                    axisRangeMin = state.scoreAxisRangeMin,
-                    axisRangeMax = state.scoreAxisRangeMax,
+                    axisFontSize = s.scoreAxisFontSize,
+                    axisRangeMin = s.scoreAxisRangeMin,
+                    axisRangeMax = s.scoreAxisRangeMax,
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
@@ -95,17 +98,17 @@ fun MainScreen(
 
                 // Center panel: Axis
                 AxisCanvas(
-                    totalScore = state.totalScore,
-                    labelColor = state.axisLabelColor,
-                    tickThickness = state.axisTickThickness,
-                    labelFontSize = state.axisLabelFontSize,
-                    displayRange = state.axisDisplayRange,
-                    showNearby = state.showNearbyTicks,
-                    nearbyRange = state.nearbyTickRange,
-                    quarterValue = state.axisQuarterValue,
-                    ranks = state.ranks,
-                    guideLineWidth = state.guideLineWidth,
-                    guideLineColor = state.guideLineColor,
+                    totalScore = s.totalScore,
+                    labelColor = s.axisLabelColor,
+                    tickThickness = s.axisTickThickness,
+                    labelFontSize = s.axisLabelFontSize,
+                    displayRange = s.axisDisplayRange,
+                    showNearby = s.showNearbyTicks,
+                    nearbyRange = s.nearbyTickRange,
+                    quarterValue = s.axisQuarterValue,
+                    ranks = s.ranks,
+                    guideLineWidth = s.guideLineWidth,
+                    guideLineColor = s.guideLineColor,
                     modifier = Modifier
                         .width(75.dp)
                         .fillMaxHeight(),
@@ -115,10 +118,10 @@ fun MainScreen(
 
                 // Right panel: Events
                 EventPanel(
-                    goodDeedPresets = state.goodDeedPresets,
-                    badDeedPresets = state.badDeedPresets,
-                    goodResultPresets = state.goodResultPresets,
-                    selectedEvent = state.selectedEvent,
+                    goodDeedPresets = s.goodDeedPresets,
+                    badDeedPresets = s.badDeedPresets,
+                    goodResultPresets = s.goodResultPresets,
+                    selectedEvent = s.selectedEvent,
                     onEventSelected = { viewModel.selectEvent(it) },
                     onCustomGoodDeedChanged = { viewModel.onCustomGoodDeedEventChanged(it) },
                     onCustomBadDeedChanged = { viewModel.onCustomBadDeedEventChanged(it) },
@@ -126,8 +129,8 @@ fun MainScreen(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                    timerEnabled = state.hasScoreAndEvent,
-                    selectedScore = state.selectedScore,
+                    timerEnabled = s.hasScoreAndEvent,
+                    selectedScore = s.selectedScore,
                     onStartTimer = {
                         val s = viewModel.getSelectedScore() ?: return@EventPanel
                         val e = viewModel.getSelectedEvent() ?: return@EventPanel
@@ -140,8 +143,8 @@ fun MainScreen(
 
             // Footer
             Footer(
-                confirmEnabled = state.hasScoreAndEvent,
-                prayerEnabled = state.totalScore >= 30f,
+                confirmEnabled = s.hasScoreAndEvent,
+                prayerEnabled = s.totalScore >= 30f,
                 onConfirm = { viewModel.onConfirm() },
                 onPrayer = onNavigateToPrayer,
                 onDivination = onNavigateToDivination,

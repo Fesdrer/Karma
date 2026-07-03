@@ -146,6 +146,14 @@ private fun ScoreAxisView(
     axisRangeMax: Float = 6f,
     modifier: Modifier = Modifier,
 ) {
+    // Pre-allocated Paints for tick labels (avoid per-frame allocation in Canvas)
+    val leftLabelPaint = remember {
+        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.LEFT }
+    }
+    val rightLabelPaint = remember {
+        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+    }
+
     Canvas(
         modifier = modifier
             .pointerInput(axisRangeMin, axisRangeMax) {
@@ -233,38 +241,38 @@ private fun ScoreAxisView(
 
             if (isInteger) {
                 // Integer label: on the right
+                leftLabelPaint.apply {
+                    color = android.graphics.Color.argb(
+                        (alpha * 255).toInt(),
+                        (labelColor.red * 255).toInt(),
+                        (labelColor.green * 255).toInt(),
+                        (labelColor.blue * 255).toInt(),
+                    )
+                    textSize = labelSize
+                    isFakeBoldText = tickValue == 0f
+                }
                 drawContext.canvas.nativeCanvas.drawText(
                     label,
                     axisX + 6f * densityFactor,
                     y + labelSize * 0.35f,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(
-                            (alpha * 255).toInt(),
-                            (labelColor.red * 255).toInt(),
-                            (labelColor.green * 255).toInt(),
-                            (labelColor.blue * 255).toInt(),
-                        )
-                        textSize = labelSize
-                        textAlign = android.graphics.Paint.Align.LEFT
-                        isFakeBoldText = tickValue == 0f
-                    }
+                    leftLabelPaint,
                 )
             } else {
                 // Half label: on the left
+                rightLabelPaint.apply {
+                    color = android.graphics.Color.argb(
+                        (alpha * 255).toInt(),
+                        (labelColor.red * 255).toInt(),
+                        (labelColor.green * 255).toInt(),
+                        (labelColor.blue * 255).toInt(),
+                    )
+                    textSize = labelSize
+                }
                 drawContext.canvas.nativeCanvas.drawText(
                     label,
                     axisX - 6f * densityFactor,
                     y + labelSize * 0.35f,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(
-                            (alpha * 255).toInt(),
-                            (labelColor.red * 255).toInt(),
-                            (labelColor.green * 255).toInt(),
-                            (labelColor.blue * 255).toInt(),
-                        )
-                        textSize = labelSize
-                        textAlign = android.graphics.Paint.Align.RIGHT
-                    }
+                    rightLabelPaint,
                 )
             }
 

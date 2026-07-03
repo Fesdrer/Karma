@@ -7,11 +7,8 @@ import com.example.karma.data.model.Rank
 import com.example.karma.data.repository.KarmaRepository
 import com.example.karma.util.LuckAmplifier
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.debounce
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
 data class MainUiState(
@@ -65,10 +62,7 @@ class MainViewModel(
     // 缓存当前善果预设列表，用于 onConfirm 时判断是否加前缀
     private var _currentGoodResultPresets: List<String> = emptyList()
 
-    /** LuckAmplifier 脱耦：debounce 后异步计算，结果缓存。 */
-    private val _luckValue = MutableStateFlow<Float?>(null)
-
-    // 合并 selection 相关流（嵌套 combine 避免 6-flow 类型推断失败）
+    // 合并 selection 相关流
     private val _selectionPair = combine(
         combine(_selectedScore, _customScore) { preset, custom -> custom ?: preset },
         combine(
@@ -76,77 +70,66 @@ class MainViewModel(
         ) { preset, cg, cb, cr -> cg ?: cb ?: cr ?: preset },
     ) { score, event -> Pair(score, event) }
 
-    // 合并 message + timerEnabled 以减少 combine 参数数量
+    // 合并 message + timerEnabled
     private val _msgTimer = combine(_message, _timerEnabled) { m, t -> Pair(m, t) }
 
-    init {
-        // LuckAmplifier：debounce(300ms) 避免 slider 拖动等高频变更时反复重算
-        viewModelScope.launch {
-            combine(repository.settings, repository.allHistory) { s, h -> Pair(s, h) }
-                .debounce(300)
-                .collect { (settings, history) ->
-                    _luckValue.value = if (settings.luckEnabled) {
-                        LuckAmplifier.computeLuckAmplification(
-                            totalScore = settings.totalScore,
-                            historyEntries = history,
-                            T = settings.luckT,
-                            b = settings.luckB,
-                            W = settings.luckW,
-                        )
-                    } else null
-                }
-        }
-    }
-
-    // 嵌套 combine 避免 5-arg overload 类型推断问题
+    // settings + history pair（用于 combine 合并）
     private val _settingsHistory = combine(
         repository.settings, repository.allHistory,
     ) { s, h -> Pair(s, h) }
 
-    private val _selectionLuckMsg = combine(
-        _selectionPair, _luckValue, _msgTimer,
-    ) { sel, luck, mt -> Triple(sel, luck, mt) }
+    /** uiState 初始为 null，首帧不渲染。combine 首次发射后一次性显示全部内容。 */
+    private val _uiState = MutableStateFlow<MainUiState?>(null)
+    val uiState: StateFlow<MainUiState?> = _uiState
 
-    val uiState: StateFlow<MainUiState> = combine(
-        _settingsHistory, _selectionLuckMsg,
-    ) { (settings, history), (selection, derivedLuck, msgTimer) ->
-        val (msg, timerEnabled) = msgTimer
-        val (effectiveScore, effectiveEvent) = selection
-        // 缓存善果列表供 onConfirm 使用
-        _currentGoodResultPresets = settings.goodResultPresets
-        MainUiState(
-            totalScore = settings.totalScore,
-            rank = repository.getRank(settings.totalScore, settings),
-            scorePresets = settings.scorePresets,
-            goodDeedPresets = settings.goodDeedPresets,
-            badDeedPresets = settings.badDeedPresets,
-            goodResultPresets = settings.goodResultPresets,
-            selectedScore = effectiveScore,
-            effectiveScore = effectiveScore,
-            selectedEvent = effectiveEvent,
-            // ★ 视觉参数透传
-            scoreAxisFontSize = settings.scoreAxisFontSize,
-            scoreAxisRangeMin = settings.scoreAxisRangeMin,
-            scoreAxisRangeMax = settings.scoreAxisRangeMax,
-            axisLabelColor = settings.axisLabelColor,
-            axisTickThickness = settings.axisTickThickness,
-            axisLabelFontSize = settings.axisLabelFontSize,
-            axisDisplayRange = settings.axisDisplayRange,
-            showNearbyTicks = settings.showNearbyTicks,
-            nearbyTickRange = settings.nearbyTickRange,
-            axisQuarterValue = settings.axisQuarterValue,
-            ranks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors),
-            historyLineThickness = settings.historyLineThickness,
-            historyDotRadius = settings.historyDotRadius,
-            guideLineWidth = settings.guideLineWidth,
-            guideLineColor = settings.guideLineColor,
-            message = msg,
-            // _timerEnabled 在每次修改选择时同步更新，是 combine 的独立输入源
-            hasScoreAndEvent = timerEnabled,
-            // 运气增幅（debounce 后异步计算，不阻塞主 combine）
-            luckValue = derivedLuck,
-        )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
+    init {
+        viewModelScope.launch {
+            combine(
+                _settingsHistory, _selectionPair, _msgTimer,
+            ) { (settings, history), (effectiveScore, effectiveEvent), (msg, timerEnabled) ->
+                _currentGoodResultPresets = settings.goodResultPresets
+                // 运气值内联计算，无 debounce，与其他 UI 元素同帧出现
+                val luckValue = if (settings.luckEnabled) {
+                    LuckAmplifier.computeLuckAmplification(
+                        totalScore = settings.totalScore,
+                        historyEntries = history,
+                        T = settings.luckT,
+                        b = settings.luckB,
+                        W = settings.luckW,
+                    )
+                } else null
+                MainUiState(
+                    totalScore = settings.totalScore,
+                    rank = repository.getRank(settings.totalScore, settings),
+                    scorePresets = settings.scorePresets,
+                    goodDeedPresets = settings.goodDeedPresets,
+                    badDeedPresets = settings.badDeedPresets,
+                    goodResultPresets = settings.goodResultPresets,
+                    selectedScore = effectiveScore,
+                    effectiveScore = effectiveScore,
+                    selectedEvent = effectiveEvent,
+                    scoreAxisFontSize = settings.scoreAxisFontSize,
+                    scoreAxisRangeMin = settings.scoreAxisRangeMin,
+                    scoreAxisRangeMax = settings.scoreAxisRangeMax,
+                    axisLabelColor = settings.axisLabelColor,
+                    axisTickThickness = settings.axisTickThickness,
+                    axisLabelFontSize = settings.axisLabelFontSize,
+                    axisDisplayRange = settings.axisDisplayRange,
+                    showNearbyTicks = settings.showNearbyTicks,
+                    nearbyTickRange = settings.nearbyTickRange,
+                    axisQuarterValue = settings.axisQuarterValue,
+                    ranks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors),
+                    historyLineThickness = settings.historyLineThickness,
+                    historyDotRadius = settings.historyDotRadius,
+                    guideLineWidth = settings.guideLineWidth,
+                    guideLineColor = settings.guideLineColor,
+                    message = msg,
+                    hasScoreAndEvent = timerEnabled,
+                    luckValue = luckValue,
+                )
+            }.collect { _uiState.value = it }
+        }
+    }
 
     // ---- Actions ----
 

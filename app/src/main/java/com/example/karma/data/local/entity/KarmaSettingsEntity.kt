@@ -1,8 +1,10 @@
 package com.example.karma.data.local.entity
 
+import androidx.compose.runtime.Immutable
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
+@Immutable
 @Entity(tableName = "karma_settings")
 data class KarmaSettingsEntity(
     @PrimaryKey

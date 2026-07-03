@@ -148,15 +148,92 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ScoreSettingsCard(draft = draft, viewModel = viewModel)
-            AxisSettingsCard(draft = draft, viewModel = viewModel)
-            RankSettingsCard(draft = draft, viewModel = viewModel)
-            EventSettingsCard(draft = draft, viewModel = viewModel)
-            HistorySettingsCard(draft = draft, viewModel = viewModel)
-            DecaySettingsCard(draft = draft, viewModel = viewModel)
-            LuckSettingsCard(draft = draft, viewModel = viewModel)
-            BackgroundGradientCard(draft = draft, viewModel = viewModel)
-            ResetCard(viewModel = viewModel)
+            ScoreSettingsCard(
+                scoreAxisFontSize = draft.scoreAxisFontSize,
+                scoreAxisRangeMin = draft.scoreAxisRangeMin,
+                scoreAxisRangeMax = draft.scoreAxisRangeMax,
+                onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
+                onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
+                onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
+            )
+            AxisSettingsCard(
+                axisLabelColor = draft.axisLabelColor,
+                axisTickThickness = draft.axisTickThickness,
+                axisLabelFontSize = draft.axisLabelFontSize,
+                axisDisplayRange = draft.axisDisplayRange,
+                showNearbyTicks = draft.showNearbyTicks,
+                nearbyTickRange = draft.nearbyTickRange,
+                axisQuarterValue = draft.axisQuarterValue,
+                guideLineWidth = draft.guideLineWidth,
+                guideLineColor = draft.guideLineColor,
+                onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
+                onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
+                onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
+                onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
+                onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
+                onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
+                onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
+                onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
+                onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
+            )
+            RankSettingsCard(
+                rankNames = draft.rankNames,
+                rankColors = draft.rankColors,
+                rankThresholds = draft.rankThresholds,
+                rankDecayAmounts = draft.rankDecayAmounts,
+                deleteMode = viewModel.deleteMode.collectAsState().value,
+                onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
+                onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
+                onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
+                onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
+                onAddRank = { viewModel.addRank() },
+                onDeleteRank = { viewModel.deleteRank(it) },
+                onToggleDeleteMode = { viewModel.toggleDeleteMode() },
+            )
+            EventSettingsCard(
+                goodDeedPresets = draft.goodDeedPresets,
+                badDeedPresets = draft.badDeedPresets,
+                goodResultPresets = draft.goodResultPresets,
+                onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
+                onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
+                onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
+            )
+            HistorySettingsCard(
+                historyLineThickness = draft.historyLineThickness,
+                historyDotRadius = draft.historyDotRadius,
+                onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
+                onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
+            )
+            DecaySettingsCard(
+                decayEnabled = draft.decayEnabled,
+                decayHour = draft.decayHour,
+                decayMinute = draft.decayMinute,
+                lastDecayDate = draft.lastDecayDate,
+                rankDecayAmounts = draft.rankDecayAmounts,
+                rankThresholds = draft.rankThresholds,
+                rankNames = draft.rankNames,
+                onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
+                onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
+            )
+            LuckSettingsCard(
+                luckEnabled = draft.luckEnabled,
+                luckT = draft.luckT,
+                luckB = draft.luckB,
+                luckW = draft.luckW,
+                onLuckEnabledChange = { viewModel.updateLuckEnabled(it) },
+                onLuckTChange = { viewModel.updateLuckT(it) },
+                onLuckBChange = { viewModel.updateLuckB(it) },
+                onLuckWChange = { viewModel.updateLuckW(it) },
+            )
+            BackgroundGradientCard(
+                themeGradientBaseColor = draft.themeGradientBaseColor,
+                themeGradientAccentColor = draft.themeGradientAccentColor,
+                onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
+                onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
+            )
+            ResetCard(
+                onReset = { viewModel.resetToDefaults() },
+            )
         }
     }
 }
@@ -167,31 +244,33 @@ fun SettingsScreen(
 
 @Composable
 private fun ScoreSettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    scoreAxisFontSize: Float,
+    scoreAxisRangeMin: Float,
+    scoreAxisRangeMax: Float,
+    onFontSizeChange: (Float) -> Unit,
+    onRangeMinChange: (Float) -> Unit,
+    onRangeMaxChange: (Float) -> Unit,
 ) {
     SettingsCard("左边分数区域") {
-        // 字体大小 Slider 12~36, step=1
         SettingsSlider(
             label = "字体大小",
-            value = draft.scoreAxisFontSize,
+            value = scoreAxisFontSize,
             valueRange = 12f..36f,
             steps = 23,
-            onValueChange = { viewModel.updateScoreAxisFontSize(it) },
+            onValueChange = onFontSizeChange,
         )
 
         Spacer(Modifier.height(12.dp))
 
-        // 显示范围：两个独立的数字输入框（不再强制对称）
         Text("显示范围", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            var scoreAxisRangeMinText by remember(draft.scoreAxisRangeMin) { mutableStateOf(formatFloat(draft.scoreAxisRangeMin)) }
+            var scoreAxisRangeMinText by remember(scoreAxisRangeMin) { mutableStateOf(formatFloat(scoreAxisRangeMin)) }
             OutlinedTextField(
                 value = scoreAxisRangeMinText,
                 onValueChange = { v ->
                     scoreAxisRangeMinText = v
-                    v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMin(it) }
+                    v.toFloatOrNull()?.let { onRangeMinChange(it) }
                 },
                 modifier = Modifier.widthIn(min = 70.dp),
                 singleLine = true,
@@ -207,12 +286,12 @@ private fun ScoreSettingsCard(
             Spacer(Modifier.width(4.dp))
             Text("  ~  ", color = TextMuted)
             Spacer(Modifier.width(4.dp))
-            var scoreAxisRangeMaxText by remember(draft.scoreAxisRangeMax) { mutableStateOf(formatFloat(draft.scoreAxisRangeMax)) }
+            var scoreAxisRangeMaxText by remember(scoreAxisRangeMax) { mutableStateOf(formatFloat(scoreAxisRangeMax)) }
             OutlinedTextField(
                 value = scoreAxisRangeMaxText,
                 onValueChange = { v ->
                     scoreAxisRangeMaxText = v
-                    v.toFloatOrNull()?.let { viewModel.updateScoreAxisRangeMax(it) }
+                    v.toFloatOrNull()?.let { onRangeMaxChange(it) }
                 },
                 modifier = Modifier.widthIn(min = 70.dp),
                 singleLine = true,
@@ -235,33 +314,39 @@ private fun ScoreSettingsCard(
 
 @Composable
 private fun AxisSettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    axisLabelColor: Long,
+    axisTickThickness: Float,
+    axisLabelFontSize: Float,
+    axisDisplayRange: Float,
+    showNearbyTicks: Boolean,
+    nearbyTickRange: Float,
+    axisQuarterValue: Float,
+    guideLineWidth: Float,
+    guideLineColor: Long,
+    onLabelColorChange: (Long) -> Unit,
+    onTickThicknessChange: (Float) -> Unit,
+    onLabelFontSizeChange: (Float) -> Unit,
+    onDisplayRangeChange: (Float) -> Unit,
+    onShowNearbyChange: (Boolean) -> Unit,
+    onNearbyRangeChange: (Float) -> Unit,
+    onQuarterValueChange: (Float) -> Unit,
+    onGuideLineWidthChange: (Float) -> Unit,
+    onGuideLineColorChange: (Long) -> Unit,
 ) {
     var showLabelColorPicker by remember { mutableStateOf(false) }
     var showGuideLineColorPicker by remember { mutableStateOf(false) }
 
     SettingsCard("中间刻度区域") {
-        // 1. 刻度颜色
         Text("刻度颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
-        ColorSwatch(
-            color = draft.axisLabelColor,
-            onClick = { showLabelColorPicker = true },
-        )
+        ColorSwatch(color = axisLabelColor, onClick = { showLabelColorPicker = true })
 
         Spacer(Modifier.height(12.dp))
 
-        // 2. 刻度粗细
-        SettingsSlider("刻度粗细", draft.axisTickThickness, 0.5f..12.0f, 22, viewModel::updateAxisTickThickness)
+        SettingsSlider("刻度粗细", axisTickThickness, 0.5f..12.0f, 22, onTickThicknessChange)
+        SettingsSlider("字体大小", axisLabelFontSize, 12f..56f, 43, onLabelFontSizeChange)
+        SettingsSlider("显示区间", axisDisplayRange, 50f..500f, 44, onDisplayRangeChange)
 
-        // 3. 字体大小
-        SettingsSlider("字体大小", draft.axisLabelFontSize, 12f..56f, 43, viewModel::updateAxisLabelFontSize)
-
-        // 4. 显示区间
-        SettingsSlider("显示区间", draft.axisDisplayRange, 50f..500f, 44, viewModel::updateAxisDisplayRange)
-
-        // 5. 近邻刻度 — 开关 + 范围
         Spacer(Modifier.height(4.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -270,73 +355,55 @@ private fun AxisSettingsCard(
         ) {
             Text("近邻刻度", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             Switch(
-                checked = draft.showNearbyTicks,
-                onCheckedChange = { viewModel.updateShowNearbyTicks(it) },
+                checked = showNearbyTicks,
+                onCheckedChange = onShowNearbyChange,
                 colors = androidx.compose.material3.SwitchDefaults.colors(
                     checkedThumbColor = Gold,
                     checkedTrackColor = Gold.copy(alpha = 0.3f),
                 ),
             )
         }
-        if (draft.showNearbyTicks) {
-            SettingsSlider("近邻范围", draft.nearbyTickRange, 5f..50f, 44, viewModel::updateNearbyTickRange)
+        if (showNearbyTicks) {
+            SettingsSlider("近邻范围", nearbyTickRange, 5f..50f, 44, onNearbyRangeChange)
         }
 
-        // 6. 疏密程度
         Spacer(Modifier.height(8.dp))
         Text("疏密程度", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(2.dp))
-        Text(
-            "上方¼处 = +${draft.axisQuarterValue.toInt()} 分",
-            fontSize = 12.sp,
-            color = TextMuted,
-        )
+        Text("上方¼处 = +${axisQuarterValue.toInt()} 分", fontSize = 12.sp, color = TextMuted)
         Slider(
-            value = draft.axisQuarterValue,
-            onValueChange = { viewModel.updateAxisQuarterValue(it) },
+            value = axisQuarterValue,
+            onValueChange = onQuarterValueChange,
             valueRange = 2f..50f,
             steps = 47,
             modifier = Modifier.fillMaxWidth(),
-            colors = SliderDefaults.colors(
-                thumbColor = Gold,
-                activeTrackColor = Gold,
-            ),
+            colors = SliderDefaults.colors(thumbColor = Gold, activeTrackColor = Gold),
         )
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("较稀疏", fontSize = 11.sp, color = TextMuted)
             Text("较密集", fontSize = 11.sp, color = TextMuted)
         }
 
-        // 7. 指引线 — 粗细 + 颜色
         Spacer(Modifier.height(12.dp))
-        SettingsSlider("指引线粗细", draft.guideLineWidth, 0.5f..12f, 22, viewModel::updateGuideLineWidth)
+        SettingsSlider("指引线粗细", guideLineWidth, 0.5f..12f, 22, onGuideLineWidthChange)
 
         Spacer(Modifier.height(8.dp))
         Text("指引线颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
-        ColorSwatch(
-            color = draft.guideLineColor,
-            onClick = { showGuideLineColorPicker = true },
-        )
+        ColorSwatch(color = guideLineColor, onClick = { showGuideLineColorPicker = true })
     }
 
-    // 刻度颜色选择器
     if (showLabelColorPicker) {
         ColorPickerDialog(
-            currentColor = draft.axisLabelColor,
-            onColorSelected = { viewModel.updateAxisLabelColor(it) },
+            currentColor = axisLabelColor,
+            onColorSelected = { onLabelColorChange(it) },
             onDismiss = { showLabelColorPicker = false },
         )
     }
-
-    // 指引线颜色选择器
     if (showGuideLineColorPicker) {
         ColorPickerDialog(
-            currentColor = draft.guideLineColor,
-            onColorSelected = { viewModel.updateGuideLineColor(it) },
+            currentColor = guideLineColor,
+            onColorSelected = { onGuideLineColorChange(it) },
             onDismiss = { showGuideLineColorPicker = false },
         )
     }
@@ -348,8 +415,12 @@ private fun AxisSettingsCard(
 
 @Composable
 private fun EventSettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    goodDeedPresets: List<String>,
+    badDeedPresets: List<String>,
+    goodResultPresets: List<String>,
+    onGoodDeedChange: (String) -> Unit,
+    onBadDeedChange: (String) -> Unit,
+    onGoodResultChange: (String) -> Unit,
 ) {
     SettingsCard("右边事件列表") {
         Text(
@@ -363,8 +434,8 @@ private fun EventSettingsCard(
         EventSection(
             title = "善业",
             titleColor = Color(0xFF69f0ae),
-            events = draft.goodDeedPresets,
-            onUpdate = { viewModel.updateGoodDeedPresets(it) },
+            events = goodDeedPresets,
+            onUpdate = onGoodDeedChange,
         )
 
         Spacer(Modifier.height(12.dp))
@@ -373,8 +444,8 @@ private fun EventSettingsCard(
         EventSection(
             title = "恶业",
             titleColor = Color(0xFFff5252),
-            events = draft.badDeedPresets,
-            onUpdate = { viewModel.updateBadDeedPresets(it) },
+            events = badDeedPresets,
+            onUpdate = onBadDeedChange,
         )
 
         Spacer(Modifier.height(12.dp))
@@ -383,8 +454,8 @@ private fun EventSettingsCard(
         EventSection(
             title = "善果",
             titleColor = Color(0xFFffd700),
-            events = draft.goodResultPresets,
-            onUpdate = { viewModel.updateGoodResultPresets(it) },
+            events = goodResultPresets,
+            onUpdate = onGoodResultChange,
         )
     }
 }
@@ -438,12 +509,14 @@ private fun EventSection(
 
 @Composable
 private fun HistorySettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    historyLineThickness: Float,
+    historyDotRadius: Float,
+    onLineThicknessChange: (Float) -> Unit,
+    onDotRadiusChange: (Float) -> Unit,
 ) {
     SettingsCard("历史记录设置") {
-        SettingsSlider("线条粗细", draft.historyLineThickness, 0.5f..10f, 18, viewModel::updateHistoryLineThickness)
-        SettingsSlider("点的半径", draft.historyDotRadius, 1f..16f, 29, viewModel::updateHistoryDotRadius)
+        SettingsSlider("线条粗细", historyLineThickness, 0.5f..10f, 18, onLineThicknessChange)
+        SettingsSlider("点的半径", historyDotRadius, 1f..16f, 29, onDotRadiusChange)
     }
 }
 
@@ -453,8 +526,15 @@ private fun HistorySettingsCard(
 
 @Composable
 private fun DecaySettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    decayEnabled: Boolean,
+    decayHour: Int,
+    decayMinute: Int,
+    lastDecayDate: String,
+    rankDecayAmounts: List<Float>,
+    rankThresholds: List<Float>,
+    rankNames: List<String>,
+    onDecayEnabledChange: (Boolean) -> Unit,
+    onDecayTimeChange: (Int, Int) -> Unit,
 ) {
     SettingsCard("业力衰减") {
         // 总开关
@@ -465,8 +545,8 @@ private fun DecaySettingsCard(
         ) {
             Text("启用衰减", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             Switch(
-                checked = draft.decayEnabled,
-                onCheckedChange = { viewModel.updateDecayEnabled(it) },
+                checked = decayEnabled,
+                onCheckedChange = onDecayEnabledChange,
                 colors = androidx.compose.material3.SwitchDefaults.colors(
                     checkedThumbColor = Gold,
                     checkedTrackColor = Gold.copy(alpha = 0.3f),
@@ -492,7 +572,7 @@ private fun DecaySettingsCard(
             contentAlignment = Alignment.Center,
         ) {
             Text(
-                text = String.format("%02d:%02d", draft.decayHour, draft.decayMinute),
+                text = String.format("%02d:%02d", decayHour, decayMinute),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
                 color = Gold,
@@ -501,11 +581,9 @@ private fun DecaySettingsCard(
 
         if (showTimePicker) {
             TimePickerDialog(
-                initialHour = draft.decayHour,
-                initialMinute = draft.decayMinute,
-                onConfirm = { hour, minute ->
-                    viewModel.updateDecayTime(hour, minute)
-                },
+                initialHour = decayHour,
+                initialMinute = decayMinute,
+                onConfirm = { hour, minute -> onDecayTimeChange(hour, minute) },
                 onDismiss = { showTimePicker = false },
             )
         }
@@ -514,7 +592,7 @@ private fun DecaySettingsCard(
 
         // 上次扣除日期
         Text(
-            text = "上次扣除：${draft.lastDecayDate.ifEmpty { "尚未扣除" }}",
+            text = "上次扣除：${lastDecayDate.ifEmpty { "尚未扣除" }}",
             fontSize = 12.sp,
             color = TextMuted,
         )
@@ -527,8 +605,14 @@ private fun DecaySettingsCard(
 
 @Composable
 private fun LuckSettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    luckEnabled: Boolean,
+    luckT: Float,
+    luckB: Float,
+    luckW: Float,
+    onLuckEnabledChange: (Boolean) -> Unit,
+    onLuckTChange: (Float) -> Unit,
+    onLuckBChange: (Float) -> Unit,
+    onLuckWChange: (Float) -> Unit,
 ) {
     SettingsCard("运气增幅") {
         // 总开关
@@ -539,8 +623,8 @@ private fun LuckSettingsCard(
         ) {
             Text("启用运气增幅", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
             Switch(
-                checked = draft.luckEnabled,
-                onCheckedChange = { viewModel.updateLuckEnabled(it) },
+                checked = luckEnabled,
+                onCheckedChange = onLuckEnabledChange,
                 colors = androidx.compose.material3.SwitchDefaults.colors(
                     checkedThumbColor = Gold,
                     checkedTrackColor = Gold.copy(alpha = 0.3f),
@@ -548,19 +632,19 @@ private fun LuckSettingsCard(
             )
         }
 
-        if (draft.luckEnabled) {
+        if (luckEnabled) {
             Spacer(Modifier.height(12.dp))
 
             // T — 天数（多少天后只通过总和影响）
             Text("你觉得多少天以后的行为只能通过总和影响？", fontSize = 13.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
-            var luckTText by remember(draft.luckT) { mutableStateOf(draft.luckT.toInt().toString()) }
+            var luckTText by remember(luckT) { mutableStateOf(luckT.toInt().toString()) }
             OutlinedTextField(
                 value = luckTText,
                 onValueChange = { v ->
                     luckTText = v
                     v.toFloatOrNull()?.let {
-                        if (it >= 1f && it <= 365f) viewModel.updateLuckT(it)
+                        if (it >= 1f && it <= 365f) onLuckTChange(it)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -580,13 +664,13 @@ private fun LuckSettingsCard(
             // b — 普通好事分值
             Text("你觉得做一件普通的好事值多少分？", fontSize = 13.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
-            var luckBText by remember(draft.luckB) { mutableStateOf(formatFloat(draft.luckB)) }
+            var luckBText by remember(luckB) { mutableStateOf(formatFloat(luckB)) }
             OutlinedTextField(
                 value = luckBText,
                 onValueChange = { v ->
                     luckBText = v
                     v.toFloatOrNull()?.let {
-                        if (it >= 0.1f && it <= 100f) viewModel.updateLuckB(it)
+                        if (it >= 0.1f && it <= 100f) onLuckBChange(it)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -606,13 +690,13 @@ private fun LuckSettingsCard(
             // W — 对应总分
             Text("你觉得最近一天下降 10 分，对应总的多少分？", fontSize = 13.sp, color = TextSecondary)
             Spacer(Modifier.height(4.dp))
-            var luckWText by remember(draft.luckW) { mutableStateOf(formatFloat(draft.luckW)) }
+            var luckWText by remember(luckW) { mutableStateOf(formatFloat(luckW)) }
             OutlinedTextField(
                 value = luckWText,
                 onValueChange = { v ->
                     luckWText = v
                     v.toFloatOrNull()?.let {
-                        if (it >= 1f && it <= 1000f) viewModel.updateLuckW(it)
+                        if (it >= 1f && it <= 1000f) onLuckWChange(it)
                     }
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -629,9 +713,9 @@ private fun LuckSettingsCard(
 
             // 导出参数 a、c（只读）
             Spacer(Modifier.height(12.dp))
-            val aVal = 9.0 / (2.0 * draft.luckT * draft.luckT)
+            val aVal = 9.0 / (2.0 * luckT * luckT)
             val cIntegral = LuckAmplifier.integralExpMinusAt2(aVal, 0.0, 1.0)
-            val cVal = draft.luckW.toDouble() / (10.0 * cIntegral)
+            val cVal = luckW.toDouble() / (10.0 * cIntegral)
             Text(
                 "a = ${String.format("%.6f", aVal)}    c = ${String.format("%.4f", cVal)}",
                 fontSize = 11.sp,
@@ -652,70 +736,45 @@ private fun LuckSettingsCard(
 
 @Composable
 private fun BackgroundGradientCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    themeGradientBaseColor: Long,
+    themeGradientAccentColor: Long,
+    onBaseColorChange: (Long) -> Unit,
+    onAccentColorChange: (Long) -> Unit,
 ) {
     var showBaseColorPicker by remember { mutableStateOf(false) }
     var showAccentColorPicker by remember { mutableStateOf(false) }
 
     SettingsCard("背景渐变设置") {
-        // 起始色（顶部）
         Text("渐变起始色（顶部）", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
-        ColorSwatch(
-            color = draft.themeGradientBaseColor,
-            onClick = { showBaseColorPicker = true },
-        )
+        ColorSwatch(color = themeGradientBaseColor, onClick = { showBaseColorPicker = true })
 
         Spacer(Modifier.height(12.dp))
 
-        // 结束色（底部）
         Text("渐变结束色（底部）", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
-        ColorSwatch(
-            color = draft.themeGradientAccentColor,
-            onClick = { showAccentColorPicker = true },
-        )
+        ColorSwatch(color = themeGradientAccentColor, onClick = { showAccentColorPicker = true })
 
-        // 渐变预览条
         Spacer(Modifier.height(12.dp))
         Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(24.dp)
+            modifier = Modifier.fillMaxWidth().height(24.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(draft.themeGradientBaseColor),
-                            Color(draft.themeGradientAccentColor),
-                        ),
-                    )
-                )
+                .background(Brush.verticalGradient(listOf(Color(themeGradientBaseColor), Color(themeGradientAccentColor))))
                 .border(1.dp, BorderSubtle, RoundedCornerShape(6.dp)),
         )
     }
 
-    // 起始色选择器
     if (showBaseColorPicker) {
         ColorPickerDialog(
-            currentColor = draft.themeGradientBaseColor,
-            onColorSelected = {
-                viewModel.updateThemeGradientBaseColor(it)
-                showBaseColorPicker = false
-            },
+            currentColor = themeGradientBaseColor,
+            onColorSelected = { onBaseColorChange(it); showBaseColorPicker = false },
             onDismiss = { showBaseColorPicker = false },
         )
     }
-
-    // 氛围色选择器
     if (showAccentColorPicker) {
         ColorPickerDialog(
-            currentColor = draft.themeGradientAccentColor,
-            onColorSelected = {
-                viewModel.updateThemeGradientAccentColor(it)
-                showAccentColorPicker = false
-            },
+            currentColor = themeGradientAccentColor,
+            onColorSelected = { onAccentColorChange(it); showAccentColorPicker = false },
             onDismiss = { showAccentColorPicker = false },
         )
     }
@@ -726,7 +785,7 @@ private fun BackgroundGradientCard(
 // ============================================================
 
 @Composable
-private fun ResetCard(viewModel: SettingsViewModel) {
+private fun ResetCard(onReset: () -> Unit) {
     var showResetDialog by remember { mutableStateOf(false) }
 
     if (showResetDialog) {
@@ -737,7 +796,7 @@ private fun ResetCard(viewModel: SettingsViewModel) {
             confirmButton = {
                 Button(
                     onClick = {
-                        viewModel.resetToDefaults()
+                        onReset()
                         showResetDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFff5252)),
@@ -841,22 +900,31 @@ private fun ColorSwatch(color: Long, onClick: () -> Unit) {
 
 @Composable
 private fun RankSettingsCard(
-    draft: com.example.karma.data.local.entity.KarmaSettingsEntity,
-    viewModel: SettingsViewModel,
+    rankNames: List<String>,
+    rankColors: List<Long>,
+    rankThresholds: List<Float>,
+    rankDecayAmounts: List<Float>,
+    deleteMode: Boolean,
+    onRankNameChange: (Int, String) -> Unit,
+    onRankColorChange: (Int, Long) -> Unit,
+    onRankThresholdChange: (Int, Float) -> Unit,
+    onRankDecayChange: (Int, Float) -> Unit,
+    onAddRank: () -> Unit,
+    onDeleteRank: (Int) -> Unit,
+    onToggleDeleteMode: () -> Unit,
 ) {
-    val deleteMode by viewModel.deleteMode.collectAsState()
     var showColorPicker by remember { mutableStateOf(false) }
     var colorPickerTarget by remember { mutableStateOf(0) }
 
     SettingsCard("阶位设置") {
-        val count = draft.rankNames.size
+        val count = rankNames.size
 
         for (i in 0 until count) {
             val isLast = i == count - 1
-            val name = draft.rankNames.getOrElse(i) { "?" }
-            val color = draft.rankColors.getOrElse(i) { 0xFFFFFFFF }
-            val threshold = draft.rankThresholds.getOrElse(i) { 0f }
-            val decay = draft.rankDecayAmounts.getOrElse(i) { 2f }
+            val name = rankNames.getOrElse(i) { "?" }
+            val color = rankColors.getOrElse(i) { 0xFFFFFFFF }
+            val threshold = rankThresholds.getOrElse(i) { 0f }
+            val decay = rankDecayAmounts.getOrElse(i) { 2f }
 
             // 每个阶位卡片
             Box(
@@ -875,7 +943,7 @@ private fun RankSettingsCard(
                     ) {
                         OutlinedTextField(
                             value = name,
-                            onValueChange = { viewModel.updateRankName(i, it) },
+                            onValueChange = { onRankNameChange(i, it) },
                             singleLine = true,
                             textStyle = MaterialTheme.typography.bodyMedium.copy(
                                 fontWeight = FontWeight.Bold,
@@ -899,7 +967,7 @@ private fun RankSettingsCard(
                                     .size(22.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFcc0000))
-                                    .clickable { viewModel.deleteRank(i) },
+                                    .clickable { onDeleteRank(i) },
                                 contentAlignment = Alignment.Center,
                             ) {
                                 Text(
@@ -928,7 +996,7 @@ private fun RankSettingsCard(
                                 value = rankThresholdText,
                                 onValueChange = { v ->
                                     rankThresholdText = v
-                                    v.toFloatOrNull()?.let { viewModel.updateRankThreshold(i, it) }
+                                    v.toFloatOrNull()?.let { onRankThresholdChange(i, it) }
                                 },
                                 modifier = Modifier.widthIn(min = 52.dp),
                                 singleLine = true,
@@ -950,7 +1018,7 @@ private fun RankSettingsCard(
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Text("业力衰减：", fontSize = 12.sp, color = TextMuted)
                         IconButton(
-                            onClick = { viewModel.updateRankDecayAmount(i, decay - 1f) },
+                            onClick = { onRankDecayChange(i, decay - 1f) },
                             modifier = Modifier.size(28.dp),
                         ) {
                             Text("−", fontSize = 16.sp, color = TextSecondary)
@@ -962,7 +1030,7 @@ private fun RankSettingsCard(
                             textAlign = TextAlign.Center,
                         )
                         IconButton(
-                            onClick = { viewModel.updateRankDecayAmount(i, decay + 1f) },
+                            onClick = { onRankDecayChange(i, decay + 1f) },
                             modifier = Modifier.size(28.dp),
                         ) {
                             Text("+", fontSize = 16.sp, color = TextSecondary)
@@ -984,7 +1052,7 @@ private fun RankSettingsCard(
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF1A1A1A))
                     .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
-                    .clickable { viewModel.addRank() }
+                    .clickable { onAddRank() }
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
                 Text("+", fontSize = 16.sp, color = Gold)
@@ -1005,7 +1073,7 @@ private fun RankSettingsCard(
                         if (delActive) Color(0xFFb8860b) else Color(0xFF334444),
                         RoundedCornerShape(6.dp),
                     )
-                    .clickable(enabled = count > 1) { viewModel.toggleDeleteMode() }
+                    .clickable(enabled = count > 1) { onToggleDeleteMode() }
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
                 Text(
@@ -1023,9 +1091,9 @@ private fun RankSettingsCard(
     // 颜色选择器
     if (showColorPicker) {
         ColorPickerDialog(
-            currentColor = draft.rankColors.getOrElse(colorPickerTarget) { 0xFFFFFFFF },
+            currentColor = rankColors.getOrElse(colorPickerTarget) { 0xFFFFFFFF },
             onColorSelected = {
-                viewModel.updateRankColor(colorPickerTarget, it)
+                onRankColorChange(colorPickerTarget, it)
                 showColorPicker = false
             },
             onDismiss = { showColorPicker = false },

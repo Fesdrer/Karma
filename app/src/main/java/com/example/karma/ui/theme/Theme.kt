@@ -9,7 +9,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -47,6 +49,11 @@ fun KarmaTheme(
     content: @Composable () -> Unit
 ) {
     val settings by repository.settings.collectAsState(KarmaSettingsEntity())
+    val gradientColors by remember {
+        derivedStateOf {
+            listOf(Color(settings.themeGradientBaseColor), Color(settings.themeGradientAccentColor))
+        }
+    }
 
     MaterialTheme(
         colorScheme = KarmaColorScheme,
@@ -55,16 +62,8 @@ fun KarmaTheme(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        colors = listOf(
-                            Color(settings.themeGradientBaseColor),
-                            Color(settings.themeGradientAccentColor),
-                        )
-                    )
-                ),
+                .background(Brush.verticalGradient(colors = gradientColors)),
         ) {
-            // 背景装饰图：顶端贴状态栏下端，底端贴屏幕底
             Box(
                 modifier = Modifier
                     .fillMaxSize()

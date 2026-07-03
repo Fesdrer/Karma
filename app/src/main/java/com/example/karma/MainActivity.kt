@@ -15,8 +15,8 @@ import com.example.karma.ui.theme.KarmaTheme
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        super.onCreate(savedInstanceState)
 
         // 沉浸式状态栏/导航栏：深色背景 + 浅色图标
         window.statusBarColor = android.graphics.Color.rgb(10, 10, 10)

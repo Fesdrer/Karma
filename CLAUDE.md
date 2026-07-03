@@ -8,6 +8,32 @@
 - 改完一个 Bug 后再考虑下一个，不要交叉推演。
 - 改完要自己编译检查。
 
+# 防重复犯错规则
+
+## 1. 用户描述的现象顺序 = 代码执行顺序
+
+当用户说"A 出现了，然后 B 出现，最后 C 出现"时，这个时间顺序直接对应代码中数据到达的先后顺序。把每个"然后"映射到一个具体的异步操作（Flow 发射、回调、debounce、delay 等），按顺序排查。
+
+## 2. 自己加的优化自己检查副作用
+
+你对代码做的任何"性能优化"（debounce、缓存、异步拆分），必须在改完后**验证视觉效果没有变差**。尤其是 debounce/delay 会引入人为延迟，导致 UI 元素分批出现。
+
+## 3. stateIn 必然先发 initialValue 再发真实值——如果这会造成视觉问题，不要用 stateIn
+
+`stateIn(scope, started, initialValue)` 的设计就是先同步发射 `initialValue`，再等上游发射真实值。如果 initialValue 和真实值视觉效果不同（如空列表 vs 有数据、默认色 vs 用户色），首帧一定会有跳变。调整 `started` 参数（WhileSubscribed→Eagerly）只能缩小间隙，无法消除。
+
+**正确做法**：用 `MutableStateFlow<T?>(null)`，在 UI 层 `state ?: return`（不渲染任何东西），等数据就绪后一次性填充。
+
+## 4. 启动闪变优先查 Android 系统层
+
+Compose 启动闪变的来源按优先级：
+1. **系统 theme 背景色**（themes.xml 的 `windowBackground`）— 会在 Compose 渲染前显示
+2. **`enableEdgeToEdge()` 调用时机** — 必须在 `super.onCreate()` 之前
+3. **`stateIn` 的 initialValue**
+4. **自己加的 debounce/delay**
+
+不要跳过一个层级去查下一个。
+
 # 用户需求理解规则
 
 **用户说的话就是需求本身，不要"翻译"成你以为的东西。** 当你开始在心里把用户的话转换成另一个概念时，停下来，用字面意思直接实现。

@@ -29,22 +29,23 @@ class SettingsViewModel(
     val original: StateFlow<KarmaSettingsEntity> = _original.asStateFlow()
     val deleteMode: StateFlow<Boolean> = _deleteMode.asStateFlow()
 
+    /** 标记 Room 数据是否已加载。就绪前 SettingsScreen 不渲染，避免默认值跳变。 */
+    private val _isReady = MutableStateFlow(false)
+    val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
+
     init {
-        // 异步加载初始值，不阻塞主线程
         viewModelScope.launch {
             val initial = repository.settings.first()
             _original.value = initial
-            // 仅当用户尚未编辑时才覆盖 _draft，防止编辑丢失
             if (!_userEdited) {
                 _draft.value = initial
             } else {
-                // 用户已在 DB 加载前编辑过，保留编辑但修复关键字段（totalScore 等）
-                // 否则 _draft 的 totalScore 仍是 KarmaSettingsEntity() 的 0
                 setDraft(_draft.value.copy(
                     totalScore = initial.totalScore,
                     lastDecayDate = initial.lastDecayDate,
                 ))
             }
+            _isReady.value = true
         }
     }
 

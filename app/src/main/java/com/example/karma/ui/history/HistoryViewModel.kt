@@ -78,7 +78,7 @@ class HistoryViewModel(
             ),
             message = msg,
         )
-    }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), HistoryUiState())
+    }.stateIn(viewModelScope, SharingStarted.Eagerly, HistoryUiState())
 
     fun setViewMode(mode: ViewMode) {
         _viewMode.value = mode
