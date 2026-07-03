@@ -1,6 +1,8 @@
 package com.example.karma.ui.divination
 
 import android.widget.Toast
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -105,9 +107,10 @@ fun DivinationScreen(
             )
         }
 
-        // Center content — varies by tab
-        when (selectedTab) {
-            0 -> {
+        // Center content — varies by tab, with crossfade transition
+        Crossfade(targetState = selectedTab, animationSpec = tween(300)) { tab ->
+            when (tab) {
+                0 -> {
                 // 气运测试 — 保持原样
                 Column(
                     modifier = Modifier
@@ -276,6 +279,7 @@ fun DivinationScreen(
                     Spacer(Modifier.width(6.dp))
                 }
             }
+        }
         }
     }
 }
