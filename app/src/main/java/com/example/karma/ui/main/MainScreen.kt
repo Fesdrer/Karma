@@ -1,5 +1,7 @@
 package com.example.karma.ui.main
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -42,8 +44,12 @@ fun MainScreen(
     )
     val state by viewModel.uiState.collectAsState()
 
-    // 数据就绪前不渲染任何内容，避免元素逐个出现的跳变
-    val s = state ?: return
+    // 数据就绪前用纯黑遮罩覆盖背景，等数据到齐后背景和内容一起出现
+    if (state == null) {
+        Box(modifier = Modifier.fillMaxSize().background(Color.Black))
+        return
+    }
+    val s = state!!
 
     // Snackbar
     val snackbarHostState = remember { SnackbarHostState() }
