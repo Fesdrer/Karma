@@ -9,6 +9,7 @@ import com.example.karma.util.LuckAmplifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 data class MainUiState(
@@ -73,10 +74,24 @@ class MainViewModel(
     // 合并 message + timerEnabled
     private val _msgTimer = combine(_message, _timerEnabled) { m, t -> Pair(m, t) }
 
-    // settings + history pair（用于 combine 合并）
+    // settings + history pair
     private val _settingsHistory = combine(
         repository.settings, repository.allHistory,
     ) { s, h -> Pair(s, h) }
+
+    // 运气值独立流：仅依赖 settings+history，不依赖 selection。
+    // 避免每次拖动分数时重算 erf/sqrt/exp。
+    private val _luckValue = _settingsHistory.map { (settings, history) ->
+        if (settings.luckEnabled) {
+            LuckAmplifier.computeLuckAmplification(
+                totalScore = settings.totalScore,
+                historyEntries = history,
+                T = settings.luckT,
+                b = settings.luckB,
+                W = settings.luckW,
+            )
+        } else null
+    }
 
     /** uiState 初始为 null，首帧不渲染。combine 首次发射后一次性显示全部内容。 */
     private val _uiState = MutableStateFlow<MainUiState?>(null)
@@ -85,19 +100,9 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             combine(
-                _settingsHistory, _selectionPair, _msgTimer,
-            ) { (settings, history), (effectiveScore, effectiveEvent), (msg, timerEnabled) ->
+                _settingsHistory, _selectionPair, _msgTimer, _luckValue,
+            ) { (settings, history), (effectiveScore, effectiveEvent), (msg, timerEnabled), luckValue ->
                 _currentGoodResultPresets = settings.goodResultPresets
-                // 运气值内联计算，无 debounce，与其他 UI 元素同帧出现
-                val luckValue = if (settings.luckEnabled) {
-                    LuckAmplifier.computeLuckAmplification(
-                        totalScore = settings.totalScore,
-                        historyEntries = history,
-                        T = settings.luckT,
-                        b = settings.luckB,
-                        W = settings.luckW,
-                    )
-                } else null
                 MainUiState(
                     totalScore = settings.totalScore,
                     rank = repository.getRank(settings.totalScore, settings),

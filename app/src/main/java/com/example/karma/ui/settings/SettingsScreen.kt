@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
@@ -140,23 +141,22 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        Column(
+        LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
-                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            ScoreSettingsCard(
+            item { ScoreSettingsCard(
                 scoreAxisFontSize = draft.scoreAxisFontSize,
                 scoreAxisRangeMin = draft.scoreAxisRangeMin,
                 scoreAxisRangeMax = draft.scoreAxisRangeMax,
                 onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
                 onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
                 onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
-            )
-            AxisSettingsCard(
+            ) }
+            item { AxisSettingsCard(
                 axisLabelColor = draft.axisLabelColor,
                 axisTickThickness = draft.axisTickThickness,
                 axisLabelFontSize = draft.axisLabelFontSize,
@@ -175,8 +175,8 @@ fun SettingsScreen(
                 onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
                 onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
                 onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
-            )
-            RankSettingsCard(
+            ) }
+            item { RankSettingsCard(
                 rankNames = draft.rankNames,
                 rankColors = draft.rankColors,
                 rankThresholds = draft.rankThresholds,
@@ -189,22 +189,22 @@ fun SettingsScreen(
                 onAddRank = { viewModel.addRank() },
                 onDeleteRank = { viewModel.deleteRank(it) },
                 onToggleDeleteMode = { viewModel.toggleDeleteMode() },
-            )
-            EventSettingsCard(
+            ) }
+            item { EventSettingsCard(
                 goodDeedPresets = draft.goodDeedPresets,
                 badDeedPresets = draft.badDeedPresets,
                 goodResultPresets = draft.goodResultPresets,
                 onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
                 onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
                 onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
-            )
-            HistorySettingsCard(
+            ) }
+            item { HistorySettingsCard(
                 historyLineThickness = draft.historyLineThickness,
                 historyDotRadius = draft.historyDotRadius,
                 onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
                 onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
-            )
-            DecaySettingsCard(
+            ) }
+            item { DecaySettingsCard(
                 decayEnabled = draft.decayEnabled,
                 decayHour = draft.decayHour,
                 decayMinute = draft.decayMinute,
@@ -214,8 +214,8 @@ fun SettingsScreen(
                 rankNames = draft.rankNames,
                 onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
                 onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
-            )
-            LuckSettingsCard(
+            ) }
+            item { LuckSettingsCard(
                 luckEnabled = draft.luckEnabled,
                 luckT = draft.luckT,
                 luckB = draft.luckB,
@@ -224,16 +224,16 @@ fun SettingsScreen(
                 onLuckTChange = { viewModel.updateLuckT(it) },
                 onLuckBChange = { viewModel.updateLuckB(it) },
                 onLuckWChange = { viewModel.updateLuckW(it) },
-            )
-            BackgroundGradientCard(
+            ) }
+            item { BackgroundGradientCard(
                 themeGradientBaseColor = draft.themeGradientBaseColor,
                 themeGradientAccentColor = draft.themeGradientAccentColor,
                 onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
                 onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
-            )
-            ResetCard(
+            ) }
+            item { ResetCard(
                 onReset = { viewModel.resetToDefaults() },
-            )
+            ) }
         }
     }
 }
