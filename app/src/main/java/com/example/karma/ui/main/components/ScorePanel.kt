@@ -20,6 +20,7 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -38,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
+import kotlinx.coroutines.flow.StateFlow
 import kotlin.math.abs
 import kotlin.math.roundToInt
 
@@ -45,7 +47,7 @@ private const val PADDING_FRACTION = 0.10f
 
 @Composable
 fun ScorePanel(
-    selectedScore: Float?,
+    scoreFlow: StateFlow<Float?>,
     onScoreSelected: (Float) -> Unit,
     onCustomScoreChanged: (String) -> Unit,
     axisFontSize: Float = 22f,
@@ -53,6 +55,7 @@ fun ScorePanel(
     axisRangeMax: Float = 6f,
     modifier: Modifier = Modifier,
 ) {
+    val selectedScore by scoreFlow.collectAsState()
     Column(
         modifier = modifier
             .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))

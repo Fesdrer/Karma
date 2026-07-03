@@ -9,7 +9,6 @@ import com.example.karma.util.LuckAmplifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 
 data class MainUiState(
@@ -63,6 +62,13 @@ class MainViewModel(
     // 缓存当前善果预设列表，用于 onConfirm 时判断是否加前缀
     private var _currentGoodResultPresets: List<String> = emptyList()
 
+    /** 独立的选择状态流：ScorePanel/EventPanel 直接读此流，绕过 combine 链。
+     *  拖动滑条时不会触发 MainScreen 整体重组。 */
+    private val _effectiveScoreState = MutableStateFlow<Float?>(null)
+    val effectiveScoreState: StateFlow<Float?> = _effectiveScoreState
+    private val _effectiveEventState = MutableStateFlow<String?>(null)
+    val effectiveEventState: StateFlow<String?> = _effectiveEventState
+
     // 合并 selection 相关流
     private val _selectionPair = combine(
         combine(_selectedScore, _customScore) { preset, custom -> custom ?: preset },
@@ -74,24 +80,19 @@ class MainViewModel(
     // 合并 message + timerEnabled
     private val _msgTimer = combine(_message, _timerEnabled) { m, t -> Pair(m, t) }
 
-    // settings + history pair
-    private val _settingsHistory = combine(
+    // settings + history + luck：合并为单一 flow，避免 Room 双重订阅。
+    private val _settingsLuck = combine(
         repository.settings, repository.allHistory,
-    ) { s, h -> Pair(s, h) }
-
-    // 运气值独立流：仅依赖 settings+history，不依赖 selection。
-    // 避免每次拖动分数时重算 erf/sqrt/exp。
-    private val _luckValue = _settingsHistory.map { (settings, history) ->
-        if (settings.luckEnabled) {
-            LuckAmplifier.computeLuckAmplification(
-                totalScore = settings.totalScore,
-                historyEntries = history,
-                T = settings.luckT,
-                b = settings.luckB,
-                W = settings.luckW,
-            )
+    ) { s, h ->
+        val luck = if (s.luckEnabled) {
+            LuckAmplifier.computeLuckAmplification(s.totalScore, h, s.luckT, s.luckB, s.luckW)
         } else null
+        Triple(s, h, luck)
     }
+
+    // 缓存 ranks 列表，仅在 rank 相关设置变更时重建。
+    private var _cachedRankSettings: List<Any> = emptyList()
+    private var _cachedRanks: List<Rank> = emptyList()
 
     /** uiState 初始为 null，首帧不渲染。combine 首次发射后一次性显示全部内容。 */
     private val _uiState = MutableStateFlow<MainUiState?>(null)
@@ -100,9 +101,15 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             combine(
-                _settingsHistory, _selectionPair, _msgTimer, _luckValue,
-            ) { (settings, history), (effectiveScore, effectiveEvent), (msg, timerEnabled), luckValue ->
+                _settingsLuck, _selectionPair, _msgTimer,
+            ) { (settings, history, luckValue), (effectiveScore, effectiveEvent), (msg, timerEnabled) ->
                 _currentGoodResultPresets = settings.goodResultPresets
+                // 缓存 rank 列表：只在阈值/名称/颜色变更时重建
+                val rankKey = listOf(settings.rankThresholds, settings.rankNames, settings.rankColors)
+                if (rankKey != _cachedRankSettings) {
+                    _cachedRankSettings = rankKey
+                    _cachedRanks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors)
+                }
                 MainUiState(
                     totalScore = settings.totalScore,
                     rank = repository.getRank(settings.totalScore, settings),
@@ -123,7 +130,7 @@ class MainViewModel(
                     showNearbyTicks = settings.showNearbyTicks,
                     nearbyTickRange = settings.nearbyTickRange,
                     axisQuarterValue = settings.axisQuarterValue,
-                    ranks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors),
+                    ranks = _cachedRanks,
                     historyLineThickness = settings.historyLineThickness,
                     historyDotRadius = settings.historyDotRadius,
                     guideLineWidth = settings.guideLineWidth,
@@ -141,6 +148,7 @@ class MainViewModel(
     fun selectScore(score: Float) {
         _selectedScore.value = score
         _customScore.value = null
+        _effectiveScoreState.value = score
         updateTimerEnabled()
     }
 
@@ -149,6 +157,7 @@ class MainViewModel(
         _customGoodDeedEvent.value = null
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
+        _effectiveEventState.value = event
         updateTimerEnabled()
     }
 
@@ -157,8 +166,10 @@ class MainViewModel(
         if (v != null) {
             _customScore.value = v
             _selectedScore.value = null
+            _effectiveScoreState.value = v
         } else {
             _customScore.value = null
+            _effectiveScoreState.value = _selectedScore.value
         }
         updateTimerEnabled()
     }
@@ -170,8 +181,10 @@ class MainViewModel(
             _selectedEvent.value = null
             _customBadDeedEvent.value = null
             _customGoodResultEvent.value = null
+            _effectiveEventState.value = v
         } else {
             _customGoodDeedEvent.value = null
+            _effectiveEventState.value = _selectedEvent.value
         }
         updateTimerEnabled()
     }
@@ -183,8 +196,10 @@ class MainViewModel(
             _selectedEvent.value = null
             _customGoodDeedEvent.value = null
             _customGoodResultEvent.value = null
+            _effectiveEventState.value = v
         } else {
             _customBadDeedEvent.value = null
+            _effectiveEventState.value = _selectedEvent.value
         }
         updateTimerEnabled()
     }
@@ -196,8 +211,10 @@ class MainViewModel(
             _selectedEvent.value = null
             _customGoodDeedEvent.value = null
             _customBadDeedEvent.value = null
+            _effectiveEventState.value = v
         } else {
             _customGoodResultEvent.value = null
+            _effectiveEventState.value = _selectedEvent.value
         }
         updateTimerEnabled()
     }
@@ -222,6 +239,8 @@ class MainViewModel(
         _customGoodDeedEvent.value = null
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
+        _effectiveScoreState.value = null
+        _effectiveEventState.value = null
         updateTimerEnabled()
 
         viewModelScope.launch {

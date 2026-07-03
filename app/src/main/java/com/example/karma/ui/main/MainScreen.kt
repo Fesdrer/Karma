@@ -89,7 +89,7 @@ fun MainScreen(
             ) {
                 // Left panel: Scores
                 ScorePanel(
-                    selectedScore = s.effectiveScore,
+                    scoreFlow = viewModel.effectiveScoreState,
                     onScoreSelected = { viewModel.selectScore(it) },
                     onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
                     axisFontSize = s.scoreAxisFontSize,
@@ -127,7 +127,7 @@ fun MainScreen(
                     goodDeedPresets = s.goodDeedPresets,
                     badDeedPresets = s.badDeedPresets,
                     goodResultPresets = s.goodResultPresets,
-                    selectedEvent = s.selectedEvent,
+                    eventFlow = viewModel.effectiveEventState,
                     onEventSelected = { viewModel.selectEvent(it) },
                     onCustomGoodDeedChanged = { viewModel.onCustomGoodDeedEventChanged(it) },
                     onCustomBadDeedChanged = { viewModel.onCustomBadDeedEventChanged(it) },
@@ -136,7 +136,7 @@ fun MainScreen(
                         .weight(1f)
                         .fillMaxHeight(),
                     timerEnabled = s.hasScoreAndEvent,
-                    selectedScore = s.selectedScore,
+                    selectedScore = s.effectiveScore,
                     onStartTimer = {
                         val s = viewModel.getSelectedScore() ?: return@EventPanel
                         val e = viewModel.getSelectedEvent() ?: return@EventPanel

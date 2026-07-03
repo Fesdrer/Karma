@@ -29,10 +29,6 @@ class SettingsViewModel(
     val original: StateFlow<KarmaSettingsEntity> = _original.asStateFlow()
     val deleteMode: StateFlow<Boolean> = _deleteMode.asStateFlow()
 
-    /** 标记 Room 数据是否已加载。就绪前 SettingsScreen 不渲染，避免默认值跳变。 */
-    private val _isReady = MutableStateFlow(false)
-    val isReady: StateFlow<Boolean> = _isReady.asStateFlow()
-
     init {
         viewModelScope.launch {
             val initial = repository.settings.first()
@@ -45,7 +41,6 @@ class SettingsViewModel(
                     lastDecayDate = initial.lastDecayDate,
                 ))
             }
-            _isReady.value = true
         }
     }
 

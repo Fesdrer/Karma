@@ -19,6 +19,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -35,6 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.ui.theme.BorderSubtle
+import kotlinx.coroutines.flow.StateFlow
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
 
@@ -43,7 +45,7 @@ fun EventPanel(
     goodDeedPresets: List<String>,
     badDeedPresets: List<String>,
     goodResultPresets: List<String>,
-    selectedEvent: String?,
+    eventFlow: StateFlow<String?>,
     onEventSelected: (String) -> Unit,
     onCustomGoodDeedChanged: (String) -> Unit,
     onCustomBadDeedChanged: (String) -> Unit,
@@ -54,6 +56,7 @@ fun EventPanel(
     selectedScore: Float? = null,
     onStartTimer: () -> Unit = {},
 ) {
+    val selectedEvent by eventFlow.collectAsState()
     val scrollState = rememberScrollState()
 
     Column(

@@ -88,6 +88,7 @@ fun SettingsScreen(
     )
     val draft by viewModel.draft.collectAsState()
     val original by viewModel.original.collectAsState()
+    val deleteMode by viewModel.deleteMode.collectAsState()
 
     Scaffold(
         modifier = modifier,
@@ -148,7 +149,7 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item { ScoreSettingsCard(
+            item(key = "score") { ScoreSettingsCard(
                 scoreAxisFontSize = draft.scoreAxisFontSize,
                 scoreAxisRangeMin = draft.scoreAxisRangeMin,
                 scoreAxisRangeMax = draft.scoreAxisRangeMax,
@@ -156,7 +157,7 @@ fun SettingsScreen(
                 onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
                 onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
             ) }
-            item { AxisSettingsCard(
+            item(key = "axis") { AxisSettingsCard(
                 axisLabelColor = draft.axisLabelColor,
                 axisTickThickness = draft.axisTickThickness,
                 axisLabelFontSize = draft.axisLabelFontSize,
@@ -176,12 +177,12 @@ fun SettingsScreen(
                 onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
                 onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
             ) }
-            item { RankSettingsCard(
+            item(key = "rank") { RankSettingsCard(
                 rankNames = draft.rankNames,
                 rankColors = draft.rankColors,
                 rankThresholds = draft.rankThresholds,
                 rankDecayAmounts = draft.rankDecayAmounts,
-                deleteMode = viewModel.deleteMode.collectAsState().value,
+                deleteMode = deleteMode,
                 onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
                 onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
                 onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
@@ -190,7 +191,7 @@ fun SettingsScreen(
                 onDeleteRank = { viewModel.deleteRank(it) },
                 onToggleDeleteMode = { viewModel.toggleDeleteMode() },
             ) }
-            item { EventSettingsCard(
+            item(key = "event") { EventSettingsCard(
                 goodDeedPresets = draft.goodDeedPresets,
                 badDeedPresets = draft.badDeedPresets,
                 goodResultPresets = draft.goodResultPresets,
@@ -198,13 +199,13 @@ fun SettingsScreen(
                 onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
                 onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
             ) }
-            item { HistorySettingsCard(
+            item(key = "history") { HistorySettingsCard(
                 historyLineThickness = draft.historyLineThickness,
                 historyDotRadius = draft.historyDotRadius,
                 onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
                 onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
             ) }
-            item { DecaySettingsCard(
+            item(key = "decay") { DecaySettingsCard(
                 decayEnabled = draft.decayEnabled,
                 decayHour = draft.decayHour,
                 decayMinute = draft.decayMinute,
@@ -215,7 +216,7 @@ fun SettingsScreen(
                 onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
                 onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
             ) }
-            item { LuckSettingsCard(
+            item(key = "luck") { LuckSettingsCard(
                 luckEnabled = draft.luckEnabled,
                 luckT = draft.luckT,
                 luckB = draft.luckB,
@@ -225,13 +226,13 @@ fun SettingsScreen(
                 onLuckBChange = { viewModel.updateLuckB(it) },
                 onLuckWChange = { viewModel.updateLuckW(it) },
             ) }
-            item { BackgroundGradientCard(
+            item(key = "bg") { BackgroundGradientCard(
                 themeGradientBaseColor = draft.themeGradientBaseColor,
                 themeGradientAccentColor = draft.themeGradientAccentColor,
                 onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
                 onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
             ) }
-            item { ResetCard(
+            item(key = "reset") { ResetCard(
                 onReset = { viewModel.resetToDefaults() },
             ) }
         }
