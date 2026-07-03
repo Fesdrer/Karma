@@ -1,5 +1,4 @@
 package com.example.karma.ui.history
-
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,18 +8,19 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalContext
+import com.example.karma.R
 import com.example.karma.ui.theme.ChartBg
-
 private const val PAD_TOP = 20f
 private const val PAD_RIGHT = 20f
 private const val PAD_BOTTOM = 40f
 private const val PAD_LEFT = 60f
-
 class ChartViewport(
     var viewStart: Double = 0.0,
     var viewEnd: Double = 0.0,
@@ -29,7 +29,6 @@ class ChartViewport(
     var minTimeRange: Double = 3600000.0,  // 1 hour minimum
     var maxTimeRange: Double = 0.0,        // set on first auto-fit
 )
-
 @Composable
 fun HistoryChartCanvas(
     points: List<AggregatedPoint>,
@@ -42,7 +41,6 @@ fun HistoryChartCanvas(
 ) {
     val currentOnPointClicked by rememberUpdatedState(onPointClicked)
     val currentPoints by rememberUpdatedState(points)
-
     // Pre-allocated Paint and Calendar for reuse inside Canvas draw
     val placeholderPaint = remember {
         android.graphics.Paint().apply {
@@ -58,7 +56,10 @@ fun HistoryChartCanvas(
         android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.CENTER }
     }
     val cal = remember { java.util.Calendar.getInstance() }
-
+    val ctx = LocalContext.current
+    val bgBitmap = remember(ctx) {
+        android.graphics.BitmapFactory.decodeResource(ctx.resources, R.drawable.theme_bg)
+    }
     // ---- Gesture: tap to select point ----
     Canvas(
         modifier = modifier
@@ -75,7 +76,6 @@ fun HistoryChartCanvas(
                     val plotW = w - PAD_LEFT - PAD_RIGHT
                     val plotH = h - PAD_TOP - PAD_BOTTOM
                     if (plotW <= 0f || plotH <= 0f) return@detectTapGestures
-
                     val vp = viewport
                     val nearest = pts.minByOrNull { point ->
                         val px = PAD_LEFT + ((point.timestamp - vp.viewStart) / (vp.viewEnd - vp.viewStart) * plotW).toFloat()
@@ -110,10 +110,8 @@ fun HistoryChartCanvas(
             )
             return@Canvas
         }
-
         val plotW = w - PAD_LEFT - PAD_RIGHT
         val plotH = h - PAD_TOP - PAD_BOTTOM
-
         val vp = viewport
         // ---- Auto-fit viewport on first draw ----
         if (vp.viewEnd <= vp.viewStart) {
@@ -132,7 +130,6 @@ fun HistoryChartCanvas(
                 vp.minTimeRange = minOf(3600000.0, maxOf(timeRange / 20.0, 600000.0))
                 vp.maxTimeRange = vp.viewEnd - vp.viewStart
             }
-
             val scores = points.map { it.totalAfter }
             val yMin = scores.min()
             val yMax = scores.max()
@@ -140,7 +137,6 @@ fun HistoryChartCanvas(
             vp.yMin = yMin - yPad
             vp.yMax = yMax + yPad
         }
-
         // Mapping functions
         val xMap: (Long) -> Float = { t ->
             PAD_LEFT + ((t - vp.viewStart) / (vp.viewEnd - vp.viewStart) * plotW).toFloat()
@@ -148,23 +144,33 @@ fun HistoryChartCanvas(
         val yMap: (Float) -> Float = { s ->
             PAD_TOP + (1f - (s - vp.yMin) / (vp.yMax - vp.yMin)) * plotH
         }
-
         // ---- Background ----
+        // 底层：纯黑
         drawRect(color = ChartBg, size = size)
-
+        // 中层：星空图（铺满整个画布）
+        bgBitmap?.let { bmp ->
+            drawContext.canvas.nativeCanvas.drawBitmap(
+                bmp, null,
+                android.graphics.Rect(0, 0, w.toInt(), h.toInt()),
+                null,
+            )
+        }
+        // 上层：padding 区域覆盖纯黑（轴标签处不显示星空）
+        val plotW2 = w - PAD_LEFT - PAD_RIGHT
+        drawRect(color = ChartBg, topLeft = Offset.Zero, size = Size(PAD_LEFT, h))
+        drawRect(color = ChartBg, topLeft = Offset(w - PAD_RIGHT, 0f), size = Size(PAD_RIGHT, h))
+        drawRect(color = ChartBg, topLeft = Offset(PAD_LEFT, 0f), size = Size(plotW2, PAD_TOP))
+        drawRect(color = ChartBg, topLeft = Offset(PAD_LEFT, h - PAD_BOTTOM), size = Size(plotW2, PAD_BOTTOM))
         // ---- Rank color bands（阶位色带） ----
         if (ranks.isNotEmpty() && points.size >= 2) {
             for (rank in ranks) {
                 val bandColor = rank.colorHex
-
                 val bandTopY = yMap(rank.max)
                 val bandBottomY = yMap(rank.min)
-
                 val drawTop = bandTopY.coerceIn(PAD_TOP, h - PAD_BOTTOM)
                 val drawBottom = bandBottomY.coerceIn(PAD_TOP, h - PAD_BOTTOM)
                 val bandHeight = drawBottom - drawTop
                 if (bandHeight <= 0f) continue
-
                 drawRect(
                     color = Color(bandColor).copy(alpha = 0.10f),
                     topLeft = Offset(PAD_LEFT, drawTop),
@@ -172,7 +178,6 @@ fun HistoryChartCanvas(
                 )
             }
         }
-
         // ---- Grid lines ----
         val gridLines = 5
         for (i in 0..gridLines) {
@@ -195,7 +200,6 @@ fun HistoryChartCanvas(
                 gridLabelPaint,
             )
         }
-
         // ---- Time labels ----
         val timeLabels = 5
         for (i in 0..timeLabels) {
@@ -215,7 +219,6 @@ fun HistoryChartCanvas(
                 timeLabelPaint,
             )
         }
-
         // ---- Data line ----
         val linePath = Path()
         for (i in points.indices) {
@@ -226,7 +229,6 @@ fun HistoryChartCanvas(
             else linePath.lineTo(x, y)
         }
         drawPath(linePath, color = Color(0xFFffd700), style = Stroke(width = lineThickness))
-
         // ---- Dots ----
         val maxDots = 200
         val step = maxOf(1, points.size / maxDots)
