@@ -69,14 +69,6 @@ class MainViewModel(
     private val _effectiveEventState = MutableStateFlow<String?>(null)
     val effectiveEventState: StateFlow<String?> = _effectiveEventState
 
-    // 合并 selection 相关流
-    private val _selectionPair = combine(
-        combine(_selectedScore, _customScore) { preset, custom -> custom ?: preset },
-        combine(
-            _selectedEvent, _customGoodDeedEvent, _customBadDeedEvent, _customGoodResultEvent,
-        ) { preset, cg, cb, cr -> cg ?: cb ?: cr ?: preset },
-    ) { score, event -> Pair(score, event) }
-
     // 合并 message + timerEnabled
     private val _msgTimer = combine(_message, _timerEnabled) { m, t -> Pair(m, t) }
 
@@ -101,10 +93,9 @@ class MainViewModel(
     init {
         viewModelScope.launch {
             combine(
-                _settingsLuck, _selectionPair, _msgTimer,
-            ) { (settings, history, luckValue), (effectiveScore, effectiveEvent), (msg, timerEnabled) ->
+                _settingsLuck, _msgTimer,
+            ) { (settings, history, luckValue), (msg, timerEnabled) ->
                 _currentGoodResultPresets = settings.goodResultPresets
-                // 缓存 rank 列表：只在阈值/名称/颜色变更时重建
                 val rankKey = listOf(settings.rankThresholds, settings.rankNames, settings.rankColors)
                 if (rankKey != _cachedRankSettings) {
                     _cachedRankSettings = rankKey
@@ -117,9 +108,10 @@ class MainViewModel(
                     goodDeedPresets = settings.goodDeedPresets,
                     badDeedPresets = settings.badDeedPresets,
                     goodResultPresets = settings.goodResultPresets,
-                    selectedScore = effectiveScore,
-                    effectiveScore = effectiveScore,
-                    selectedEvent = effectiveEvent,
+                    // 选择状态由 ScorePanel/EventPanel 直接从 ViewModel 读取，这里不需要
+                    selectedScore = null,
+                    effectiveScore = null,
+                    selectedEvent = null,
                     scoreAxisFontSize = settings.scoreAxisFontSize,
                     scoreAxisRangeMin = settings.scoreAxisRangeMin,
                     scoreAxisRangeMax = settings.scoreAxisRangeMax,

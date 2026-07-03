@@ -46,6 +46,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -142,22 +143,23 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item(key = "score") { ScoreSettingsCard(
+            ScoreSettingsCard(
                 scoreAxisFontSize = draft.scoreAxisFontSize,
                 scoreAxisRangeMin = draft.scoreAxisRangeMin,
                 scoreAxisRangeMax = draft.scoreAxisRangeMax,
                 onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
                 onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
                 onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
-            ) }
-            item(key = "axis") { AxisSettingsCard(
+            )
+            AxisSettingsCard(
                 axisLabelColor = draft.axisLabelColor,
                 axisTickThickness = draft.axisTickThickness,
                 axisLabelFontSize = draft.axisLabelFontSize,
@@ -176,8 +178,8 @@ fun SettingsScreen(
                 onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
                 onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
                 onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
-            ) }
-            item(key = "rank") { RankSettingsCard(
+            )
+            RankSettingsCard(
                 rankNames = draft.rankNames,
                 rankColors = draft.rankColors,
                 rankThresholds = draft.rankThresholds,
@@ -190,22 +192,22 @@ fun SettingsScreen(
                 onAddRank = { viewModel.addRank() },
                 onDeleteRank = { viewModel.deleteRank(it) },
                 onToggleDeleteMode = { viewModel.toggleDeleteMode() },
-            ) }
-            item(key = "event") { EventSettingsCard(
+            )
+            EventSettingsCard(
                 goodDeedPresets = draft.goodDeedPresets,
                 badDeedPresets = draft.badDeedPresets,
                 goodResultPresets = draft.goodResultPresets,
                 onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
                 onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
                 onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
-            ) }
-            item(key = "history") { HistorySettingsCard(
+            )
+            HistorySettingsCard(
                 historyLineThickness = draft.historyLineThickness,
                 historyDotRadius = draft.historyDotRadius,
                 onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
                 onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
-            ) }
-            item(key = "decay") { DecaySettingsCard(
+            )
+            DecaySettingsCard(
                 decayEnabled = draft.decayEnabled,
                 decayHour = draft.decayHour,
                 decayMinute = draft.decayMinute,
@@ -215,8 +217,8 @@ fun SettingsScreen(
                 rankNames = draft.rankNames,
                 onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
                 onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
-            ) }
-            item(key = "luck") { LuckSettingsCard(
+            )
+            LuckSettingsCard(
                 luckEnabled = draft.luckEnabled,
                 luckT = draft.luckT,
                 luckB = draft.luckB,
@@ -225,16 +227,16 @@ fun SettingsScreen(
                 onLuckTChange = { viewModel.updateLuckT(it) },
                 onLuckBChange = { viewModel.updateLuckB(it) },
                 onLuckWChange = { viewModel.updateLuckW(it) },
-            ) }
-            item(key = "bg") { BackgroundGradientCard(
+            )
+            BackgroundGradientCard(
                 themeGradientBaseColor = draft.themeGradientBaseColor,
                 themeGradientAccentColor = draft.themeGradientAccentColor,
                 onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
                 onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
-            ) }
-            item(key = "reset") { ResetCard(
+            )
+            ResetCard(
                 onReset = { viewModel.resetToDefaults() },
-            ) }
+            )
         }
     }
 }
@@ -860,12 +862,18 @@ private fun SettingsSlider(
     steps: Int,
     onValueChange: (Float) -> Unit,
 ) {
+    // 拖动期间使用本地状态，仅松手时 sync 到 ViewModel，避免每帧 copy(67字段)+重组
+    var localValue by remember { mutableFloatStateOf(value) }
+    LaunchedEffect(value) {
+        if (value != localValue) localValue = value
+    }
     Text(label, style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
     Spacer(Modifier.height(2.dp))
     Row(verticalAlignment = Alignment.CenterVertically) {
         Slider(
-            value = value,
-            onValueChange = onValueChange,
+            value = localValue,
+            onValueChange = { localValue = it },
+            onValueChangeFinished = { onValueChange(localValue) },
             valueRange = valueRange,
             steps = steps,
             modifier = Modifier.weight(1f),
@@ -875,7 +883,7 @@ private fun SettingsSlider(
             ),
         )
         Text(
-            formatFloat(value),
+            formatFloat(localValue),
             modifier = Modifier.width(40.dp),
             textAlign = TextAlign.End,
             color = TextPrimary,
