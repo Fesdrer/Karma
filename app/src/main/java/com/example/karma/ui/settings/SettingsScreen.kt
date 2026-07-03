@@ -22,9 +22,11 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -141,46 +143,53 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        LazyColumn(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
+                .verticalScroll(rememberScrollState())
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item(key = "score") {
-                ScoreSettingsCard(
-                    scoreAxisFontSize = draft.scoreAxisFontSize,
-                    scoreAxisRangeMin = draft.scoreAxisRangeMin,
-                    scoreAxisRangeMax = draft.scoreAxisRangeMax,
-                    onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
-                    onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
-                    onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
-                )
+            // 前2个卡片在 fadeIn 时 compose（数量少，动画流畅）
+            ScoreSettingsCard(
+                scoreAxisFontSize = draft.scoreAxisFontSize,
+                scoreAxisRangeMin = draft.scoreAxisRangeMin,
+                scoreAxisRangeMax = draft.scoreAxisRangeMax,
+                onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
+                onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
+                onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
+            )
+            AxisSettingsCard(
+                axisLabelColor = draft.axisLabelColor,
+                axisTickThickness = draft.axisTickThickness,
+                axisLabelFontSize = draft.axisLabelFontSize,
+                axisDisplayRange = draft.axisDisplayRange,
+                showNearbyTicks = draft.showNearbyTicks,
+                nearbyTickRange = draft.nearbyTickRange,
+                axisQuarterValue = draft.axisQuarterValue,
+                guideLineWidth = draft.guideLineWidth,
+                guideLineColor = draft.guideLineColor,
+                onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
+                onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
+                onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
+                onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
+                onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
+                onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
+                onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
+                onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
+                onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
+            )
+
+            // 底部卡片延迟到 fadeIn(300ms) 完成后才 compose，
+            // 避免 fadeIn 期间大量内容导致每帧卡顿
+            var restVisible by remember { mutableStateOf(false) }
+            LaunchedEffect(Unit) {
+                delay(350)
+                restVisible = true
             }
-            item(key = "axis") {
-                AxisSettingsCard(
-                    axisLabelColor = draft.axisLabelColor,
-                    axisTickThickness = draft.axisTickThickness,
-                    axisLabelFontSize = draft.axisLabelFontSize,
-                    axisDisplayRange = draft.axisDisplayRange,
-                    showNearbyTicks = draft.showNearbyTicks,
-                    nearbyTickRange = draft.nearbyTickRange,
-                    axisQuarterValue = draft.axisQuarterValue,
-                    guideLineWidth = draft.guideLineWidth,
-                    guideLineColor = draft.guideLineColor,
-                    onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
-                    onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
-                    onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
-                    onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
-                    onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
-                    onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
-                    onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
-                    onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
-                    onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
-                )
-            }
-            item(key = "rank") {
+
+            if (restVisible) {
                 RankSettingsCard(
                     rankNames = draft.rankNames,
                     rankColors = draft.rankColors,
@@ -195,8 +204,6 @@ fun SettingsScreen(
                     onDeleteRank = { viewModel.deleteRank(it) },
                     onToggleDeleteMode = { viewModel.toggleDeleteMode() },
                 )
-            }
-            item(key = "event") {
                 EventSettingsCard(
                     goodDeedPresets = draft.goodDeedPresets,
                     badDeedPresets = draft.badDeedPresets,
@@ -205,16 +212,12 @@ fun SettingsScreen(
                     onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
                     onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
                 )
-            }
-            item(key = "history") {
                 HistorySettingsCard(
                     historyLineThickness = draft.historyLineThickness,
                     historyDotRadius = draft.historyDotRadius,
                     onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
                     onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
                 )
-            }
-            item(key = "decay") {
                 DecaySettingsCard(
                     decayEnabled = draft.decayEnabled,
                     decayHour = draft.decayHour,
@@ -226,8 +229,6 @@ fun SettingsScreen(
                     onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
                     onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
                 )
-            }
-            item(key = "luck") {
                 LuckSettingsCard(
                     luckEnabled = draft.luckEnabled,
                     luckT = draft.luckT,
@@ -238,16 +239,12 @@ fun SettingsScreen(
                     onLuckBChange = { viewModel.updateLuckB(it) },
                     onLuckWChange = { viewModel.updateLuckW(it) },
                 )
-            }
-            item(key = "gradient") {
                 BackgroundGradientCard(
                     themeGradientBaseColor = draft.themeGradientBaseColor,
                     themeGradientAccentColor = draft.themeGradientAccentColor,
                     onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
                     onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
                 )
-            }
-            item(key = "reset") {
                 ResetCard(
                     onReset = { viewModel.resetToDefaults() },
                 )
