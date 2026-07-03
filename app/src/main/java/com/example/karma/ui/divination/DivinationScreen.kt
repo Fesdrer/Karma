@@ -27,6 +27,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -41,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.components.BackButton
 import com.example.karma.ui.divination.components.PalacePosition
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.divination.components.YarrowCanvas
@@ -51,6 +53,8 @@ import com.example.karma.ui.divination.components.XiaoLiuRenResultPanel
 import com.example.karma.ui.divination.components.XiaoLiuRenThreadCanvas
 import com.example.karma.ui.divination.model.ShiChen
 import kotlin.random.Random
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 
 @Composable
 fun DivinationScreen(
@@ -60,8 +64,9 @@ fun DivinationScreen(
 ) {
     // 气运测试状态（tab 0）
     var luckResult by remember { mutableStateOf<Int?>(null) }
-    var backHandled by remember { mutableStateOf(false) }
+    var luckComputing by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
+    val scope = rememberCoroutineScope()
 
     // 小六壬 ViewModel（tab 2）
     val xlrViewModel: DivinationViewModel = viewModel(
@@ -89,24 +94,15 @@ fun DivinationScreen(
     ) {
         // Back button（大衍筮法 tab 不显示）
         if (selectedTab != 1) {
-            Box(
+            BackButton(
+                onBack = onBack,
                 modifier = Modifier
                     .align(Alignment.TopStart)
-                    .padding(start = 8.dp, top = 32.dp)
-                    .clickable {
-                        if (!backHandled) {
-                            backHandled = true
-                            onBack()
-                        }
-                    },
-            ) {
-                Text(
-                    text = "← 返回",
-                    fontSize = 18.sp,
-                    color = Color(0xFFa0c4ff),
-                    modifier = Modifier.padding(12.dp),
-                )
-            }
+                    .padding(start = 8.dp, top = 32.dp),
+                label = "← 返回",
+                labelColor = Color(0xFFa0c4ff),
+                bgColor = Color.Transparent,
+            )
         }
 
         // Center content — varies by tab
@@ -132,14 +128,19 @@ fun DivinationScreen(
                     Spacer(Modifier.weight(1f))
                     Button(
                         onClick = {
-                            var cnt = 0
-                            for (i in 1..1000) {
-                                if (Random.nextInt(1, 1001) <= 490) {
-                                    cnt++
+                            luckComputing = true
+                            scope.launch(Dispatchers.Default) {
+                                var cnt = 0
+                                for (i in 1..1000) {
+                                    if (Random.nextInt(1, 1001) <= 490) {
+                                        cnt++
+                                    }
                                 }
+                                luckResult = cnt
+                                luckComputing = false
                             }
-                            luckResult = cnt
                         },
+                        enabled = !luckComputing,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(52.dp),

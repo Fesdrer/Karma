@@ -14,6 +14,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import com.example.karma.ui.divination.AnimationPhase
+import androidx.compose.runtime.withFrameNanos
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -71,9 +72,10 @@ fun XiaoLiuRenThreadCanvas(
     val pauseMs = 500L
     val glowMs = 1000L
 
-    val monthSteps = segments.count { it.phase == AnimationPhase.COUNTING_MONTH }
-    val daySteps = segments.count { it.phase == AnimationPhase.COUNTING_DAY }
-    val hourSteps = segments.count { it.phase == AnimationPhase.COUNTING_HOUR }
+    // 缓存 segment 计数，避免每次 draw 时重复遍历
+    val monthCount = segments.count { it.phase == AnimationPhase.COUNTING_MONTH }
+    val dayCountCache = segments.count { it.phase == AnimationPhase.COUNTING_DAY }
+    val hourCountCache = segments.count { it.phase == AnimationPhase.COUNTING_HOUR }
 
     LaunchedEffect(animationPhase) {
         progress.currentPhase = animationPhase
@@ -84,7 +86,6 @@ fun XiaoLiuRenThreadCanvas(
         var activePhase = animationPhase
         var finished = false
 
-        kotlinx.coroutines.delay(16)
         val startNano = System.nanoTime()
         var phaseStartMs = 0L
 
@@ -92,22 +93,22 @@ fun XiaoLiuRenThreadCanvas(
         var phaseSegIdx = -1
 
         while (!finished) {
-            kotlinx.coroutines.delay(16)
-            val elapsed = (System.nanoTime() - startNano) / 1_000_000
+            withFrameNanos { frameNanos ->
+            val elapsed = (frameNanos - startNano) / 1_000_000
             val phaseElapsed = elapsed - phaseStartMs
 
             when (activePhase) {
                 AnimationPhase.COUNTING_MONTH -> {
-                    val total = monthSteps * monthStepMs
+                    val total = monthCount * monthStepMs
                     progress.phaseProgress = if (total > 0) (phaseElapsed.toFloat() / total).coerceIn(0f, 1f) else 1f
                     // 光环：当前走到第几个段（0..monthSteps）
-                    val cur = (progress.phaseProgress * monthSteps).toInt().coerceAtMost(monthSteps)
+                    val cur = (progress.phaseProgress * monthCount).toInt().coerceAtMost(monthCount)
                     if (cur != phaseSegIdx) {
-                        if (cur < monthSteps) {
+                        if (cur < monthCount) {
                             val s = segments[cur]
                             spawnRing(s.fromX, s.fromY)
                         } else {
-                            val s = segments[monthSteps - 1]
+                            val s = segments[monthCount - 1]
                             spawnRing(s.toX, s.toY)
                         }
                         phaseSegIdx = cur
@@ -129,16 +130,16 @@ fun XiaoLiuRenThreadCanvas(
                     }
                 }
                 AnimationPhase.COUNTING_DAY -> {
-                    val offset = monthSteps
-                    val total = daySteps * dayStepMs
+                    val offset = monthCount
+                    val total = dayCountCache * dayStepMs
                     progress.phaseProgress = if (total > 0) (phaseElapsed.toFloat() / total).coerceIn(0f, 1f) else 1f
-                    val cur = (progress.phaseProgress * daySteps).toInt().coerceAtMost(daySteps)
+                    val cur = (progress.phaseProgress * dayCountCache).toInt().coerceAtMost(dayCountCache)
                     if (cur != phaseSegIdx) {
-                        if (cur < daySteps) {
+                        if (cur < dayCountCache) {
                             val s = segments[offset + cur]
                             spawnRing(s.fromX, s.fromY)
                         } else {
-                            val s = segments[offset + daySteps - 1]
+                            val s = segments[offset + dayCountCache - 1]
                             spawnRing(s.toX, s.toY)
                         }
                         phaseSegIdx = cur
@@ -160,12 +161,12 @@ fun XiaoLiuRenThreadCanvas(
                     }
                 }
                 AnimationPhase.COUNTING_HOUR -> {
-                    val offset = monthSteps + daySteps
-                    val total = hourSteps * hourStepMs
+                    val offset = monthCount + dayCountCache
+                    val total = hourCountCache * hourStepMs
                     progress.phaseProgress = if (total > 0) (phaseElapsed.toFloat() / total).coerceIn(0f, 1f) else 1f
-                    val cur = (progress.phaseProgress * hourSteps).toInt().coerceAtMost(hourSteps)
+                    val cur = (progress.phaseProgress * hourCountCache).toInt().coerceAtMost(hourCountCache)
                     if (cur != phaseSegIdx) {
-                        if (cur < hourSteps) {
+                        if (cur < hourCountCache) {
                             val s = segments[offset + cur]
                             spawnRing(s.fromX, s.fromY)
                         } else {
@@ -196,7 +197,8 @@ fun XiaoLiuRenThreadCanvas(
 
             progress.currentPhase = activePhase
             progress.animationTime = elapsed
-        }
+            } // withFrameNanos
+        } // while
     }
 
     Canvas(modifier = modifier.fillMaxSize()) {
@@ -324,18 +326,19 @@ private fun DrawScope.drawLightDot(x: Float, y: Float, pulseScale: Float) {
 private fun DrawScope.drawTrail(buffer: ArrayDeque<TrailPoint>, dotX: Float, dotY: Float) {
     val size = buffer.size
     if (size < 2) return
-    val points = buffer.toList() + TrailPoint(dotX, dotY)
-    val n = points.size
-    if (n < 2) return
     val baseWidth = 10.dp.toPx()
     val baseAlpha = 0.55f
-    for (i in 0 until n - 1) {
-        val t = i.toFloat() / (n - 1)
+    // Iterate buffer directly (avoid toList() allocation) + final dotX/dotY as last point
+    val totalCount = size + 1  // buffer elements + final dot point
+    for (i in 0 until totalCount - 1) {
+        val t = i.toFloat() / (totalCount - 1)
         val segWidth = baseWidth * t * t
         val segAlpha = baseAlpha * t * t
         if (segAlpha < 0.01f) continue
-        val p1 = Offset(points[i].x, points[i].y)
-        val p2 = Offset(points[i + 1].x, points[i + 1].y)
+        val pt1 = if (i < size) buffer[i] else TrailPoint(dotX, dotY)
+        val pt2 = if (i + 1 < size) buffer[i + 1] else TrailPoint(dotX, dotY)
+        val p1 = Offset(pt1.x, pt1.y)
+        val p2 = Offset(pt2.x, pt2.y)
         drawLine(Color(0xFFFFD700).copy(alpha = segAlpha * 0.25f), start = p1, end = p2, strokeWidth = segWidth * 3.5f, cap = StrokeCap.Round)
         drawLine(Color(0xFFFFD700).copy(alpha = segAlpha), start = p1, end = p2, strokeWidth = segWidth, cap = StrokeCap.Round)
     }

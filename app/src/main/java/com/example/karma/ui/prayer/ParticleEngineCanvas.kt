@@ -131,6 +131,32 @@ fun ParticleEngineCanvas(
         }
     }
 
+    // Pre-allocate Paint/TextPaint objects (created once, mutated per-frame)
+    val runePaint = remember {
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.DEFAULT_BOLD
+        }
+    }
+    val amountPaint = remember {
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.CENTER
+            isFakeBoldText = true
+        }
+    }
+    val divineTextPaint = remember {
+        android.text.TextPaint().apply { isFakeBoldText = true; isAntiAlias = true }
+    }
+    val divineBracketPaint = remember {
+        android.graphics.Paint().apply { isFakeBoldText = true; isAntiAlias = true }
+    }
+    val normalTextPaint = remember {
+        android.text.TextPaint().apply { isAntiAlias = true }
+    }
+    val normalBracketPaint = remember {
+        android.graphics.Paint().apply { isAntiAlias = true }
+    }
+
     Canvas(modifier = modifier) {
         val w = size.width
         val h = size.height
@@ -230,20 +256,19 @@ fun ParticleEngineCanvas(
         if (state.isDivine) {
             for (r in runes) {
                 if (r.life <= 0f) continue
+                runePaint.apply {
+                    color = android.graphics.Color.argb(
+                        (maxOf(0f, r.life) * 0.7f * 255f).toInt(),
+                        (55 + r.life * 20f).toInt().coerceIn(0, 255),
+                        0, 0
+                    )
+                    textSize = r.size
+                }
                 drawContext.canvas.nativeCanvas.drawText(
                     r.char,
                     r.x,
                     r.y,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(
-                            (maxOf(0f, r.life) * 0.7f * 255f).toInt(),
-                            (55 + r.life * 20f).toInt().coerceIn(0, 255),
-                            0, 0
-                        )
-                        textSize = r.size
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        typeface = android.graphics.Typeface.DEFAULT_BOLD
-                    }
+                    runePaint,
                 )
             }
         }
@@ -256,29 +281,24 @@ fun ParticleEngineCanvas(
         if (textVisible > 0f) {
             val textAlpha = (textVisible * 255f).toInt().coerceIn(0, 255)
             if (state.isDivine) {
+                amountPaint.apply {
+                    color = android.graphics.Color.argb(textAlpha, 255, 68, 68)
+                    textSize = 52f * scale
+                }
                 drawContext.canvas.nativeCanvas.drawText(
                     "扣除 $amount 分",
                     cx,
                     cy + 5f * scale,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(textAlpha, 255, 68, 68)
-                        textSize = 52f * scale
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        isFakeBoldText = true
-                    }
+                    amountPaint,
                 )
                 // StaticLayout 绘制 purpose 文本，括号独立绘制在对角
-                val divineTextPaint = android.text.TextPaint().apply {
+                divineTextPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
                     textSize = 44f * scale
-                    isFakeBoldText = true
-                    isAntiAlias = true
                 }
-                val bracketPaint = android.graphics.Paint().apply {
+                divineBracketPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
                     textSize = 44f * scale
-                    isFakeBoldText = true
-                    isAntiAlias = true
                 }
                 val divineMaxWidth = (w * 0.74f).toInt()
                 val divineLayout = android.text.StaticLayout.Builder
@@ -293,40 +313,37 @@ fun ParticleEngineCanvas(
                 //「左上角
                 val bracketPad = 8f * scale
                 drawContext.canvas.nativeCanvas.drawText(
-                    "「", bracketPad, divineTextPaint.textSize, bracketPaint
+                    "「", bracketPad, divineTextPaint.textSize, divineBracketPaint
                 )
                 //」右下角
                 val lastLineBot = divineLayout.height.toFloat()
-                val bracketW = bracketPaint.measureText("」")
+                val bracketW = divineBracketPaint.measureText("」")
                 drawContext.canvas.nativeCanvas.drawText(
                     "」",
                     divineMaxWidth - bracketW - bracketPad,
                     lastLineBot,
-                    bracketPaint
+                    divineBracketPaint
                 )
                 drawContext.canvas.restore()
             } else {
+                amountPaint.apply {
+                    color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
+                    textSize = 40f * scale
+                }
                 drawContext.canvas.nativeCanvas.drawText(
                     "扣除 $amount 分",
                     cx,
                     cy,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
-                        textSize = 40f * scale
-                        textAlign = android.graphics.Paint.Align.CENTER
-                        isFakeBoldText = true
-                    }
+                    amountPaint,
                 )
                 // StaticLayout 绘制 purpose 文本，括号独立绘制在对角
-                val normalTextPaint = android.text.TextPaint().apply {
+                normalTextPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
                     textSize = 36f * scale
-                    isAntiAlias = true
                 }
-                val normalBracketPaint = android.graphics.Paint().apply {
+                normalBracketPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
                     textSize = 36f * scale
-                    isAntiAlias = true
                 }
                 val normalMaxWidth = (w * 0.74f).toInt()
                 val normalLayout = android.text.StaticLayout.Builder
@@ -398,7 +415,10 @@ private class ParticleState(
             s.x += s.vx; s.y += s.vy
             s.life -= s.decay; s.vx *= 0.99f; s.vy *= 0.99f
         }
-        sparks.removeAll { it.life <= 0f }
+        val sparkIter = sparks.iterator()
+        while (sparkIter.hasNext()) {
+            if (sparkIter.next().life <= 0f) sparkIter.remove()
+        }
 
         // Update runes (tier 3)
         if (isDivine && canSpawnRunes && Random.nextFloat() < 0.15f) {
@@ -422,7 +442,10 @@ private class ParticleState(
             r.x += r.vx; r.y += r.vy
             r.life -= r.decay; r.vy += 0.02f
         }
-        runes.removeAll { it.life <= 0f }
+        val runeIter = runes.iterator()
+        while (runeIter.hasNext()) {
+            if (runeIter.next().life <= 0f) runeIter.remove()
+        }
     }
 
     private fun initializeParticles() {

@@ -10,6 +10,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.debounce
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -64,39 +65,55 @@ class MainViewModel(
     // 缓存当前善果预设列表，用于 onConfirm 时判断是否加前缀
     private var _currentGoodResultPresets: List<String> = emptyList()
 
-    private val _effectiveScore = combine(
-        _selectedScore, _customScore
-    ) { presetScore, custom -> custom ?: presetScore }
+    /** LuckAmplifier 脱耦：debounce 后异步计算，结果缓存。 */
+    private val _luckValue = MutableStateFlow<Float?>(null)
 
-    private val _effectiveEvent = combine(
-        _selectedEvent, _customGoodDeedEvent, _customBadDeedEvent, _customGoodResultEvent
-    ) { presetEvent, customGood, customBad, customResult ->
-        customGood ?: customBad ?: customResult ?: presetEvent
-    }
-
-    private val _selectedPair = combine(
-        _effectiveScore, _effectiveEvent
+    // 合并 selection 相关流（嵌套 combine 避免 6-flow 类型推断失败）
+    private val _selectionPair = combine(
+        combine(_selectedScore, _customScore) { preset, custom -> custom ?: preset },
+        combine(
+            _selectedEvent, _customGoodDeedEvent, _customBadDeedEvent, _customGoodResultEvent,
+        ) { preset, cg, cb, cr -> cg ?: cb ?: cr ?: preset },
     ) { score, event -> Pair(score, event) }
 
+    // 合并 message + timerEnabled 以减少 combine 参数数量
+    private val _msgTimer = combine(_message, _timerEnabled) { m, t -> Pair(m, t) }
+
+    init {
+        // LuckAmplifier：debounce(300ms) 避免 slider 拖动等高频变更时反复重算
+        viewModelScope.launch {
+            combine(repository.settings, repository.allHistory) { s, h -> Pair(s, h) }
+                .debounce(300)
+                .collect { (settings, history) ->
+                    _luckValue.value = if (settings.luckEnabled) {
+                        LuckAmplifier.computeLuckAmplification(
+                            totalScore = settings.totalScore,
+                            historyEntries = history,
+                            T = settings.luckT,
+                            b = settings.luckB,
+                            W = settings.luckW,
+                        )
+                    } else null
+                }
+        }
+    }
+
+    // 嵌套 combine 避免 5-arg overload 类型推断问题
+    private val _settingsHistory = combine(
+        repository.settings, repository.allHistory,
+    ) { s, h -> Pair(s, h) }
+
+    private val _selectionLuckMsg = combine(
+        _selectionPair, _luckValue, _msgTimer,
+    ) { sel, luck, mt -> Triple(sel, luck, mt) }
+
     val uiState: StateFlow<MainUiState> = combine(
-        repository.settings,
-        repository.allHistory,
-        _selectedPair,
-        _message,
-        _timerEnabled,
-    ) { settings, history, selection, msg, timerEnabled ->
+        _settingsHistory, _selectionLuckMsg,
+    ) { (settings, history), (selection, derivedLuck, msgTimer) ->
+        val (msg, timerEnabled) = msgTimer
+        val (effectiveScore, effectiveEvent) = selection
         // 缓存善果列表供 onConfirm 使用
         _currentGoodResultPresets = settings.goodResultPresets
-        // 运气增幅值：内联计算，避免二次 DB 读取
-        val luckValue = if (settings.luckEnabled) {
-            LuckAmplifier.computeLuckAmplification(
-                totalScore = settings.totalScore,
-                historyEntries = history,
-                T = settings.luckT,
-                b = settings.luckB,
-                W = settings.luckW,
-            )
-        } else null
         MainUiState(
             totalScore = settings.totalScore,
             rank = repository.getRank(settings.totalScore, settings),
@@ -104,9 +121,9 @@ class MainViewModel(
             goodDeedPresets = settings.goodDeedPresets,
             badDeedPresets = settings.badDeedPresets,
             goodResultPresets = settings.goodResultPresets,
-            selectedScore = selection.first,
-            effectiveScore = selection.first,
-            selectedEvent = selection.second,
+            selectedScore = effectiveScore,
+            effectiveScore = effectiveScore,
+            selectedEvent = effectiveEvent,
             // ★ 视觉参数透传
             scoreAxisFontSize = settings.scoreAxisFontSize,
             scoreAxisRangeMin = settings.scoreAxisRangeMin,
@@ -126,8 +143,8 @@ class MainViewModel(
             message = msg,
             // _timerEnabled 在每次修改选择时同步更新，是 combine 的独立输入源
             hasScoreAndEvent = timerEnabled,
-            // 运气增幅
-            luckValue = luckValue,
+            // 运气增幅（debounce 后异步计算，不阻塞主 combine）
+            luckValue = derivedLuck,
         )
     }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), MainUiState())
 

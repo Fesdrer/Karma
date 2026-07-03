@@ -5,6 +5,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -41,6 +42,22 @@ fun HistoryChartCanvas(
 ) {
     val currentOnPointClicked by rememberUpdatedState(onPointClicked)
     val currentPoints by rememberUpdatedState(points)
+
+    // Pre-allocated Paint and Calendar for reuse inside Canvas draw
+    val placeholderPaint = remember {
+        android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(77, 255, 255, 255)
+            textSize = 32f
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+    }
+    val gridLabelPaint = remember {
+        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+    }
+    val timeLabelPaint = remember {
+        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.CENTER }
+    }
+    val cal = remember { java.util.Calendar.getInstance() }
 
     // ---- Gesture: tap to select point ----
     Canvas(
@@ -89,11 +106,7 @@ fun HistoryChartCanvas(
             drawContext.canvas.nativeCanvas.drawText(
                 if (points.isEmpty()) "暂无足够数据" else "",
                 w / 2f, h / 2f,
-                android.graphics.Paint().apply {
-                    color = android.graphics.Color.argb(77, 255, 255, 255)
-                    textSize = 32f
-                    textAlign = android.graphics.Paint.Align.CENTER
-                }
+                placeholderPaint,
             )
             return@Canvas
         }
@@ -171,15 +184,15 @@ fun HistoryChartCanvas(
                 strokeWidth = 1f,
             )
             val score = vp.yMax - (i.toFloat() / gridLines) * (vp.yMax - vp.yMin)
+            gridLabelPaint.apply {
+                color = android.graphics.Color.argb(89, 255, 255, 255)
+                textSize = 22f
+            }
             drawContext.canvas.nativeCanvas.drawText(
                 String.format("%.1f", score),
                 PAD_LEFT - 6f,
                 y + 4f,
-                android.graphics.Paint().apply {
-                    color = android.graphics.Color.argb(89, 255, 255, 255)
-                    textSize = 22f
-                    textAlign = android.graphics.Paint.Align.RIGHT
-                }
+                gridLabelPaint,
             )
         }
 
@@ -189,17 +202,17 @@ fun HistoryChartCanvas(
             val t = vp.viewStart + (i.toDouble() / timeLabels) * (vp.viewEnd - vp.viewStart)
             val x = xMap(t.toLong())
             if (x < PAD_LEFT || x > w - PAD_RIGHT) continue
-            val cal = java.util.Calendar.getInstance().apply { timeInMillis = t.toLong() }
+            cal.timeInMillis = t.toLong()
             val label = "${cal.get(java.util.Calendar.MONTH) + 1}/${cal.get(java.util.Calendar.DATE)}"
+            timeLabelPaint.apply {
+                color = android.graphics.Color.argb(89, 255, 255, 255)
+                textSize = 20f
+            }
             drawContext.canvas.nativeCanvas.drawText(
                 label,
                 x,
                 h - PAD_BOTTOM + 16f,
-                android.graphics.Paint().apply {
-                    color = android.graphics.Color.argb(89, 255, 255, 255)
-                    textSize = 20f
-                    textAlign = android.graphics.Paint.Align.CENTER
-                }
+                timeLabelPaint,
             )
         }
 

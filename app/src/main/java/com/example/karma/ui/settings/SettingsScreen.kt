@@ -1065,25 +1065,15 @@ private fun ColorPickerDialog(
         }
     }
 
-    // 从 HSV 导出 R/G/B 整数值
-    val currentR by remember(hue, saturation, value) {
+    // 从 HSV 导出 R/G/B 整数值（单次 HSVToColor，按位拆分）
+    val currentRgb by remember(hue, saturation, value) {
         derivedStateOf {
-            val c = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
-            (c shr 16) and 0xFF
+            android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
         }
     }
-    val currentG by remember(hue, saturation, value) {
-        derivedStateOf {
-            val c = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
-            (c shr 8) and 0xFF
-        }
-    }
-    val currentB by remember(hue, saturation, value) {
-        derivedStateOf {
-            val c = android.graphics.Color.HSVToColor(floatArrayOf(hue, saturation, value))
-            c and 0xFF
-        }
-    }
+    val currentR = (currentRgb shr 16) and 0xFF
+    val currentG = (currentRgb shr 8) and 0xFF
+    val currentB = currentRgb and 0xFF
 
     // RGB → HSV 转换回调
     val onRChange: (Int) -> Unit = { r ->

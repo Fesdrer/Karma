@@ -53,6 +53,29 @@ fun YarrowCanvas(
         if (dur > 0) { prog.animateTo(1f, tween(dur)); onPhaseComplete() }
     }
 
+    // Pre-measure constant texts to avoid TextMeasurer.measure() inside Canvas draw lambda
+    val taiJiText = remember {
+        TM.measure("太极", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 10.sp, color = Color(0xFF555577)))
+    }
+    val yangMarker = remember {
+        TM.measure("○", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 18.sp, color = Color(0xFFFFD700)))
+    }
+    val yinMarker = remember {
+        TM.measure("×", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 18.sp, color = Color(0xFFFFD700)))
+    }
+    val waitingTitle = remember {
+        TM.measure("大衍之数五十", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 22.sp, color = Color(0xFFdaa520)))
+    }
+    val waitingSub = remember {
+        TM.measure("其用四十有九", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 15.sp, color = Color(0xFFaa8844)))
+    }
+    val waitingBtn = remember {
+        TM.measure("☰  开始占筮  ☰", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 20.sp, color = Color(0xFFffd700)))
+    }
+    val taiJiGray = remember(state.phase) {
+        TM.measure("太极", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 10.sp, color = Color(0xFF555577)))
+    }
+
     Canvas(modifier = modifier.fillMaxSize().pointerInput(state.phase, state.n, step, sw, sg) {
         if (state.phase == YarrowPhase.WAITING) detectTapGestures { onUserTap(0) }
         if (state.phase == YarrowPhase.IDLE) detectTapGestures { tap ->
@@ -88,8 +111,7 @@ fun YarrowCanvas(
         // === 太极 ===
         if (state.phase != YarrowPhase.INTRO && state.phase != YarrowPhase.WAITING) {
             drawLine(Color(0xFF00FF00), Offset(cx - tjiHalf, tjiY), Offset(cx + tjiHalf, tjiY), 3.dp.toPx())
-            drawText(TM.measure("太极", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 10.sp, color = Color(0xFF555577))),
-                topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
+            drawText(taiJiText, topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
         }
         // === b 区历史 ===
         if (state.bSize > 0 && state.phase != YarrowPhase.LINE_END && state.phase != YarrowPhase.COMPLETE && state.phase != YarrowPhase.REVELATION_READY) {
@@ -110,18 +132,9 @@ fun YarrowCanvas(
                 drawRoundRect(Color(0xFF0A0A0A), Offset(bx + 3, by + 3), Size(bw - 6, bh - 6),
                     CornerRadius(14.dp.toPx()))
                 // 文字
-                val title = "大衍之数五十"
-                val sub = "其用四十有九"
-                val btn = "☰  开始占筮  ☰"
-                val ts = TextStyle(fontFamily = FontFamily.Serif, fontSize = 22.sp, color = Color(0xFFdaa520))
-                val ss = TextStyle(fontFamily = FontFamily.Serif, fontSize = 15.sp, color = Color(0xFFaa8844))
-                val bs = TextStyle(fontFamily = FontFamily.Serif, fontSize = 20.sp, color = Color(0xFFffd700))
-                val tw = TM.measure(title, style = ts).size.width.toFloat()
-                val sw2 = TM.measure(sub, style = ss).size.width.toFloat()
-                val bw2 = TM.measure(btn, style = bs).size.width.toFloat()
-                drawText(TM.measure(title, style = ts), topLeft = Offset(cx - tw / 2f, by + 14.dp.toPx()))
-                drawText(TM.measure(sub, style = ss), topLeft = Offset(cx - sw2 / 2f, by + 44.dp.toPx()))
-                drawText(TM.measure(btn, style = bs), topLeft = Offset(cx - bw2 / 2f, by + 72.dp.toPx()))
+                drawText(waitingTitle, topLeft = Offset(cx - waitingTitle.size.width / 2f, by + 14.dp.toPx()))
+                drawText(waitingSub, topLeft = Offset(cx - waitingSub.size.width / 2f, by + 44.dp.toPx()))
+                drawText(waitingBtn, topLeft = Offset(cx - waitingBtn.size.width / 2f, by + 72.dp.toPx()))
             }
 
             // ── INTRO：a[0]一边旋转90度一边移动到最上方 ──
@@ -133,8 +146,7 @@ fun YarrowCanvas(
                         Offset(lerp(xs50[i], cx + tjiHalf, p1), lerp(wBot, tjiY, p1)), sw)
                     else vs(lerp(xs50[i], row(49, stX(49))[if (i < ch) i else i - 1], p2), wTop, wBot)
                 }
-                if (p > 0.4f) drawText(TM.measure("太极", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 10.sp, color = Color(0xFF555577).copy(alpha = ((p - 0.4f) / 0.6f).coerceIn(0f, 1f)))),
-                    topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
+                if (p > 0.4f) drawText(taiJiGray, topLeft = Offset(cx - 12.dp.toPx(), tjiY - 18.dp.toPx()))
             }
 
             // ── IDLE ──
@@ -376,7 +388,8 @@ fun YarrowCanvas(
             val ln2 = state.lines[i]; val by = lnB + (5 - i) * lnH; val lw2 = 70.dp.toPx()
             if (ln2.isYang) drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx())
             else { val g = 18.dp.toPx(); drawLine(Color.White, Offset(cx - lw2 / 2, by), Offset(cx - g / 2, by), 3.dp.toPx()); drawLine(Color.White, Offset(cx + g / 2, by), Offset(cx + lw2 / 2, by), 3.dp.toPx()) }
-            if (ln2.isChanging) drawText(TM.measure(if (ln2.isYang) "○" else "×", style = TextStyle(fontFamily = FontFamily.Serif, fontSize = 18.sp, color = Color(0xFFFFD700))),
+            if (ln2.isChanging) drawText(
+                if (ln2.isYang) yangMarker else yinMarker,
                 topLeft = Offset(cx + lw2 / 2 + 10.dp.toPx(), by - 12.dp.toPx()))
         }
     }

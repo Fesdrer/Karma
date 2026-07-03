@@ -22,6 +22,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 
+private val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
+
 @Composable
 fun ChartTooltip(
     point: com.example.karma.ui.history.AggregatedPoint?,
@@ -29,7 +31,6 @@ fun ChartTooltip(
 ) {
     if (point == null) return
 
-    val dateFormat = SimpleDateFormat("yyyy-MM-dd HH:mm", Locale.getDefault())
     val timeStr = dateFormat.format(Date(point.timestamp))
     val deltaStr = if (point.delta >= 0) "+%.1f".format(point.delta) else "%.1f".format(point.delta)
 

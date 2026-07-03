@@ -15,6 +15,15 @@ class KarmaRepository(
 ) {
     companion object {
         private const val MAX_HISTORY = 2000
+
+        /** 将时间戳格式化为 "yyyy-MM-dd"。供外部复用。 */
+        fun formatDate(timestamp: Long): String {
+            val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
+            return String.format("%04d-%02d-%02d",
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH))
+        }
     }
 
     // ---- History ----
@@ -94,7 +103,7 @@ class KarmaRepository(
         if (!settings.decayEnabled) return 0f
 
         val now = System.currentTimeMillis()
-        val todayStr = formatDate(now)
+        val todayStr = KarmaRepository.formatDate(now)
 
         // lastDecayDate 为空 → 设置今天并返回 0，不做追溯扣除
         if (settings.lastDecayDate.isEmpty()) {
@@ -111,7 +120,7 @@ class KarmaRepository(
         ) {
             calB.add(Calendar.DAY_OF_YEAR, 1)
         }
-        val dateB = formatDate(calB.timeInMillis)
+        val dateB = KarmaRepository.formatDate(calB.timeInMillis)
 
         // 日期A >= 日期B → 不需要扣除
         if (settings.lastDecayDate >= dateB) return 0f
@@ -190,17 +199,6 @@ class KarmaRepository(
         if (amounts.isEmpty()) return 2f  // 默认 2
         val index = (rank - 1).coerceIn(0, amounts.size - 1)
         return amounts[index]
-    }
-
-    /**
-     * 将时间戳格式化为 "yyyy-MM-dd"。
-     */
-    private fun formatDate(timestamp: Long): String {
-        val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
-        return String.format("%04d-%02d-%02d",
-            cal.get(Calendar.YEAR),
-            cal.get(Calendar.MONTH) + 1,
-            cal.get(Calendar.DAY_OF_MONTH))
     }
 
     // ---- Rank ----

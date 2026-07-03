@@ -57,6 +57,25 @@ private const val IMG_PILLAR_HALF_W = 116f
 /** 图片底部需要裁剪掉的空白像素（0 = 不裁剪，铺满全画布） */
 private const val IMG_CROP_BOTTOM = 0f
 
+/** Pre-allocated Paints for pillar segment text (avoids per-frame allocation) */
+private val pillarNamePaint by lazy {
+    Paint().apply {
+        color = 0xFFdaa520.toInt()
+        textAlign = Paint.Align.CENTER
+        isFakeBoldText = true
+        isAntiAlias = true
+        typeface = Typeface.SERIF
+    }
+}
+private val pillarGodPaint by lazy {
+    Paint().apply {
+        color = 0xCCffd700.toInt()
+        textAlign = Paint.Align.CENTER
+        isAntiAlias = true
+        typeface = Typeface.SERIF
+    }
+}
+
 @Composable
 fun XiaoLiuRenPillarCanvas(
     onPalacePositionsReady: (List<PalacePosition>) -> Unit,
@@ -179,27 +198,14 @@ private fun DrawScope.drawPillarSegment(
     sixGods: String,
 ) {
     // 宫名标签（古铜金色粗体）
-    val namePaint = Paint().apply {
-        color = 0xFFdaa520.toInt()
-        textSize = 18.dp.toPx()
-        textAlign = Paint.Align.CENTER
-        isFakeBoldText = true
-        isAntiAlias = true
-        typeface = Typeface.SERIF
-    }
+    pillarNamePaint.textSize = 18.dp.toPx()
     drawContext.canvas.nativeCanvas.drawText(
-        palaceName, rect.center.x, rect.center.y + 3.dp.toPx(), namePaint,
+        palaceName, rect.center.x, rect.center.y + 3.dp.toPx(), pillarNamePaint,
     )
 
     // 3. 六神小标签
-    val godPaint = Paint().apply {
-        color = 0xCCffd700.toInt()
-        textSize = 10.dp.toPx()
-        textAlign = Paint.Align.CENTER
-        isAntiAlias = true
-        typeface = Typeface.SERIF
-    }
+    pillarGodPaint.textSize = 10.dp.toPx()
     drawContext.canvas.nativeCanvas.drawText(
-        sixGods, rect.center.x, rect.center.y + 22.dp.toPx(), godPaint,
+        sixGods, rect.center.x, rect.center.y + 22.dp.toPx(), pillarGodPaint,
     )
 }

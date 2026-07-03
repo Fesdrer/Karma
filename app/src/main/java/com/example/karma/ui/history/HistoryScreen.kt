@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.data.model.ViewMode
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.components.BackButton
 import com.example.karma.ui.components.ChartTooltip
 
 @Composable
@@ -93,21 +94,7 @@ fun HistoryScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 // Back button (with debounce to prevent rapid double-pop)
-                var backHandled by remember { mutableStateOf(false) }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(8.dp))
-                        .background(Color(0xFF333333))
-                        .clickable {
-                            if (!backHandled) {
-                                backHandled = true
-                                onBack()
-                            }
-                        }
-                        .padding(horizontal = 10.dp, vertical = 6.dp),
-                ) {
-                    Text("← 返回", fontSize = 14.sp, color = Color(0xFF888888))
-                }
+                BackButton(onBack = onBack)
 
                 Spacer(Modifier.width(10.dp))
 

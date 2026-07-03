@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
@@ -48,6 +49,20 @@ fun AxisCanvas(
         ),
         label = "scoreAnim",
     )
+
+    // Pre-allocate Paint objects (created once, mutated per-frame inside Canvas)
+    val labelPaint = remember {
+        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+    }
+    val scorePaint = remember {
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.RIGHT
+            isFakeBoldText = true
+        }
+    }
+    val rangePaint = remember {
+        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+    }
 
     Canvas(
         modifier = modifier
@@ -126,20 +141,20 @@ fun AxisCanvas(
                 )
                 // Label
                 val label = String.format("%.1f", s).replace(".0", "")
+                labelPaint.apply {
+                    color = android.graphics.Color.argb(
+                        (labelAlpha * 255).toInt(),
+                        (labelColorValue.red * 255).toInt(),
+                        (labelColorValue.green * 255).toInt(),
+                        (labelColorValue.blue * 255).toInt(),
+                    )
+                    textSize = labelFontSize
+                }
                 drawContext.canvas.nativeCanvas.drawText(
                     label,
                     axisX - tickMajorLen - 3f,
                     y + 4f,
-                    android.graphics.Paint().apply {
-                        color = android.graphics.Color.argb(
-                            (labelAlpha * 255).toInt(),
-                            (labelColorValue.red * 255).toInt(),
-                            (labelColorValue.green * 255).toInt(),
-                            (labelColorValue.blue * 255).toInt(),
-                        )
-                        textSize = labelFontSize
-                        textAlign = android.graphics.Paint.Align.RIGHT
-                    }
+                    labelPaint,
                 )
             }
             s += tickInterval
@@ -179,20 +194,20 @@ fun AxisCanvas(
                         strokeWidth = tickThickness,
                     )
                     val label = String.format("%.1f", evenTick.toFloat()).replace(".0", "")
+                    labelPaint.apply {
+                        color = android.graphics.Color.argb(
+                            (labelAlpha * 255).toInt(),
+                            (labelColorValue.red * 255).toInt(),
+                            (labelColorValue.green * 255).toInt(),
+                            (labelColorValue.blue * 255).toInt(),
+                        )
+                        textSize = labelFontSize
+                    }
                     drawContext.canvas.nativeCanvas.drawText(
                         label,
                         axisX - 7f - 3f,
                         y + 4f,
-                        android.graphics.Paint().apply {
-                            color = android.graphics.Color.argb(
-                                (labelAlpha * 255).toInt(),
-                                (labelColorValue.red * 255).toInt(),
-                                (labelColorValue.green * 255).toInt(),
-                                (labelColorValue.blue * 255).toInt(),
-                            )
-                            textSize = labelFontSize
-                            textAlign = android.graphics.Paint.Align.RIGHT
-                        }
+                        labelPaint,
                     )
                 }
                 evenTick += 2
@@ -237,16 +252,15 @@ fun AxisCanvas(
         } else {
             String.format("%.1f", centerScore)
         }
+        scorePaint.apply {
+            color = android.graphics.Color.rgb(255, 215, 0)
+            textSize = 21f
+        }
         drawContext.canvas.nativeCanvas.drawText(
             scoreLabel,
             w - 16f,
             ptrY - 10f,
-            android.graphics.Paint().apply {
-                color = android.graphics.Color.rgb(255, 215, 0)
-                textSize = 21f
-                textAlign = android.graphics.Paint.Align.RIGHT
-                isFakeBoldText = true
-            }
+            scorePaint,
         )
 
         // ---- 7. Range labels ----
@@ -255,10 +269,9 @@ fun AxisCanvas(
         val topLabel = String.format("%.1f", topScore).replace(".0", "")
         val botLabel = String.format("%.1f", botScore).replace(".0", "")
 
-        val rangePaint = android.graphics.Paint().apply {
+        rangePaint.apply {
             color = android.graphics.Color.argb(64, 255, 255, 255)
             textSize = 16f
-            textAlign = android.graphics.Paint.Align.RIGHT
         }
         drawContext.canvas.nativeCanvas.drawText(topLabel, axisX - tickMajorLen - 3f, 10f, rangePaint)
         drawContext.canvas.nativeCanvas.drawText(botLabel, axisX - tickMajorLen - 3f, h - 8f, rangePaint)

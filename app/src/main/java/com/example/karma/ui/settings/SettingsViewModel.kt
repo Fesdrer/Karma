@@ -144,11 +144,7 @@ class SettingsViewModel(
     fun updateDecayEnabled(v: Boolean) {
         if (v) {
             // 日期A = 今天（每次打开开关都从今天开始）
-            val cal = Calendar.getInstance()
-            val today = String.format("%04d-%02d-%02d",
-                cal.get(Calendar.YEAR),
-                cal.get(Calendar.MONTH) + 1,
-                cal.get(Calendar.DAY_OF_MONTH))
+            val today = KarmaRepository.formatDate(System.currentTimeMillis())
             setDraft(_draft.value.copy(decayEnabled = true, lastDecayDate = today))
             // 函数 F：打开衰减开关时也执行衰减检查
             viewModelScope.launch {
