@@ -1,6 +1,7 @@
 package com.example.karma.data.local.entity
 
 import androidx.compose.runtime.Immutable
+import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 
@@ -41,9 +42,10 @@ data class KarmaSettingsEntity(
     val historyLineThickness: Float = 5f,
     val historyDotRadius: Float = 8f,
 
-    // ===== 中间指针引导线 =====
+    // ===== 中间光点 =====
     val guideLineWidth: Float = 6f,
-    val guideLineColor: Long = 0xFFFFD700L,
+    @ColumnInfo(defaultValue = "-44462")
+    val dotColor: Long = 0xFFFF5252L,
 
     // ===== 业力衰减 =====
     val decayEnabled: Boolean = false,

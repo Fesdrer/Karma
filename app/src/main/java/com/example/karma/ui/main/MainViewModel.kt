@@ -36,7 +36,7 @@ data class MainUiState(
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
     val guideLineWidth: Float = 6f,
-    val guideLineColor: Long = 0xFFFFD700L,
+    val dotColor: Long = 0xFFFF5252L,
     // ===== 消息 =====
     val message: String? = null,
     // ===== 计时可用（直接判断源 flow，绕过 combine 链延迟） =====
@@ -126,7 +126,7 @@ class MainViewModel(
                     historyLineThickness = settings.historyLineThickness,
                     historyDotRadius = settings.historyDotRadius,
                     guideLineWidth = settings.guideLineWidth,
-                    guideLineColor = settings.guideLineColor,
+                    dotColor = settings.dotColor,
                     message = msg,
                     hasScoreAndEvent = timerEnabled,
                     luckValue = luckValue,

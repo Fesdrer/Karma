@@ -10,9 +10,9 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import com.example.karma.data.model.Rank
@@ -22,8 +22,6 @@ import kotlin.math.pow
 import kotlin.math.sign
 
 private const val ANIM_DURATION = 400
-private val NEG_BG = Color(0xFF2d2d2d)
-private val CHART_BG = Color(0xFF0A0A0A)
 
 @Composable
 fun AxisCanvas(
@@ -37,7 +35,7 @@ fun AxisCanvas(
     quarterValue: Float = 30f,
     ranks: List<com.example.karma.data.model.Rank> = emptyList(),
     guideLineWidth: Float = 6f,
-    guideLineColor: Long = 0xFFFFD700L,
+    dotColor: Long = 0xFFFF5252L,
     modifier: Modifier = Modifier,
 ) {
     // Animate the score value
@@ -80,25 +78,14 @@ fun AxisCanvas(
         val labelColorValue = Color(labelColor)
         val labelAlpha = labelColorValue.alpha
 
-        // ---- 1. Background ----
-        drawRect(color = CHART_BG, size = size)
-
-        // ---- 2. Negative region ----
-        val zeroY = scoreToY(0f, centerScore, halfH, h, displayRange, quarterValue)
-        if (centerScore - displayRange < 0) {
-            val negY = zeroY.coerceIn(0f, h)
-            if (h > negY) {
-                drawRect(
-                    color = NEG_BG,
-                    topLeft = Offset(0f, negY),
-                    size = androidx.compose.ui.geometry.Size(w, h - negY),
-                )
-            }
-        }
-
-        // ---- 3. Rank bands ----
+        // ---- 1. Rank bands with horizontal gradient + vertical DstIn fade ----
         val minVis = centerScore - displayRange
         val maxVis = centerScore + displayRange
+        val leftHalfW = w * 0.50f   // 左半边: 0→50%
+        val rightHalfW = w * 0.50f  // 右半边: 50%→100%
+        val gradW = w * 0.30f       // 渐变区宽度 (左右各30%)
+        val solidW = w * 0.20f      // 实色窄条宽度 (左右各20%)
+
         for (rank in ranks) {
             val bt = maxOf(rank.min, minVis)
             val bb = minOf(rank.max, maxVis)
@@ -108,12 +95,57 @@ fun AxisCanvas(
             val y0 = maxOf(0f, minOf(yT, yB))
             val y1 = minOf(h, maxOf(yT, yB))
             if (y1 <= y0) continue
+            val rankColor = Color(rank.colorHex)
+            val bandH = y1 - y0
+
+            // 左半边 (0→50%): 透明→不透明→不透明 (渐变在0→30%完成)
             drawRect(
-                color = Color(rank.colorHex),
+                brush = Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0f to Color.Transparent,
+                        0.6f to rankColor,
+                        1f to rankColor,
+                    ),
+                ),
                 topLeft = Offset(0f, y0),
-                size = androidx.compose.ui.geometry.Size(w, y1 - y0),
+                size = androidx.compose.ui.geometry.Size(leftHalfW, bandH),
+            )
+            // 右半边 (50%→100%): 不透明→不透明→透明 (渐变在70%→100%)
+            drawRect(
+                brush = Brush.horizontalGradient(
+                    colorStops = arrayOf(
+                        0f to rankColor,
+                        0.4f to rankColor,
+                        1f to Color.Transparent,
+                    ),
+                ),
+                topLeft = Offset(leftHalfW, y0),
+                size = androidx.compose.ui.geometry.Size(rightHalfW, bandH),
             )
         }
+
+        // ---- Vertical fade via DstIn (no color overlay) ----
+        val fadeH = h * 0.10f
+        // Top 10%: alpha 0→1, fading out content upward
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Transparent, Color.Black),
+                startY = 0f, endY = fadeH,
+            ),
+            topLeft = Offset(0f, 0f),
+            size = androidx.compose.ui.geometry.Size(w, fadeH),
+            blendMode = BlendMode.DstIn,
+        )
+        // Bottom 10%: alpha 1→0, fading out content downward
+        drawRect(
+            brush = Brush.verticalGradient(
+                colors = listOf(Color.Black, Color.Transparent),
+                startY = h - fadeH, endY = h,
+            ),
+            topLeft = Offset(0f, h - fadeH),
+            size = androidx.compose.ui.geometry.Size(w, fadeH),
+            blendMode = BlendMode.DstIn,
+        )
 
         // ---- 4. Ticks ----
         val idealTicks = 16
@@ -222,12 +254,12 @@ fun AxisCanvas(
             strokeWidth = tickThickness,
         )
 
-        // ---- 6. Pointer at center ----
+        // ---- 6. Pointer — glowing dot at center ----
         val ptrY = h / 2f
 
-        // Dashed guide line
+        // Dashed guide line (subtle neutral color)
         drawLine(
-            color = Color(guideLineColor),
+            color = Color.White.copy(alpha = 0.15f),
             start = Offset(0f, ptrY),
             end = Offset(w, ptrY),
             strokeWidth = guideLineWidth,
@@ -236,17 +268,14 @@ fun AxisCanvas(
             ),
         )
 
-        // Triangle pointer at right edge (bigger, to be visible above the guide line)
-        val triSize = maxOf(guideLineWidth * 3f, 22f)
-        val triPath = Path().apply {
-            moveTo(w - 3f, ptrY)
-            lineTo(w - 3f - triSize, ptrY - triSize / 2f)
-            lineTo(w - 3f - triSize, ptrY + triSize / 2f)
-            close()
-        }
-        drawPath(triPath, color = Color(guideLineColor), style = Fill)
+        // Glowing dot at axis intersection
+        val dotCenter = Offset(axisX, ptrY)
+        val dotColorValue = Color(dotColor)
+        drawCircle(color = dotColorValue.copy(alpha = 0.12f), radius = 22f, center = dotCenter)
+        drawCircle(color = dotColorValue.copy(alpha = 0.3f), radius = 12f, center = dotCenter)
+        drawCircle(color = dotColorValue, radius = 4f, center = dotCenter)
 
-        // Score label (above the guide line so it's not covered)
+        // Score label (above the dot)
         val scoreLabel = if (centerScore.toInt().toFloat() == centerScore) {
             centerScore.toInt().toString()
         } else {
@@ -258,8 +287,8 @@ fun AxisCanvas(
         }
         drawContext.canvas.nativeCanvas.drawText(
             scoreLabel,
-            w - 16f,
-            ptrY - 10f,
+            axisX,
+            ptrY - 16f,
             scorePaint,
         )
 

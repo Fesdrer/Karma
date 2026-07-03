@@ -120,12 +120,12 @@ class SettingsViewModel(
         setDraft(_draft.value.copy(goodResultPresets = events))
     }
 
-    // ★ 中间指引线
+    // ★ 中间光点
     fun updateGuideLineWidth(v: Float) {
         setDraft(_draft.value.copy(guideLineWidth = v))
     }
-    fun updateGuideLineColor(v: Long) {
-        setDraft(_draft.value.copy(guideLineColor = v))
+    fun updateDotColor(v: Long) {
+        setDraft(_draft.value.copy(dotColor = v))
     }
 
     // ★ 历史记录

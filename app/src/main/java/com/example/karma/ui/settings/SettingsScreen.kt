@@ -169,7 +169,7 @@ fun SettingsScreen(
                 nearbyTickRange = draft.nearbyTickRange,
                 axisQuarterValue = draft.axisQuarterValue,
                 guideLineWidth = draft.guideLineWidth,
-                guideLineColor = draft.guideLineColor,
+                dotColor = draft.dotColor,
                 onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
                 onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
                 onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
@@ -178,7 +178,7 @@ fun SettingsScreen(
                 onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
                 onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
                 onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
-                onGuideLineColorChange = { viewModel.updateGuideLineColor(it) },
+                onDotColorChange = { viewModel.updateDotColor(it) },
             )
 
             // 底部卡片延迟到 fadeIn(300ms) 完成后才 compose，
@@ -337,7 +337,7 @@ private fun AxisSettingsCard(
     nearbyTickRange: Float,
     axisQuarterValue: Float,
     guideLineWidth: Float,
-    guideLineColor: Long,
+    dotColor: Long,
     onLabelColorChange: (Long) -> Unit,
     onTickThicknessChange: (Float) -> Unit,
     onLabelFontSizeChange: (Float) -> Unit,
@@ -346,10 +346,10 @@ private fun AxisSettingsCard(
     onNearbyRangeChange: (Float) -> Unit,
     onQuarterValueChange: (Float) -> Unit,
     onGuideLineWidthChange: (Float) -> Unit,
-    onGuideLineColorChange: (Long) -> Unit,
+    onDotColorChange: (Long) -> Unit,
 ) {
     var showLabelColorPicker by remember { mutableStateOf(false) }
-    var showGuideLineColorPicker by remember { mutableStateOf(false) }
+    var showDotColorPicker by remember { mutableStateOf(false) }
 
     SettingsCard("中间刻度区域") {
         Text("刻度颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
@@ -403,9 +403,9 @@ private fun AxisSettingsCard(
         SettingsSlider("指引线粗细", guideLineWidth, 0.5f..12f, 22, onGuideLineWidthChange)
 
         Spacer(Modifier.height(8.dp))
-        Text("指引线颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Text("光点颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
-        ColorSwatch(color = guideLineColor, onClick = { showGuideLineColorPicker = true })
+        ColorSwatch(color = dotColor, onClick = { showDotColorPicker = true })
     }
 
     if (showLabelColorPicker) {
@@ -415,11 +415,11 @@ private fun AxisSettingsCard(
             onDismiss = { showLabelColorPicker = false },
         )
     }
-    if (showGuideLineColorPicker) {
+    if (showDotColorPicker) {
         ColorPickerDialog(
-            currentColor = guideLineColor,
-            onColorSelected = { onGuideLineColorChange(it) },
-            onDismiss = { showGuideLineColorPicker = false },
+            currentColor = dotColor,
+            onColorSelected = { onDotColorChange(it) },
+            onDismiss = { showDotColorPicker = false },
         )
     }
 }

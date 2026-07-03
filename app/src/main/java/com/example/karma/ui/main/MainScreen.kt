@@ -117,7 +117,7 @@ fun MainScreen(
                     quarterValue = s.axisQuarterValue,
                     ranks = s.ranks,
                     guideLineWidth = s.guideLineWidth,
-                    guideLineColor = s.guideLineColor,
+                    dotColor = s.dotColor,
                     modifier = Modifier
                         .width(75.dp)
                         .fillMaxHeight(),
