@@ -106,7 +106,7 @@ abstract class KarmaDatabase : RoomDatabase() {
 
         private val MIGRATION_9_10 = object : Migration(9, 10) {
             override fun migrate(db: SupportSQLiteDatabase) {
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN dotColor INTEGER NOT NULL DEFAULT -44462")  // 0xFFFF5252 红色
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN dotColor INTEGER NOT NULL DEFAULT -65536")  // 0xFFFF0000 纯红
             }
         }
 

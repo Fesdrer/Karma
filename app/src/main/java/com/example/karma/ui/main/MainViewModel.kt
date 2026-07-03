@@ -36,7 +36,9 @@ data class MainUiState(
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
     val guideLineWidth: Float = 6f,
-    val dotColor: Long = 0xFFFF5252L,
+    val dotColor: Long = 0xFFFF0000L,
+    val themeGradientBaseColor: Long = 0xFF141923L,
+    val themeGradientAccentColor: Long = 0xFF3C2A05L,
     // ===== 消息 =====
     val message: String? = null,
     // ===== 计时可用（直接判断源 flow，绕过 combine 链延迟） =====
@@ -125,8 +127,9 @@ class MainViewModel(
                     ranks = _cachedRanks,
                     historyLineThickness = settings.historyLineThickness,
                     historyDotRadius = settings.historyDotRadius,
-                    guideLineWidth = settings.guideLineWidth,
                     dotColor = settings.dotColor,
+                    themeGradientBaseColor = settings.themeGradientBaseColor,
+                    themeGradientAccentColor = settings.themeGradientAccentColor,
                     message = msg,
                     hasScoreAndEvent = timerEnabled,
                     luckValue = luckValue,

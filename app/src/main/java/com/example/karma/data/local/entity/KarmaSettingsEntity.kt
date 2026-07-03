@@ -44,8 +44,8 @@ data class KarmaSettingsEntity(
 
     // ===== 中间光点 =====
     val guideLineWidth: Float = 6f,
-    @ColumnInfo(defaultValue = "-44462")
-    val dotColor: Long = 0xFFFF5252L,
+    @ColumnInfo(defaultValue = "-65536")
+    val dotColor: Long = 0xFFFF0000L,
 
     // ===== 业力衰减 =====
     val decayEnabled: Boolean = false,

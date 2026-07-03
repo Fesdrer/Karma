@@ -10,7 +10,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
@@ -34,8 +33,9 @@ fun AxisCanvas(
     nearbyRange: Float = 10f,
     quarterValue: Float = 30f,
     ranks: List<com.example.karma.data.model.Rank> = emptyList(),
-    guideLineWidth: Float = 6f,
-    dotColor: Long = 0xFFFF5252L,
+    dotColor: Long = 0xFFFF0000L,
+    themeGradientBaseColor: Long = 0xFF141923L,
+    themeGradientAccentColor: Long = 0xFF3C2A05L,
     modifier: Modifier = Modifier,
 ) {
     // Animate the score value
@@ -51,12 +51,6 @@ fun AxisCanvas(
     // Pre-allocate Paint objects (created once, mutated per-frame inside Canvas)
     val labelPaint = remember {
         android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
-    }
-    val scorePaint = remember {
-        android.graphics.Paint().apply {
-            textAlign = android.graphics.Paint.Align.RIGHT
-            isFakeBoldText = true
-        }
     }
     val rangePaint = remember {
         android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
@@ -81,10 +75,6 @@ fun AxisCanvas(
         // ---- 1. Rank bands with horizontal gradient + vertical DstIn fade ----
         val minVis = centerScore - displayRange
         val maxVis = centerScore + displayRange
-        val leftHalfW = w * 0.50f   // 左半边: 0→50%
-        val rightHalfW = w * 0.50f  // 右半边: 50%→100%
-        val gradW = w * 0.30f       // 渐变区宽度 (左右各30%)
-        val solidW = w * 0.20f      // 实色窄条宽度 (左右各20%)
 
         for (rank in ranks) {
             val bt = maxOf(rank.min, minVis)
@@ -98,53 +88,46 @@ fun AxisCanvas(
             val rankColor = Color(rank.colorHex)
             val bandH = y1 - y0
 
-            // 左半边 (0→50%): 透明→不透明→不透明 (渐变在0→30%完成)
+            // 单条 rect 横跨全宽：
+            // 0%→30%: 渐变透明→不透明 | 30%→70%: 实色 | 70%→100%: 渐变不透明→透明
+            // 用 rankColor.copy(alpha=0f) 替代 Color.Transparent，保持 RGB 不变、仅变 alpha
             drawRect(
                 brush = Brush.horizontalGradient(
                     colorStops = arrayOf(
-                        0f to Color.Transparent,
-                        0.6f to rankColor,
-                        1f to rankColor,
+                        0f to rankColor.copy(alpha = 0f),  // 左边缘，RGB=rankColor，alpha=0
+                        0.3f to rankColor,                   // 30%处完全不透明
+                        0.7f to rankColor,                   // 70%处仍不透明
+                        1f to rankColor.copy(alpha = 0f),   // 右边缘，RGB=rankColor，alpha=0
                     ),
                 ),
                 topLeft = Offset(0f, y0),
-                size = androidx.compose.ui.geometry.Size(leftHalfW, bandH),
-            )
-            // 右半边 (50%→100%): 不透明→不透明→透明 (渐变在70%→100%)
-            drawRect(
-                brush = Brush.horizontalGradient(
-                    colorStops = arrayOf(
-                        0f to rankColor,
-                        0.4f to rankColor,
-                        1f to Color.Transparent,
-                    ),
-                ),
-                topLeft = Offset(leftHalfW, y0),
-                size = androidx.compose.ui.geometry.Size(rightHalfW, bandH),
+                size = androidx.compose.ui.geometry.Size(w, bandH),
             )
         }
 
-        // ---- Vertical fade via DstIn (no color overlay) ----
+        // ---- Vertical fade: 主题色叠加 (无 BlendMode) ----
+        // 在顶部/底部各画一个渐变为主题色的 rect，覆盖 rank 色带，
+        // 产生"色带渐变消失到主题背景"的视觉效果。
         val fadeH = h * 0.10f
-        // Top 10%: alpha 0→1, fading out content upward
+        val themeBase = Color(themeGradientBaseColor)
+        val themeAccent = Color(themeGradientAccentColor)
+        // Top 10%: 从 Transparent(y=fadeH) 到 themeGradientBaseColor(y=0)
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, Color.Black),
-                startY = 0f, endY = fadeH,
+                colors = listOf(Color.Transparent, themeBase),
+                startY = fadeH, endY = 0f,
             ),
             topLeft = Offset(0f, 0f),
             size = androidx.compose.ui.geometry.Size(w, fadeH),
-            blendMode = BlendMode.DstIn,
         )
-        // Bottom 10%: alpha 1→0, fading out content downward
+        // Bottom 10%: 从 Transparent(y=h-fadeH) 到 themeGradientAccentColor(y=h)
         drawRect(
             brush = Brush.verticalGradient(
-                colors = listOf(Color.Black, Color.Transparent),
+                colors = listOf(Color.Transparent, themeAccent),
                 startY = h - fadeH, endY = h,
             ),
             topLeft = Offset(0f, h - fadeH),
             size = androidx.compose.ui.geometry.Size(w, fadeH),
-            blendMode = BlendMode.DstIn,
         )
 
         // ---- 4. Ticks ----
@@ -257,40 +240,12 @@ fun AxisCanvas(
         // ---- 6. Pointer — glowing dot at center ----
         val ptrY = h / 2f
 
-        // Dashed guide line (subtle neutral color)
-        drawLine(
-            color = Color.White.copy(alpha = 0.15f),
-            start = Offset(0f, ptrY),
-            end = Offset(w, ptrY),
-            strokeWidth = guideLineWidth,
-            pathEffect = androidx.compose.ui.graphics.PathEffect.dashPathEffect(
-                floatArrayOf(8f, 6f), 0f
-            ),
-        )
-
         // Glowing dot at axis intersection
         val dotCenter = Offset(axisX, ptrY)
         val dotColorValue = Color(dotColor)
-        drawCircle(color = dotColorValue.copy(alpha = 0.12f), radius = 22f, center = dotCenter)
-        drawCircle(color = dotColorValue.copy(alpha = 0.3f), radius = 12f, center = dotCenter)
-        drawCircle(color = dotColorValue, radius = 4f, center = dotCenter)
-
-        // Score label (above the dot)
-        val scoreLabel = if (centerScore.toInt().toFloat() == centerScore) {
-            centerScore.toInt().toString()
-        } else {
-            String.format("%.1f", centerScore)
-        }
-        scorePaint.apply {
-            color = android.graphics.Color.rgb(255, 215, 0)
-            textSize = 21f
-        }
-        drawContext.canvas.nativeCanvas.drawText(
-            scoreLabel,
-            axisX,
-            ptrY - 16f,
-            scorePaint,
-        )
+        drawCircle(color = dotColorValue.copy(alpha = 0.12f), radius = 44f, center = dotCenter)
+        drawCircle(color = dotColorValue.copy(alpha = 0.3f), radius = 24f, center = dotCenter)
+        drawCircle(color = dotColorValue, radius = 8f, center = dotCenter)
 
         // ---- 7. Range labels ----
         val topScore = centerScore + displayRange

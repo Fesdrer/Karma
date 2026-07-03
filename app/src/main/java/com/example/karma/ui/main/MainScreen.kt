@@ -116,8 +116,9 @@ fun MainScreen(
                     nearbyRange = s.nearbyTickRange,
                     quarterValue = s.axisQuarterValue,
                     ranks = s.ranks,
-                    guideLineWidth = s.guideLineWidth,
                     dotColor = s.dotColor,
+                    themeGradientBaseColor = s.themeGradientBaseColor,
+                    themeGradientAccentColor = s.themeGradientAccentColor,
                     modifier = Modifier
                         .width(75.dp)
                         .fillMaxHeight(),
