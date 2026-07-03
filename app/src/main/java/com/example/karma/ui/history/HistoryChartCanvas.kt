@@ -8,14 +8,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.input.pointer.pointerInput
-import androidx.compose.ui.platform.LocalContext
-import com.example.karma.R
 import com.example.karma.ui.theme.ChartBg
 private const val PAD_TOP = 20f
 private const val PAD_RIGHT = 20f
@@ -56,10 +53,6 @@ fun HistoryChartCanvas(
         android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.CENTER }
     }
     val cal = remember { java.util.Calendar.getInstance() }
-    val ctx = LocalContext.current
-    val bgBitmap = remember(ctx) {
-        android.graphics.BitmapFactory.decodeResource(ctx.resources, R.drawable.theme_bg)
-    }
     // ---- Gesture: tap to select point ----
     Canvas(
         modifier = modifier
@@ -145,22 +138,8 @@ fun HistoryChartCanvas(
             PAD_TOP + (1f - (s - vp.yMin) / (vp.yMax - vp.yMin)) * plotH
         }
         // ---- Background ----
-        // 底层：纯黑
+        // 纯黑遮挡渐变层，星星由上层 KarmaTheme 的 Image(theme_bg) 提供
         drawRect(color = ChartBg, size = size)
-        // 中层：星空图（铺满整个画布）
-        bgBitmap?.let { bmp ->
-            drawContext.canvas.nativeCanvas.drawBitmap(
-                bmp, null,
-                android.graphics.Rect(0, 0, w.toInt(), h.toInt()),
-                null,
-            )
-        }
-        // 上层：padding 区域覆盖纯黑（轴标签处不显示星空）
-        val plotW2 = w - PAD_LEFT - PAD_RIGHT
-        drawRect(color = ChartBg, topLeft = Offset.Zero, size = Size(PAD_LEFT, h))
-        drawRect(color = ChartBg, topLeft = Offset(w - PAD_RIGHT, 0f), size = Size(PAD_RIGHT, h))
-        drawRect(color = ChartBg, topLeft = Offset(PAD_LEFT, 0f), size = Size(plotW2, PAD_TOP))
-        drawRect(color = ChartBg, topLeft = Offset(PAD_LEFT, h - PAD_BOTTOM), size = Size(plotW2, PAD_BOTTOM))
         // ---- Rank color bands（阶位色带） ----
         if (ranks.isNotEmpty() && points.size >= 2) {
             for (rank in ranks) {

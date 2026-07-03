@@ -64,6 +64,9 @@ fun KarmaTheme(
                 .fillMaxSize()
                 .background(Brush.verticalGradient(colors = gradientColors)),
         ) {
+            // 内容在星星图片之下
+            content()
+
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -76,8 +79,6 @@ fun KarmaTheme(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-
-            content()
         }
     }
 }
