@@ -1,5 +1,6 @@
 package com.example.karma.ui.navigation
 
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -26,10 +27,10 @@ fun KarmaNavGraph(
     ) {
         composable(
             route = Screen.Main.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             MainScreen(
                 appContainer = appContainer,
@@ -52,10 +53,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.History.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             HistoryScreen(
                 appContainer = appContainer,
@@ -64,10 +65,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Prayer.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             PrayerScreen(
                 appContainer = appContainer,
@@ -76,10 +77,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Settings.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             SettingsScreen(
                 appContainer = appContainer,
@@ -88,10 +89,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Divination.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             DivinationScreen(
                 appContainer = appContainer,
@@ -100,10 +101,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Timer.route,
-            enterTransition = { fadeIn(tween(300)) },
-            exitTransition = { fadeOut(tween(300)) },
-            popEnterTransition = { fadeIn(tween(300)) },
-            popExitTransition = { fadeOut(tween(300)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) { backStackEntry ->
             val score = backStackEntry.arguments?.getString("score")?.toFloatOrNull() ?: 0f
             val event = backStackEntry.arguments?.getString("event")

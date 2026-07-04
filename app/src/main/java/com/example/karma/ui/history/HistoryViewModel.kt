@@ -3,6 +3,7 @@ package com.example.karma.ui.history
 import android.app.Application
 import android.content.ContentResolver
 import android.net.Uri
+import androidx.compose.runtime.Immutable
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -10,14 +11,13 @@ import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.model.ViewMode
 import com.example.karma.data.repository.KarmaRepository
 import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import java.util.Calendar
 
+@Immutable
 data class HistoryUiState(
     val entries: List<HistoryEntryEntity> = emptyList(),
     val viewMode: ViewMode = ViewMode.DAY,
@@ -32,6 +32,7 @@ data class HistoryUiState(
     val message: String? = null,
 )
 
+@Immutable
 data class AggregatedPoint(
     val timestamp: Long,
     val delta: Float,
@@ -49,36 +50,49 @@ class HistoryViewModel(
     private val _focusDate = MutableStateFlow(System.currentTimeMillis())
     private val _isZoomEnabled = MutableStateFlow(false)
 
+    // aggregate() 缓存 — 当 entries/mode/focusDate 未变时跳过重复计算
+    private var cachedAggregateKey: Triple<List<HistoryEntryEntity>, ViewMode, Long>? = null
+    private var cachedAggregateResult: List<AggregatedPoint> = emptyList()
+
     // combine 最多支持 5 个类型安全参数，因此先合并 _focusDate + _isZoomEnabled
     private val _focusState = combine(
         _focusDate, _isZoomEnabled
     ) { date, zoom -> Pair(date, zoom) }
 
-    val uiState: StateFlow<HistoryUiState> = combine(
-        repository.allHistory,
-        repository.settings,
-        _viewMode.asStateFlow(),
-        _message.asStateFlow(),
-        _focusState,
-    ) { entries: List<HistoryEntryEntity>, settings: com.example.karma.data.local.entity.KarmaSettingsEntity, mode: ViewMode, msg: String?, focusPair: Pair<Long, Boolean> ->
-        val focusDate = focusPair.first
-        val zoomEnabled = focusPair.second
-        HistoryUiState(
-            entries = entries,
-            viewMode = mode,
-            aggregatedPoints = aggregate(entries, mode, focusDate),
-            historyLineThickness = settings.historyLineThickness,
-            historyDotRadius = settings.historyDotRadius,
-            focusDate = focusDate,
-            canGoForward = !isAtNewest(focusDate, mode),
-            dateLabel = formatDateLabel(focusDate, mode),
-            isZoomEnabled = zoomEnabled,
-            ranks = com.example.karma.data.model.Rank.listFrom(
-                settings.rankThresholds, settings.rankNames, settings.rankColors
-            ),
-            message = msg,
-        )
-    }.stateIn(viewModelScope, SharingStarted.Eagerly, HistoryUiState())
+    // 使用 MutableStateFlow<T?>(null) 替代 stateIn，避免 initialValue 闪白
+    // （符合 CLAUDE.md 规则 #3）
+    private val _uiState = MutableStateFlow<HistoryUiState?>(null)
+    val uiState: StateFlow<HistoryUiState?> = _uiState.asStateFlow()
+
+    init {
+        viewModelScope.launch {
+            combine(
+                repository.allHistory,
+                repository.settings,
+                _viewMode.asStateFlow(),
+                _message.asStateFlow(),
+                _focusState,
+            ) { entries: List<HistoryEntryEntity>, settings: com.example.karma.data.local.entity.KarmaSettingsEntity, mode: ViewMode, msg: String?, focusPair: Pair<Long, Boolean> ->
+                val focusDate = focusPair.first
+                val zoomEnabled = focusPair.second
+                HistoryUiState(
+                    entries = entries,
+                    viewMode = mode,
+                    aggregatedPoints = aggregateWithCache(entries, mode, focusDate),
+                    historyLineThickness = settings.historyLineThickness,
+                    historyDotRadius = settings.historyDotRadius,
+                    focusDate = focusDate,
+                    canGoForward = !isAtNewest(focusDate, mode),
+                    dateLabel = formatDateLabel(focusDate, mode),
+                    isZoomEnabled = zoomEnabled,
+                    ranks = com.example.karma.data.model.Rank.listFrom(
+                        settings.rankThresholds, settings.rankNames, settings.rankColors
+                    ),
+                    message = msg,
+                )
+            }.collect { _uiState.value = it }
+        }
+    }
 
     fun setViewMode(mode: ViewMode) {
         _viewMode.value = mode
@@ -87,6 +101,19 @@ class HistoryViewModel(
         if (mode == ViewMode.DAY) {
             _isZoomEnabled.value = false
         }
+    }
+
+    private fun aggregateWithCache(
+        entries: List<HistoryEntryEntity>,
+        mode: ViewMode,
+        focusDate: Long,
+    ): List<AggregatedPoint> {
+        val key = Triple(entries, mode, focusDate)
+        if (key == cachedAggregateKey) return cachedAggregateResult
+        val result = aggregate(entries, mode, focusDate)
+        cachedAggregateKey = key
+        cachedAggregateResult = result
+        return result
     }
 
     fun clearMessage() {

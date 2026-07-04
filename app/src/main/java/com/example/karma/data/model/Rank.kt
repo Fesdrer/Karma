@@ -1,5 +1,8 @@
 package com.example.karma.data.model
 
+import androidx.compose.runtime.Immutable
+
+@Immutable
 data class Rank(
     val min: Float,
     val max: Float,

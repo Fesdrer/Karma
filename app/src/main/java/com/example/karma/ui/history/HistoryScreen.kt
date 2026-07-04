@@ -57,7 +57,8 @@ fun HistoryScreen(
     val viewModel: HistoryViewModel = viewModel(
         factory = HistoryViewModel.Factory(appContainer.repository, context.applicationContext as android.app.Application)
     )
-    val state by viewModel.uiState.collectAsState()
+    val rawState by viewModel.uiState.collectAsState()
+    val state = rawState ?: return  // 数据就绪前不渲染，避免 stateIn 式闪白
 
     // Tooltip state
     var tooltipPoint by remember { mutableStateOf<AggregatedPoint?>(null) }
