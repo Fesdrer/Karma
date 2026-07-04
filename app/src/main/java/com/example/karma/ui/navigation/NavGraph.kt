@@ -1,5 +1,7 @@
 package com.example.karma.ui.navigation
 
+import androidx.compose.animation.EnterTransition
+import androidx.compose.animation.ExitTransition
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -77,10 +79,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Settings.route,
-            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
-            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
-            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
-            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            enterTransition = { EnterTransition.None },
+            exitTransition = { ExitTransition.None },
+            popEnterTransition = { EnterTransition.None },
+            popExitTransition = { ExitTransition.None },
         ) {
             SettingsScreen(
                 appContainer = appContainer,

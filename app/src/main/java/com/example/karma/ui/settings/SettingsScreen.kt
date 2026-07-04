@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
-import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,10 +21,12 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -142,119 +143,101 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        // 使用 LazyColumn 替代 Column+verticalScroll，仅组合可见卡片，
-        // 消除 fadeIn 过渡期间的帧预算压力，同时提升滚动流畅度
-        LazyColumn(
+        // 直接渲染全部卡片，保证滚动流畅（Column 一次性组合所有卡片）
+        Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(padding),
-            contentPadding = PaddingValues(16.dp),
+                .padding(padding)
+                .verticalScroll(rememberScrollState())
+                .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            item(key = "score") {
-                ScoreSettingsCard(
-                    scoreAxisFontSize = draft.scoreAxisFontSize,
-                    scoreAxisRangeMin = draft.scoreAxisRangeMin,
-                    scoreAxisRangeMax = draft.scoreAxisRangeMax,
-                    onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
-                    onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
-                    onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
-                )
-            }
-            item(key = "axis") {
-                AxisSettingsCard(
-                    axisLabelColor = draft.axisLabelColor,
-                    axisTickThickness = draft.axisTickThickness,
-                    axisLabelFontSize = draft.axisLabelFontSize,
-                    axisDisplayRange = draft.axisDisplayRange,
-                    showNearbyTicks = draft.showNearbyTicks,
-                    nearbyTickRange = draft.nearbyTickRange,
-                    axisQuarterValue = draft.axisQuarterValue,
-                    guideLineWidth = draft.guideLineWidth,
-                    dotColor = draft.dotColor,
-                    onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
-                    onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
-                    onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
-                    onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
-                    onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
-                    onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
-                    onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
-                    onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
-                    onDotColorChange = { viewModel.updateDotColor(it) },
-                )
-            }
-            item(key = "rank") {
-                RankSettingsCard(
-                    rankNames = draft.rankNames,
-                    rankColors = draft.rankColors,
-                    rankThresholds = draft.rankThresholds,
-                    rankDecayAmounts = draft.rankDecayAmounts,
-                    deleteMode = deleteMode,
-                    onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
-                    onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
-                    onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
-                    onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
-                    onAddRank = { viewModel.addRank() },
-                    onDeleteRank = { viewModel.deleteRank(it) },
-                    onToggleDeleteMode = { viewModel.toggleDeleteMode() },
-                )
-            }
-            item(key = "event") {
-                EventSettingsCard(
-                    goodDeedPresets = draft.goodDeedPresets,
-                    badDeedPresets = draft.badDeedPresets,
-                    goodResultPresets = draft.goodResultPresets,
-                    onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
-                    onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
-                    onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
-                )
-            }
-            item(key = "history") {
-                HistorySettingsCard(
-                    historyLineThickness = draft.historyLineThickness,
-                    historyDotRadius = draft.historyDotRadius,
-                    onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
-                    onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
-                )
-            }
-            item(key = "decay") {
-                DecaySettingsCard(
-                    decayEnabled = draft.decayEnabled,
-                    decayHour = draft.decayHour,
-                    decayMinute = draft.decayMinute,
-                    lastDecayDate = draft.lastDecayDate,
-                    rankDecayAmounts = draft.rankDecayAmounts,
-                    rankThresholds = draft.rankThresholds,
-                    rankNames = draft.rankNames,
-                    onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
-                    onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
-                )
-            }
-            item(key = "luck") {
-                LuckSettingsCard(
-                    luckEnabled = draft.luckEnabled,
-                    luckT = draft.luckT,
-                    luckB = draft.luckB,
-                    luckW = draft.luckW,
-                    onLuckEnabledChange = { viewModel.updateLuckEnabled(it) },
-                    onLuckTChange = { viewModel.updateLuckT(it) },
-                    onLuckBChange = { viewModel.updateLuckB(it) },
-                    onLuckWChange = { viewModel.updateLuckW(it) },
-                )
-            }
-            item(key = "gradient") {
-                BackgroundGradientCard(
-                    themeGradientBaseColor = draft.themeGradientBaseColor,
-                    themeGradientAccentColor = draft.themeGradientAccentColor,
-                    onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
-                    onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
-                )
-            }
-            item(key = "reset") {
-                ResetCard(
-                    onReset = { viewModel.resetToDefaults() },
-                )
-            }
+            ScoreSettingsCard(
+                scoreAxisFontSize = draft.scoreAxisFontSize,
+                scoreAxisRangeMin = draft.scoreAxisRangeMin,
+                scoreAxisRangeMax = draft.scoreAxisRangeMax,
+                onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
+                onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
+                onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
+            )
+            AxisSettingsCard(
+                axisLabelColor = draft.axisLabelColor,
+                axisTickThickness = draft.axisTickThickness,
+                axisLabelFontSize = draft.axisLabelFontSize,
+                axisDisplayRange = draft.axisDisplayRange,
+                showNearbyTicks = draft.showNearbyTicks,
+                nearbyTickRange = draft.nearbyTickRange,
+                axisQuarterValue = draft.axisQuarterValue,
+                guideLineWidth = draft.guideLineWidth,
+                dotColor = draft.dotColor,
+                onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
+                onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
+                onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
+                onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
+                onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
+                onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
+                onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
+                onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
+                onDotColorChange = { viewModel.updateDotColor(it) },
+            )
+            RankSettingsCard(
+                rankNames = draft.rankNames,
+                rankColors = draft.rankColors,
+                rankThresholds = draft.rankThresholds,
+                rankDecayAmounts = draft.rankDecayAmounts,
+                deleteMode = deleteMode,
+                onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
+                onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
+                onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
+                onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
+                onAddRank = { viewModel.addRank() },
+                onDeleteRank = { viewModel.deleteRank(it) },
+                onToggleDeleteMode = { viewModel.toggleDeleteMode() },
+            )
+            EventSettingsCard(
+                goodDeedPresets = draft.goodDeedPresets,
+                badDeedPresets = draft.badDeedPresets,
+                goodResultPresets = draft.goodResultPresets,
+                onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
+                onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
+                onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
+            )
+            HistorySettingsCard(
+                historyLineThickness = draft.historyLineThickness,
+                historyDotRadius = draft.historyDotRadius,
+                onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
+                onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
+            )
+            DecaySettingsCard(
+                decayEnabled = draft.decayEnabled,
+                decayHour = draft.decayHour,
+                decayMinute = draft.decayMinute,
+                lastDecayDate = draft.lastDecayDate,
+                rankDecayAmounts = draft.rankDecayAmounts,
+                rankThresholds = draft.rankThresholds,
+                rankNames = draft.rankNames,
+                onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
+                onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
+            )
+            LuckSettingsCard(
+                luckEnabled = draft.luckEnabled,
+                luckT = draft.luckT,
+                luckB = draft.luckB,
+                luckW = draft.luckW,
+                onLuckEnabledChange = { viewModel.updateLuckEnabled(it) },
+                onLuckTChange = { viewModel.updateLuckT(it) },
+                onLuckBChange = { viewModel.updateLuckB(it) },
+                onLuckWChange = { viewModel.updateLuckW(it) },
+            )
+            BackgroundGradientCard(
+                themeGradientBaseColor = draft.themeGradientBaseColor,
+                themeGradientAccentColor = draft.themeGradientAccentColor,
+                onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
+                onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
+            )
+            ResetCard(
+                onReset = { viewModel.resetToDefaults() },
+            )
         }
     }
 }
