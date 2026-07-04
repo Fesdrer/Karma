@@ -34,8 +34,6 @@ fun AxisCanvas(
     quarterValue: Float = 30f,
     ranks: List<com.example.karma.data.model.Rank> = emptyList(),
     dotColor: Long = 0xFFFF0000L,
-    themeGradientBaseColor: Long = 0xFF141923L,
-    themeGradientAccentColor: Long = 0xFF3C2A05L,
     modifier: Modifier = Modifier,
 ) {
     // Animate the score value
@@ -105,30 +103,9 @@ fun AxisCanvas(
             )
         }
 
-        // ---- Vertical fade: 主题色叠加 (无 BlendMode) ----
-        // 在顶部/底部各画一个渐变为主题色的 rect，覆盖 rank 色带，
-        // 产生"色带渐变消失到主题背景"的视觉效果。
-        val fadeH = h * 0.10f
-        val themeBase = Color(themeGradientBaseColor)
-        val themeAccent = Color(themeGradientAccentColor)
-        // Top 10%: 从 Transparent(y=fadeH) 到 themeGradientBaseColor(y=0)
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, themeBase),
-                startY = fadeH, endY = 0f,
-            ),
-            topLeft = Offset(0f, 0f),
-            size = androidx.compose.ui.geometry.Size(w, fadeH),
-        )
-        // Bottom 10%: 从 Transparent(y=h-fadeH) 到 themeGradientAccentColor(y=h)
-        drawRect(
-            brush = Brush.verticalGradient(
-                colors = listOf(Color.Transparent, themeAccent),
-                startY = h - fadeH, endY = h,
-            ),
-            topLeft = Offset(0f, h - fadeH),
-            size = androidx.compose.ui.geometry.Size(w, fadeH),
-        )
+        // ---- Vertical fade: 无叠加层，无 BlendMode ----
+        // rank 色带自然终止于其 y 边界，水平渐变提供左右软边缘，
+        // 上下方向直接透明到主题渐变色背景。
 
         // ---- 4. Ticks ----
         val idealTicks = 16

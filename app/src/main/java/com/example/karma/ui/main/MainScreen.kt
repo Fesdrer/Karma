@@ -117,8 +117,6 @@ fun MainScreen(
                     quarterValue = s.axisQuarterValue,
                     ranks = s.ranks,
                     dotColor = s.dotColor,
-                    themeGradientBaseColor = s.themeGradientBaseColor,
-                    themeGradientAccentColor = s.themeGradientAccentColor,
                     modifier = Modifier
                         .width(75.dp)
                         .fillMaxHeight(),
