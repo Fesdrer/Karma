@@ -18,7 +18,8 @@ import androidx.compose.runtime.withFrameNanos
 import kotlin.math.PI
 import kotlin.math.sin
 
-private data class TrailPoint(val x: Float, val y: Float)
+// 不再使用 TrailPoint 数据类；拖尾直接以 (x: Float, y: Float) 对存储在 ArrayDeque 中，
+// 避免每帧分配 TrailPoint 对象。
 
 private class LightRing(
     val x: Float, val y: Float,
@@ -48,12 +49,13 @@ fun XiaoLiuRenThreadCanvas(
     if (fullPath.isEmpty() || palacePositions.size < 6) return
     if (animationPhase == AnimationPhase.IDLE || animationPhase == AnimationPhase.COMPLETE) return
 
-    val segments = remember(fullPath, palacePositions) {
+    // palacePositions 在首次调用时已有 6 个元素且不再变化，仅以 fullPath 为 key 即可
+    val segments = remember(fullPath) {
         buildSegments(fullPath, palacePositions, monthCount, dayCount)
     }
 
     val progress = remember { AnimProgress() }
-    val trailBuffer = remember { ArrayDeque<TrailPoint>(40) }
+    val trailBuffer = remember { ArrayDeque<Pair<Float, Float>>(40) }
     val rings = remember { mutableListOf<LightRing>() }
 
     // 光环尺寸（像素），在 Composable 中一次性转换
@@ -207,24 +209,18 @@ fun XiaoLiuRenThreadCanvas(
         // ---- 计算光点当前坐标 ----
         val overallProgress = when (progress.currentPhase) {
             AnimationPhase.COUNTING_MONTH, AnimationPhase.MONTH_PAUSE -> {
-                val mCount = segments.count { it.phase == AnimationPhase.COUNTING_MONTH }
-                val done = if (progress.currentPhase == AnimationPhase.MONTH_PAUSE) mCount.toFloat()
-                else mCount * progress.phaseProgress
-                if (mCount > 0) done / segments.size.toFloat() else 0f
+                val done = if (progress.currentPhase == AnimationPhase.MONTH_PAUSE) monthCount.toFloat()
+                else monthCount * progress.phaseProgress
+                if (monthCount > 0) done / segments.size.toFloat() else 0f
             }
             AnimationPhase.COUNTING_DAY, AnimationPhase.DAY_PAUSE -> {
-                val mCount = segments.count { it.phase == AnimationPhase.COUNTING_MONTH }
-                val dCount = segments.count { it.phase == AnimationPhase.COUNTING_DAY }
-                val done = if (progress.currentPhase == AnimationPhase.DAY_PAUSE) (mCount + dCount).toFloat()
-                else mCount + dCount * progress.phaseProgress
+                val done = if (progress.currentPhase == AnimationPhase.DAY_PAUSE) (monthCount + dayCountCache).toFloat()
+                else monthCount + dayCountCache * progress.phaseProgress
                 done / segments.size.toFloat()
             }
             AnimationPhase.COUNTING_HOUR, AnimationPhase.RESULT_GLOW -> {
-                val mCount = segments.count { it.phase == AnimationPhase.COUNTING_MONTH }
-                val dCount = segments.count { it.phase == AnimationPhase.COUNTING_DAY }
-                val hCount = segments.count { it.phase == AnimationPhase.COUNTING_HOUR }
                 val done = if (progress.currentPhase == AnimationPhase.RESULT_GLOW) segments.size.toFloat()
-                else mCount + dCount + hCount * progress.phaseProgress
+                else monthCount + dayCountCache + hourCountCache * progress.phaseProgress
                 done / segments.size.toFloat()
             }
             else -> 0f
@@ -244,7 +240,7 @@ fun XiaoLiuRenThreadCanvas(
         val isGlowPhase = progress.currentPhase == AnimationPhase.RESULT_GLOW
 
         // ---- 更新拖尾缓冲区 ----
-        trailBuffer.addLast(TrailPoint(dotX, dotY))
+        trailBuffer.addLast(Pair(dotX, dotY))
         while (trailBuffer.size > 40) {
             trailBuffer.removeFirst()
         }
@@ -323,22 +319,21 @@ private fun DrawScope.drawLightDot(x: Float, y: Float, pulseScale: Float) {
 
 // ====== 拖尾绘制 ======
 
-private fun DrawScope.drawTrail(buffer: ArrayDeque<TrailPoint>, dotX: Float, dotY: Float) {
+private fun DrawScope.drawTrail(buffer: ArrayDeque<Pair<Float, Float>>, dotX: Float, dotY: Float) {
     val size = buffer.size
     if (size < 2) return
     val baseWidth = 10.dp.toPx()
     val baseAlpha = 0.55f
-    // Iterate buffer directly (avoid toList() allocation) + final dotX/dotY as last point
-    val totalCount = size + 1  // buffer elements + final dot point
+    val totalCount = size + 1
     for (i in 0 until totalCount - 1) {
         val t = i.toFloat() / (totalCount - 1)
         val segWidth = baseWidth * t * t
         val segAlpha = baseAlpha * t * t
         if (segAlpha < 0.01f) continue
-        val pt1 = if (i < size) buffer[i] else TrailPoint(dotX, dotY)
-        val pt2 = if (i + 1 < size) buffer[i + 1] else TrailPoint(dotX, dotY)
-        val p1 = Offset(pt1.x, pt1.y)
-        val p2 = Offset(pt2.x, pt2.y)
+        val (x1, y1) = if (i < size) buffer[i] else Pair(dotX, dotY)
+        val (x2, y2) = if (i + 1 < size) buffer[i + 1] else Pair(dotX, dotY)
+        val p1 = Offset(x1, y1)
+        val p2 = Offset(x2, y2)
         drawLine(Color(0xFFFFD700).copy(alpha = segAlpha * 0.25f), start = p1, end = p2, strokeWidth = segWidth * 3.5f, cap = StrokeCap.Round)
         drawLine(Color(0xFFFFD700).copy(alpha = segAlpha), start = p1, end = p2, strokeWidth = segWidth, cap = StrokeCap.Round)
     }

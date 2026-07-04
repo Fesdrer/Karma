@@ -9,9 +9,6 @@ import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.DrawScope
-import androidx.compose.ui.graphics.drawscope.Fill
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.nativeCanvas
 import kotlin.math.PI
@@ -51,7 +48,11 @@ private data class KarmaThread(
     val lineWidth: Float,
     val delay: Float,
     var currentLen: Float = 0f,
-)
+) {
+    /** 可复用 native Path，避免每帧 new Path() 产生 GC 压力 */
+    @kotlin.jvm.Transient
+    val reusablePath: android.graphics.Path = android.graphics.Path()
+}
 
 private data class ExpandingRing(
     val finalRadius: Float,
@@ -156,6 +157,10 @@ fun ParticleEngineCanvas(
     val normalBracketPaint = remember {
         android.graphics.Paint().apply { isAntiAlias = true }
     }
+    // 复用 stroke paint 绘制金线（避免每帧每线程 new Path() + Compose Path→native 转换）
+    val threadStrokePaint = remember {
+        android.graphics.Paint().apply { style = android.graphics.Paint.Style.STROKE; isAntiAlias = true }
+    }
 
     Canvas(modifier = modifier) {
         val w = size.width
@@ -200,15 +205,21 @@ fun ParticleEngineCanvas(
             val cp2y = cy + sin((t.angle - 0.4f).toDouble()).toFloat() * t.cp2Offset
             val alpha = min(1f, t.currentLen / t.finalLen * 1.4f)
 
-            val path = Path().apply {
-                moveTo(cx, cy)
-                cubicTo(cp1x, cp1y, cp2x, cp2y, endX, endY)
+            val tp = t.reusablePath
+            tp.reset()
+            tp.moveTo(cx, cy)
+            tp.cubicTo(cp1x, cp1y, cp2x, cp2y, endX, endY)
+            val hslColor = Color.hsl(t.hue, t.sat / 100f, t.light / 100f, alpha)
+            threadStrokePaint.apply {
+                color = android.graphics.Color.argb(
+                    (alpha * 255).toInt(),
+                    (hslColor.red * 255).toInt(),
+                    (hslColor.green * 255).toInt(),
+                    (hslColor.blue * 255).toInt(),
+                )
+                strokeWidth = t.lineWidth
             }
-            drawPath(
-                path,
-                color = Color.hsl(t.hue, t.sat / 100f, t.light / 100f, alpha),
-                style = Stroke(width = t.lineWidth),
-            )
+            drawContext.canvas.nativeCanvas.drawPath(tp, threadStrokePaint)
         }
 
         // ---- Expanding rings ----
@@ -280,6 +291,8 @@ fun ParticleEngineCanvas(
             else maxOf(0f, 1f - (elapsed - (dur - 500f)) / 500f)
         if (textVisible > 0f) {
             val textAlpha = (textVisible * 255f).toInt().coerceIn(0, 255)
+            // 确保 StaticLayout 已缓存（仅在 canvas 宽度或 purpose 变化时重建）
+            state.ensureLayouts(w, purpose, divineTextPaint, normalTextPaint, scale)
             if (state.isDivine) {
                 amountPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 68, 68)
@@ -291,40 +304,35 @@ fun ParticleEngineCanvas(
                     cy + 5f * scale,
                     amountPaint,
                 )
-                // StaticLayout 绘制 purpose 文本，括号独立绘制在对角
-                divineTextPaint.apply {
-                    color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
-                    textSize = 44f * scale
-                }
+                // 使用缓存的 StaticLayout 绘制 purpose 文本
                 divineBracketPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
                     textSize = 44f * scale
                 }
-                val divineMaxWidth = (w * 0.74f).toInt()
-                val divineLayout = android.text.StaticLayout.Builder
-                    .obtain(purpose, 0, purpose.length, divineTextPaint, divineMaxWidth)
-                    .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
-                    .build()
-                drawContext.canvas.save()
-                val layoutX = cx - divineMaxWidth / 2f
-                val layoutY = cy + 55f * scale
-                drawContext.canvas.translate(layoutX, layoutY)
-                divineLayout.draw(drawContext.canvas.nativeCanvas)
-                //「左上角
-                val bracketPad = 8f * scale
-                drawContext.canvas.nativeCanvas.drawText(
-                    "「", bracketPad, divineTextPaint.textSize, divineBracketPaint
-                )
-                //」右下角
-                val lastLineBot = divineLayout.height.toFloat()
-                val bracketW = divineBracketPaint.measureText("」")
-                drawContext.canvas.nativeCanvas.drawText(
-                    "」",
-                    divineMaxWidth - bracketW - bracketPad,
-                    lastLineBot,
-                    divineBracketPaint
-                )
-                drawContext.canvas.restore()
+                val cachedLayout = state.cachedDivineLayout
+                if (cachedLayout != null) {
+                    val divineMaxWidth = (w * 0.74f).toInt()
+                    drawContext.canvas.save()
+                    val layoutX = cx - divineMaxWidth / 2f
+                    val layoutY = cy + 55f * scale
+                    drawContext.canvas.translate(layoutX, layoutY)
+                    cachedLayout.draw(drawContext.canvas.nativeCanvas)
+                    //「左上角
+                    val bracketPad = 8f * scale
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "「", bracketPad, divineTextPaint.textSize, divineBracketPaint
+                    )
+                    //」右下角
+                    val lastLineBot = cachedLayout.height.toFloat()
+                    val bracketW = divineBracketPaint.measureText("」")
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "」",
+                        divineMaxWidth - bracketW - bracketPad,
+                        lastLineBot,
+                        divineBracketPaint
+                    )
+                    drawContext.canvas.restore()
+                }
             } else {
                 amountPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 34, 34)
@@ -336,40 +344,35 @@ fun ParticleEngineCanvas(
                     cy,
                     amountPaint,
                 )
-                // StaticLayout 绘制 purpose 文本，括号独立绘制在对角
-                normalTextPaint.apply {
-                    color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
-                    textSize = 36f * scale
-                }
+                // 使用缓存的 StaticLayout 绘制 purpose 文本
                 normalBracketPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 0, 0)
                     textSize = 36f * scale
                 }
-                val normalMaxWidth = (w * 0.74f).toInt()
-                val normalLayout = android.text.StaticLayout.Builder
-                    .obtain(purpose, 0, purpose.length, normalTextPaint, normalMaxWidth)
-                    .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
-                    .build()
-                drawContext.canvas.save()
-                val nLayoutX = cx - normalMaxWidth / 2f
-                val nLayoutY = cy + 45f * scale
-                drawContext.canvas.translate(nLayoutX, nLayoutY)
-                normalLayout.draw(drawContext.canvas.nativeCanvas)
-                //「左上角
-                val nBracketPad = 6f * scale
-                drawContext.canvas.nativeCanvas.drawText(
-                    "「", nBracketPad, normalTextPaint.textSize, normalBracketPaint
-                )
-                //」右下角
-                val nLastLineBot = normalLayout.height.toFloat()
-                val nBracketW = normalBracketPaint.measureText("」")
-                drawContext.canvas.nativeCanvas.drawText(
-                    "」",
-                    normalMaxWidth - nBracketW - nBracketPad,
-                    nLastLineBot,
-                    normalBracketPaint
-                )
-                drawContext.canvas.restore()
+                val cachedLayout = state.cachedNormalLayout
+                if (cachedLayout != null) {
+                    val normalMaxWidth = (w * 0.74f).toInt()
+                    drawContext.canvas.save()
+                    val nLayoutX = cx - normalMaxWidth / 2f
+                    val nLayoutY = cy + 45f * scale
+                    drawContext.canvas.translate(nLayoutX, nLayoutY)
+                    cachedLayout.draw(drawContext.canvas.nativeCanvas)
+                    //「左上角
+                    val nBracketPad = 6f * scale
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "「", nBracketPad, normalTextPaint.textSize, normalBracketPaint
+                    )
+                    //」右下角
+                    val nLastLineBot = cachedLayout.height.toFloat()
+                    val nBracketW = normalBracketPaint.measureText("」")
+                    drawContext.canvas.nativeCanvas.drawText(
+                        "」",
+                        normalMaxWidth - nBracketW - nBracketPad,
+                        nLastLineBot,
+                        normalBracketPaint
+                    )
+                    drawContext.canvas.restore()
+                }
             }
         }
     }
@@ -387,6 +390,39 @@ private class ParticleState(
     private var initialized = false
     var cx = 500f
     var cy = 500f
+
+    // 缓存的 StaticLayout，避免每帧 rebuild（文字布局是昂贵操作）
+    var cachedDivineLayout: android.text.StaticLayout? = null
+    var cachedNormalLayout: android.text.StaticLayout? = null
+    private var lastLayoutCanvasW: Float = -1f
+    private var lastLayoutPurpose: String = ""
+
+    /** 在 Canvas 中调用：仅在 canvas 宽度或 purpose 变化时重建 StaticLayout */
+    fun ensureLayouts(
+        canvasW: Float,
+        purpose: String,
+        divineTextPaint: android.text.TextPaint,
+        normalTextPaint: android.text.TextPaint,
+        scale: Float,
+    ) {
+        if (canvasW == lastLayoutCanvasW && purpose == lastLayoutPurpose) return
+        lastLayoutCanvasW = canvasW
+        lastLayoutPurpose = purpose
+        val maxWidth = (canvasW * 0.74f).toInt()
+        if (isDivine && maxWidth > 0) {
+            divineTextPaint.textSize = 44f * scale
+            cachedDivineLayout = android.text.StaticLayout.Builder
+                .obtain(purpose, 0, purpose.length, divineTextPaint, maxWidth)
+                .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
+                .build()
+        } else if (!isDivine && maxWidth > 0) {
+            normalTextPaint.textSize = 36f * scale
+            cachedNormalLayout = android.text.StaticLayout.Builder
+                .obtain(purpose, 0, purpose.length, normalTextPaint, maxWidth)
+                .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
+                .build()
+        }
+    }
 
     fun update(elapsedMs: Long, runes: MutableList<RuneParticle>, canSpawnRunes: Boolean) {
         elapsed = elapsedMs.toFloat()

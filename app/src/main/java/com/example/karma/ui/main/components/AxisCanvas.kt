@@ -70,6 +70,9 @@ fun AxisCanvas(
         val labelColorValue = Color(labelColor)
         val labelAlpha = labelColorValue.alpha
 
+        // 预计算 exp + scale：每帧 ~80 次 scoreToY 调用共享 1 次 ln/pow
+        val (exp, yScale) = precomputeExpScale(halfH, displayRange, quarterValue)
+
         // ---- 1. Rank bands with horizontal gradient + vertical DstIn fade ----
         val minVis = centerScore - displayRange
         val maxVis = centerScore + displayRange
@@ -78,8 +81,8 @@ fun AxisCanvas(
             val bt = maxOf(rank.min, minVis)
             val bb = minOf(rank.max, maxVis)
             if (bt >= bb) continue
-            val yT = scoreToY(bb, centerScore, halfH, h, displayRange, quarterValue)
-            val yB = scoreToY(bt, centerScore, halfH, h, displayRange, quarterValue)
+            val yT = scoreToY(bb, centerScore, h, displayRange, exp, yScale)
+            val yB = scoreToY(bt, centerScore, h, displayRange, exp, yScale)
             val y0 = maxOf(0f, minOf(yT, yB))
             val y1 = minOf(h, maxOf(yT, yB))
             if (y1 <= y0) continue
@@ -123,7 +126,7 @@ fun AxisCanvas(
         // Major ticks
         var s = firstTick
         while (s <= lastTick + 0.001f) {
-            val y = scoreToY(s, centerScore, halfH, h, displayRange, quarterValue)
+            val y = scoreToY(s, centerScore, h, displayRange, exp, yScale)
             if (y in -8f..h + 8f) {
                 drawLine(
                     color = labelColorValue,
@@ -157,7 +160,7 @@ fun AxisCanvas(
             var sMinor = (kotlin.math.ceil(minVis / minorInterval).toInt()) * minorInterval
             while (sMinor <= maxVis) {
                 if (abs(sMinor % tickInterval) > 0.001f) {
-                    val y = scoreToY(sMinor, centerScore, halfH, h, displayRange, quarterValue)
+                    val y = scoreToY(sMinor, centerScore, h, displayRange, exp, yScale)
                     if (y in -8f..h + 8f) {
                         drawLine(
                             color = labelColorValue.copy(alpha = 0.12f),
@@ -177,7 +180,7 @@ fun AxisCanvas(
             val evenMax = kotlin.math.floor((centerScore + nearbyRange) / 2f).toInt() * 2
             var evenTick = evenMin
             while (evenTick <= evenMax) {
-                val y = scoreToY(evenTick.toFloat(), centerScore, halfH, h, displayRange, quarterValue)
+                val y = scoreToY(evenTick.toFloat(), centerScore, h, displayRange, exp, yScale)
                 if (y in -8f..h + 8f) {
                     drawLine(
                         color = labelColorValue,
@@ -239,29 +242,36 @@ fun AxisCanvas(
     }
 }
 
-/** Non-linear score → Y mapping with dynamic exponent from quarterValue. */
+/**
+ * 预计算 exp + scale，避免每次调用 scoreToY 时重复 ln/pow（每帧 ~80 调用 → 1 次）。
+ * 返回 Pair(exp, scale) 供 scoreToY 复用。
+ */
+private fun precomputeExpScale(
+    halfH: Float,
+    displayRange: Float,
+    quarterValue: Float,
+): Pair<Float, Float> {
+    val exp = if (quarterValue > 0f && quarterValue < displayRange) {
+        (ln(0.5) / ln((quarterValue / displayRange).toDouble())).toFloat()
+    } else {
+        1f
+    }
+    val scale = halfH / (displayRange.toDouble().pow(exp.toDouble())).toFloat()
+    return Pair(exp, scale)
+}
+
+/** Non-linear score → Y mapping，复用预计算的 exp + scale。 */
 private fun scoreToY(
     score: Float,
     centerScore: Float,
-    halfH: Float,
     canvasH: Float,
     displayRange: Float,
-    quarterValue: Float,
+    exp: Float,
+    scale: Float,
 ): Float {
     val d = score - centerScore
     val sign = sign(d)
     val absD = minOf(abs(d), displayRange * 2f)
-
-    // 从 quarterValue 动态计算 exponent
-    // quarterValue: 上方 1/4 处显示的分数偏移值
-    // 公式: exp = ln(0.5) / ln(quarterValue / displayRange)
-    val exp = if (quarterValue > 0f && quarterValue < displayRange) {
-        (ln(0.5) / ln((quarterValue / displayRange).toDouble())).toFloat()
-    } else {
-        1f // 线性
-    }
-
-    val scale = halfH / (displayRange.toDouble().pow(exp.toDouble())).toFloat()
     val pixelOffset = sign * (absD.toDouble().pow(exp.toDouble())).toFloat() * scale
     return canvasH / 2f - pixelOffset
 }

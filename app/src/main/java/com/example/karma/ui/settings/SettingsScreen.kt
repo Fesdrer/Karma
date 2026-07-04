@@ -168,7 +168,6 @@ fun SettingsScreen(
                 showNearbyTicks = draft.showNearbyTicks,
                 nearbyTickRange = draft.nearbyTickRange,
                 axisQuarterValue = draft.axisQuarterValue,
-                guideLineWidth = draft.guideLineWidth,
                 dotColor = draft.dotColor,
                 onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
                 onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
@@ -177,7 +176,6 @@ fun SettingsScreen(
                 onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
                 onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
                 onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
-                onGuideLineWidthChange = { viewModel.updateGuideLineWidth(it) },
                 onDotColorChange = { viewModel.updateDotColor(it) },
             )
             RankSettingsCard(
@@ -325,7 +323,6 @@ private fun AxisSettingsCard(
     showNearbyTicks: Boolean,
     nearbyTickRange: Float,
     axisQuarterValue: Float,
-    guideLineWidth: Float,
     dotColor: Long,
     onLabelColorChange: (Long) -> Unit,
     onTickThicknessChange: (Float) -> Unit,
@@ -334,7 +331,6 @@ private fun AxisSettingsCard(
     onShowNearbyChange: (Boolean) -> Unit,
     onNearbyRangeChange: (Float) -> Unit,
     onQuarterValueChange: (Float) -> Unit,
-    onGuideLineWidthChange: (Float) -> Unit,
     onDotColorChange: (Long) -> Unit,
 ) {
     var showLabelColorPicker by remember { mutableStateOf(false) }
@@ -389,9 +385,6 @@ private fun AxisSettingsCard(
         }
 
         Spacer(Modifier.height(12.dp))
-        SettingsSlider("指引线粗细", guideLineWidth, 0.5f..12f, 22, onGuideLineWidthChange)
-
-        Spacer(Modifier.height(8.dp))
         Text("光点颜色", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(4.dp))
         ColorSwatch(color = dotColor, onClick = { showDotColorPicker = true })

@@ -121,9 +121,6 @@ class SettingsViewModel(
     }
 
     // ★ 中间光点
-    fun updateGuideLineWidth(v: Float) {
-        setDraft(_draft.value.copy(guideLineWidth = v))
-    }
     fun updateDotColor(v: Long) {
         setDraft(_draft.value.copy(dotColor = v))
     }

@@ -35,7 +35,6 @@ data class MainUiState(
     val ranks: List<Rank> = emptyList(),
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
-    val guideLineWidth: Float = 6f,
     val dotColor: Long = 0xFFFF0000L,
     // ===== 消息 =====
     val message: String? = null,

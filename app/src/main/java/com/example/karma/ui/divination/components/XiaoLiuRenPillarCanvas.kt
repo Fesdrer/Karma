@@ -12,6 +12,7 @@ import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameMillis
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -25,7 +26,6 @@ import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import com.example.karma.R
 import com.example.karma.ui.divination.model.XiaoLiuRenPalaces
-import kotlinx.coroutines.delay
 
 /**
  * 六宫在屏幕上的坐标数据（供金线动画使用）
@@ -85,9 +85,14 @@ fun XiaoLiuRenPillarCanvas(
     val breathTime = remember { mutableFloatStateOf(0f) }
 
     LaunchedEffect(Unit) {
+        var lastMs = 0L
         while (true) {
-            delay(16) // ~60fps
-            breathTime.floatValue += 0.016f
+            withFrameMillis { now ->
+                if (lastMs > 0L) {
+                    breathTime.floatValue += (now - lastMs) / 1000f
+                }
+                lastMs = now
+            }
         }
     }
 
@@ -172,14 +177,16 @@ fun XiaoLiuRenPillarCanvas(
     }
 }
 
+/** 预计算的粒子位置（归一化坐标），避免每帧 new List + Pair */
+private val BG_PARTICLES = listOf(
+    0.13f to 0.27f, 0.37f to 0.15f, 0.62f to 0.33f, 0.81f to 0.22f, 0.25f to 0.71f,
+    0.55f to 0.62f, 0.73f to 0.78f, 0.07f to 0.55f, 0.88f to 0.64f, 0.44f to 0.85f,
+    0.18f to 0.42f, 0.68f to 0.48f, 0.35f to 0.55f, 0.92f to 0.41f, 0.51f to 0.17f,
+)
+
 /** 背景漂浮金粒子 */
 private fun DrawScope.drawBackgroundParticles(breath: Float, screenW: Float, screenH: Float) {
-    val particles = listOf(
-        0.13f to 0.27f, 0.37f to 0.15f, 0.62f to 0.33f, 0.81f to 0.22f, 0.25f to 0.71f,
-        0.55f to 0.62f, 0.73f to 0.78f, 0.07f to 0.55f, 0.88f to 0.64f, 0.44f to 0.85f,
-        0.18f to 0.42f, 0.68f to 0.48f, 0.35f to 0.55f, 0.92f to 0.41f, 0.51f to 0.17f,
-    )
-    for ((i, p) in particles.withIndex()) {
+    for ((i, p) in BG_PARTICLES.withIndex()) {
         val phase = breath * 0.3f + i * 0.7f
         val alpha = (kotlin.math.sin(phase) * 0.5f + 0.5f) * 0.07f
         val yOffset = kotlin.math.sin(phase * 1.3f) * 15.dp.toPx()

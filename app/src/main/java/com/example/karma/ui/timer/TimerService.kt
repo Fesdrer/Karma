@@ -94,6 +94,16 @@ class TimerService : Service() {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main)
     private var tickJob: Job? = null
     private var notificationJob: Job? = null
+    /** 缓存的 PendingIntent，避免 buildNotification() 每次调用都 new Intent + PendingIntent */
+    private val cachedPendingIntent: PendingIntent by lazy {
+        val openIntent = Intent(this, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
+        }
+        PendingIntent.getActivity(
+            this, 0, openIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
 
     override fun onCreate() {
         super.onCreate()
@@ -190,20 +200,12 @@ class TimerService : Service() {
             else -> ""
         }
 
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP
-        }
-        val pendingIntent = PendingIntent.getActivity(
-            this, 0, openIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
         return NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("Karma 计时")
             .setContentText("$timeText  $statusText")
             .setSubText("事件：${state.selectedEvent}")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setContentIntent(pendingIntent)
+            .setContentIntent(cachedPendingIntent)
             .setOngoing(state.status == TimerStatus.RUNNING || state.status == TimerStatus.PAUSED)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()

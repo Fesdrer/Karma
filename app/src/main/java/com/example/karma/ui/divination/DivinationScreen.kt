@@ -321,7 +321,7 @@ private fun XiaoLiuRenContent(
             if (state.isAnimating && state.fullPath.isNotEmpty() && palacePositions.size == 6) {
                 XiaoLiuRenThreadCanvas(
                     fullPath = state.fullPath,
-                    palacePositions = palacePositions.toList(),
+                    palacePositions = palacePositions,  // 直接传递避免每次重组 .toList() 新建列表
                     animationPhase = state.animationPhase,
                     monthCount = state.calcMonth,
                     dayCount = state.calcDay,
