@@ -58,15 +58,14 @@ fun HistoryScreen(
         factory = HistoryViewModel.Factory(appContainer.repository, context.applicationContext as android.app.Application)
     )
     val rawState by viewModel.uiState.collectAsState()
-    val state = rawState ?: return  // 数据就绪前不渲染，避免 stateIn 式闪白
 
-    // Tooltip state
+    // Tooltip state — 必须在外层 remember，否则数据切换时会丢失
     var tooltipPoint by remember { mutableStateOf<AggregatedPoint?>(null) }
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipX by remember { mutableStateOf(0f) }
     var tooltipY by remember { mutableStateOf(0f) }
 
-    // File picker launchers
+    // File picker launchers — 必须在外层 remember
     val exportCsvLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("text/csv")
     ) { uri: Uri? -> uri?.let { viewModel.exportCsv(it) } }
@@ -79,13 +78,16 @@ fun HistoryScreen(
         contract = ActivityResultContracts.OpenDocument()
     ) { uri: Uri? -> uri?.let { viewModel.importData(it) } }
 
+    // Column 始终在组合树中，确保 NavHost 的 fadeIn 有可见目标来执行渐变动画
+    // 数据就绪前先渲染标题栏，数据就绪后渲染完整内容
     Column(
         modifier = modifier
             .fillMaxSize()
             .statusBarsPadding()
             .padding(20.dp),
     ) {
-        // Row 1: Back + Title (left) | View mode buttons (right)
+        // Row 1: Back + Title (left) | View mode + 导出/导入 (right)
+        // 始终渲染，为 fadeIn 提供可见内容
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -94,7 +96,6 @@ fun HistoryScreen(
             Row(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // Back button (with debounce to prevent rapid double-pop)
                 BackButton(onBack = onBack)
 
                 Spacer(Modifier.width(10.dp))
@@ -111,11 +112,12 @@ fun HistoryScreen(
             // View mode dropdown + 导出/导入下拉（同排右端）
             Row(verticalAlignment = Alignment.CenterVertically) {
                 var viewModeExpanded by remember { mutableStateOf(false) }
-                val currentViewLabel = when (state.viewMode) {
+                val currentViewLabel = when (rawState?.viewMode) {
                     ViewMode.DAY -> "日"
                     ViewMode.WEEK -> "周"
                     ViewMode.MONTH -> "月"
                     ViewMode.ALL -> "全部"
+                    null -> "日"  // 数据未就绪时显示默认标签
                 }
                 Box {
                     Box(
@@ -150,8 +152,8 @@ fun HistoryScreen(
                                     Text(
                                         itemLabel,
                                         fontSize = 13.sp,
-                                        fontWeight = if (mode == state.viewMode) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (mode == state.viewMode) Color(0xFF4a90d9) else Color.White,
+                                        fontWeight = if (mode == rawState?.viewMode) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (mode == rawState?.viewMode) Color(0xFF4a90d9) else Color.White,
                                     )
                                 },
                                 onClick = {
@@ -209,268 +211,273 @@ fun HistoryScreen(
             }
         }
 
-        Spacer(Modifier.height(8.dp))
+        // 数据就绪后再渲染导航控件和图表
+        if (rawState != null) {
+            val state = rawState!!
 
-        // Row 2: 导航栏
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            // ── 左半：导航控件 ──
-            if (state.viewMode != ViewMode.ALL) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    // ◀ 按钮
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
-                            .clickable { viewModel.navigatePrevious() }
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) { Text("<", fontSize = 14.sp, color = Color(0xFFa0c4ff)) }
+            Spacer(Modifier.height(8.dp))
 
-                    Spacer(Modifier.width(6.dp))
+            // Row 2: 导航栏
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // ── 左半：导航控件 ──
+                if (state.viewMode != ViewMode.ALL) {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        // ◀ 按钮
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
+                                .clickable { viewModel.navigatePrevious() }
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) { Text("<", fontSize = 14.sp, color = Color(0xFFa0c4ff)) }
 
-                    // 日期标签
-                    Text(
-                        text = state.dateLabel,
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = Color.White,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.weight(1f, fill = false),
-                    )
+                        Spacer(Modifier.width(6.dp))
 
-                    Spacer(Modifier.width(6.dp))
+                        // 日期标签
+                        Text(
+                            text = state.dateLabel,
+                            fontSize = 13.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = Color.White,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
 
-                    // ▶ 按钮
-                    val forwardBg = if (state.canGoForward) Color(0xFF1A1A1A)
-                    else Color(0xFF1A1A1A).copy(alpha = 0.4f)
-                    val forwardBorder = if (state.canGoForward) Color(0xFF334444)
-                    else Color(0xFF334444).copy(alpha = 0.2f)
-                    val forwardColor = if (state.canGoForward) Color(0xFFa0c4ff)
-                    else Color(0xFF666666)
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(forwardBg)
-                            .border(1.dp, forwardBorder, RoundedCornerShape(6.dp))
-                            .clickable(enabled = state.canGoForward) { viewModel.navigateNext() }
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                    ) { Text(">", fontSize = 14.sp, color = forwardColor) }
+                        Spacer(Modifier.width(6.dp))
 
-                    Spacer(Modifier.width(6.dp))
+                        // ▶ 按钮
+                        val forwardBg = if (state.canGoForward) Color(0xFF1A1A1A)
+                        else Color(0xFF1A1A1A).copy(alpha = 0.4f)
+                        val forwardBorder = if (state.canGoForward) Color(0xFF334444)
+                        else Color(0xFF334444).copy(alpha = 0.2f)
+                        val forwardColor = if (state.canGoForward) Color(0xFFa0c4ff)
+                        else Color(0xFF666666)
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(forwardBg)
+                                .border(1.dp, forwardBorder, RoundedCornerShape(6.dp))
+                                .clickable(enabled = state.canGoForward) { viewModel.navigateNext() }
+                                .padding(horizontal = 8.dp, vertical = 3.dp),
+                        ) { Text(">", fontSize = 14.sp, color = forwardColor) }
 
-                    // [今天] 按钮
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
-                            .clickable { viewModel.resetFocusToToday() }
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                    ) { Text("今天", fontSize = 11.sp, color = Color(0xFFa0c4ff)) }
+                        Spacer(Modifier.width(6.dp))
 
-                    Spacer(Modifier.width(8.dp))
+                        // [今天] 按钮
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
+                                .clickable { viewModel.resetFocusToToday() }
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) { Text("今天", fontSize = 11.sp, color = Color(0xFFa0c4ff)) }
 
-                    // [放大] 开关
-                    val zoomDisabled = state.viewMode == ViewMode.DAY
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(
-                                if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF1A1A1A)
-                            )
-                            .border(
-                                1.dp,
-                                when {
-                                    state.isZoomEnabled -> Color(0xFF4a90d9)
-                                    zoomDisabled -> Color(0xFF334444).copy(alpha = 0.2f)
-                                    else -> Color(0xFF334444)
+                        Spacer(Modifier.width(8.dp))
+
+                        // [放大] 开关
+                        val zoomDisabled = state.viewMode == ViewMode.DAY
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF1A1A1A)
+                                )
+                                .border(
+                                    1.dp,
+                                    when {
+                                        state.isZoomEnabled -> Color(0xFF4a90d9)
+                                        zoomDisabled -> Color(0xFF334444).copy(alpha = 0.2f)
+                                        else -> Color(0xFF334444)
+                                    },
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .clickable(enabled = !zoomDisabled) { viewModel.toggleZoom() }
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                "放大", fontSize = 11.sp,
+                                color = when {
+                                    zoomDisabled -> Color(0xFF666666)
+                                    state.isZoomEnabled -> Color.White
+                                    else -> Color(0xFFa0c4ff)
                                 },
-                                RoundedCornerShape(6.dp),
                             )
-                            .clickable(enabled = !zoomDisabled) { viewModel.toggleZoom() }
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            "放大", fontSize = 11.sp,
-                            color = when {
-                                zoomDisabled -> Color(0xFF666666)
-                                state.isZoomEnabled -> Color.White
-                                else -> Color(0xFFa0c4ff)
-                            },
-                        )
+                        }
+
+                        Spacer(Modifier.width(4.dp))
+
+                        // [缩小] 按钮
+                        val zoomOutDisabled = state.viewMode == ViewMode.ALL
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .border(
+                                    1.dp,
+                                    if (zoomOutDisabled) Color(0xFF334444).copy(alpha = 0.2f)
+                                    else Color(0xFF334444),
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .clickable(enabled = !zoomOutDisabled) { viewModel.zoomOut() }
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                "缩小", fontSize = 11.sp,
+                                color = if (zoomOutDisabled) Color(0xFF666666) else Color(0xFFa0c4ff),
+                            )
+                        }
                     }
-
-                    Spacer(Modifier.width(4.dp))
-
-                    // [缩小] 按钮
-                    val zoomOutDisabled = state.viewMode == ViewMode.ALL
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .border(
-                                1.dp,
-                                if (zoomOutDisabled) Color(0xFF334444).copy(alpha = 0.2f)
-                                else Color(0xFF334444),
-                                RoundedCornerShape(6.dp),
+                } else {
+                    // ALL 模式：仅有放大按钮，缩小禁用
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(
+                                    if (state.isZoomEnabled) Color(0xFF4a90d9)
+                                    else Color(0xFF1A1A1A)
+                                )
+                                .border(
+                                    1.dp,
+                                    if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF334444),
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .clickable { viewModel.toggleZoom() }
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Text(
+                                "放大", fontSize = 11.sp,
+                                color = if (state.isZoomEnabled) Color.White else Color(0xFFa0c4ff),
                             )
-                            .clickable(enabled = !zoomOutDisabled) { viewModel.zoomOut() }
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            "缩小", fontSize = 11.sp,
-                            color = if (zoomOutDisabled) Color(0xFF666666) else Color(0xFFa0c4ff),
-                        )
-                    }
-                }
-            } else {
-                // ALL 模式：仅有放大按钮，缩小禁用
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(
-                                if (state.isZoomEnabled) Color(0xFF4a90d9)
-                                else Color(0xFF1A1A1A)
-                            )
-                            .border(
-                                1.dp,
-                                if (state.isZoomEnabled) Color(0xFF4a90d9) else Color(0xFF334444),
-                                RoundedCornerShape(6.dp),
-                            )
-                            .clickable { viewModel.toggleZoom() }
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                    ) {
-                        Text(
-                            "放大", fontSize = 11.sp,
-                            color = if (state.isZoomEnabled) Color.White else Color(0xFFa0c4ff),
-                        )
-                    }
+                        }
 
-                    Spacer(Modifier.width(4.dp))
+                        Spacer(Modifier.width(4.dp))
 
-                    Box(
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(Color(0xFF1A1A1A))
-                            .border(
-                                1.dp,
-                                Color(0xFF334444).copy(alpha = 0.2f),
-                                RoundedCornerShape(6.dp),
-                            )
-                            .padding(horizontal = 7.dp, vertical = 3.dp),
-                    ) {
-                        Text("缩小", fontSize = 11.sp, color = Color(0xFF666666))
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(6.dp))
+                                .background(Color(0xFF1A1A1A))
+                                .border(
+                                    1.dp,
+                                    Color(0xFF334444).copy(alpha = 0.2f),
+                                    RoundedCornerShape(6.dp),
+                                )
+                                .padding(horizontal = 7.dp, vertical = 3.dp),
+                        ) {
+                            Text("缩小", fontSize = 11.sp, color = Color(0xFF666666))
+                        }
                     }
                 }
+
             }
 
-        }
+            Spacer(Modifier.height(12.dp))
 
-        Spacer(Modifier.height(12.dp))
+            // Chart viewport state — 每个 viewMode 独立实例
+            val viewport = remember(state.viewMode, state.focusDate) { ChartViewport() }
 
-        // Chart viewport state — 每个 viewMode 独立实例
-        val viewport = remember(state.viewMode, state.focusDate) { ChartViewport() }
+            // Chart
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .border(1.dp, Color(0xFFffd700).copy(alpha = 0.25f), RoundedCornerShape(16.dp))
+                    .clip(RoundedCornerShape(16.dp)),
+            ) {
+                val parentWidth = maxWidth
+                val parentHeight = maxHeight
 
-        // Chart
-        BoxWithConstraints(
-            modifier = Modifier
-                .fillMaxSize()
-                .border(1.dp, Color(0xFFffd700).copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-                .clip(RoundedCornerShape(16.dp)),
-        ) {
-            val parentWidth = maxWidth
-            val parentHeight = maxHeight
-
-            HistoryChartCanvas(
-                points = state.aggregatedPoints,
-                viewport = viewport,
-                lineThickness = state.historyLineThickness,
-                dotRadius = state.historyDotRadius,
-                ranks = state.ranks,
-                onPointClicked = { point, screenX, screenY ->
-                    if (point != null) {
-                        if (state.isZoomEnabled && state.viewMode != ViewMode.DAY) {
-                            // 缩放模式：下钻，不显示 tooltip
-                            viewModel.zoomToPoint(point.timestamp)
+                HistoryChartCanvas(
+                    points = state.aggregatedPoints,
+                    viewport = viewport,
+                    lineThickness = state.historyLineThickness,
+                    dotRadius = state.historyDotRadius,
+                    ranks = state.ranks,
+                    onPointClicked = { point, screenX, screenY ->
+                        if (point != null) {
+                            if (state.isZoomEnabled && state.viewMode != ViewMode.DAY) {
+                                // 缩放模式：下钻，不显示 tooltip
+                                viewModel.zoomToPoint(point.timestamp)
+                                showTooltip = false
+                                tooltipPoint = null
+                            } else {
+                                // 普通模式：显示 tooltip
+                                tooltipPoint = point
+                                tooltipX = screenX
+                                tooltipY = screenY
+                                showTooltip = true
+                            }
+                        } else {
                             showTooltip = false
                             tooltipPoint = null
-                        } else {
-                            // 普通模式：显示 tooltip
-                            tooltipPoint = point
-                            tooltipX = screenX
-                            tooltipY = screenY
-                            showTooltip = true
                         }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                // Tooltip overlay - positioned near the clicked point with bounds checking
+                if (showTooltip && tooltipPoint != null) {
+                    val density = LocalDensity.current
+                    val tooltipDpX = with(density) { tooltipX.toDp() }
+                    val tooltipDpY = with(density) { tooltipY.toDp() }
+
+                    // Fixed tooltip max width (matches ChartTooltip's widthIn)
+                    val tooltipMaxWidth = 220.dp
+                    val tooltipMaxHeight = 200.dp
+
+                    // X direction: prefer right, flip left if overflow; prefer left, flip right if overflow
+                    val rawXRight = tooltipDpX + 12.dp
+                    val rawXLeft = tooltipDpX - tooltipMaxWidth - 12.dp
+                    val finalX = if (rawXRight + tooltipMaxWidth <= parentWidth) {
+                        // Fits on the right
+                        maxOf(4.dp, rawXRight)
+                    } else if (rawXLeft >= 4.dp) {
+                        // Overflow right → flip to left
+                        rawXLeft
                     } else {
-                        showTooltip = false
-                        tooltipPoint = null
+                        // Neither fits → clamp rightmost possible
+                        maxOf(4.dp, parentWidth - tooltipMaxWidth - 4.dp)
                     }
-                },
-                modifier = Modifier.fillMaxSize(),
-            )
 
-            // Tooltip overlay - positioned near the clicked point with bounds checking
-            if (showTooltip && tooltipPoint != null) {
-                val density = LocalDensity.current
-                val tooltipDpX = with(density) { tooltipX.toDp() }
-                val tooltipDpY = with(density) { tooltipY.toDp() }
+                    // Y direction: prefer above, flip below if overflow; prefer below, flip above if overflow
+                    val rawYAbove = tooltipDpY - tooltipMaxHeight - 10.dp
+                    val rawYBelow = tooltipDpY + 10.dp
+                    val finalY = if (rawYAbove >= 4.dp) {
+                        // Fits above
+                        rawYAbove
+                    } else if (rawYBelow + tooltipMaxHeight <= parentHeight) {
+                        // Overflow above → flip to below
+                        minOf(rawYBelow, parentHeight - tooltipMaxHeight - 4.dp)
+                    } else {
+                        // Neither fits → clamp bottommost possible
+                        maxOf(4.dp, parentHeight - tooltipMaxHeight - 4.dp)
+                    }
 
-                // Fixed tooltip max width (matches ChartTooltip's widthIn)
-                val tooltipMaxWidth = 220.dp
-                val tooltipMaxHeight = 200.dp
-
-                // X direction: prefer right, flip left if overflow; prefer left, flip right if overflow
-                val rawXRight = tooltipDpX + 12.dp
-                val rawXLeft = tooltipDpX - tooltipMaxWidth - 12.dp
-                val finalX = if (rawXRight + tooltipMaxWidth <= parentWidth) {
-                    // Fits on the right
-                    maxOf(4.dp, rawXRight)
-                } else if (rawXLeft >= 4.dp) {
-                    // Overflow right → flip to left
-                    rawXLeft
-                } else {
-                    // Neither fits → clamp rightmost possible
-                    maxOf(4.dp, parentWidth - tooltipMaxWidth - 4.dp)
-                }
-
-                // Y direction: prefer above, flip below if overflow; prefer below, flip above if overflow
-                val rawYAbove = tooltipDpY - tooltipMaxHeight - 10.dp
-                val rawYBelow = tooltipDpY + 10.dp
-                val finalY = if (rawYAbove >= 4.dp) {
-                    // Fits above
-                    rawYAbove
-                } else if (rawYBelow + tooltipMaxHeight <= parentHeight) {
-                    // Overflow above → flip to below
-                    minOf(rawYBelow, parentHeight - tooltipMaxHeight - 4.dp)
-                } else {
-                    // Neither fits → clamp bottommost possible
-                    maxOf(4.dp, parentHeight - tooltipMaxHeight - 4.dp)
-                }
-
-                Box(
-                    modifier = Modifier
-                        .offset(x = finalX, y = finalY),
-                ) {
-                    ChartTooltip(point = tooltipPoint)
+                    Box(
+                        modifier = Modifier
+                            .offset(x = finalX, y = finalY),
+                    ) {
+                        ChartTooltip(point = tooltipPoint)
+                    }
                 }
             }
         }
     }
 
-    // Show message as snackbar placeholder
-    LaunchedEffect(state.message) {
-        state.message?.let {
+    // Show message as snackbar placeholder（改用 rawState 避免 null 时 crash）
+    LaunchedEffect(rawState?.message) {
+        rawState?.message?.let {
             viewModel.clearMessage()
         }
     }
 
-    // Hide tooltip when data changes (e.g., view mode switch)
-    LaunchedEffect(state.viewMode) {
+    // Hide tooltip when data changes (e.g., view mode switch)（改用 rawState 避免 null 时 crash）
+    LaunchedEffect(rawState?.viewMode) {
         showTooltip = false
         tooltipPoint = null
     }
