@@ -22,7 +22,9 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.main.components.AxisCanvas
@@ -30,6 +32,9 @@ import com.example.karma.ui.main.components.EventPanel
 import com.example.karma.ui.main.components.Footer
 import com.example.karma.ui.main.components.Header
 import com.example.karma.ui.main.components.ScorePanel
+import com.example.karma.ui.timer.TimerService
+import kotlin.math.round
+import kotlinx.coroutines.launch
 
 @Composable
 fun MainScreen(
@@ -38,13 +43,13 @@ fun MainScreen(
     onNavigateToPrayer: () -> Unit,
     onNavigateToDivination: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToTimer: (score: Float, event: String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: MainViewModel = viewModel(
         factory = MainViewModel.Factory(appContainer.repository)
     )
     val state by viewModel.uiState.collectAsState()
+    val context = LocalContext.current
 
     // 数据就绪时从纯黑渐变到主页面
     Crossfade(targetState = state != null, animationSpec = tween(300)) { ready ->
@@ -139,10 +144,14 @@ fun MainScreen(
                         .fillMaxHeight(),
                     timerEnabled = s.hasScoreAndEvent,
                     selectedScore = s.effectiveScore,
-                    onStartTimer = {
-                        val s = viewModel.getSelectedScore() ?: return@EventPanel
-                        val e = viewModel.getSelectedEvent() ?: return@EventPanel
-                        onNavigateToTimer(s, e)
+                    onStopTimer = { elapsedMs ->
+                        val ts = TimerService.timerState.value
+                        val totMin = elapsedMs / 60000.0
+                        val delta = round(totMin / 60.0 * ts.selectedScore * 2.0) / 2.0
+                        viewModel.viewModelScope.launch {
+                            appContainer.repository.addHistoryEntry(delta.toFloat(), ts.selectedEvent, "record")
+                        }
+                        TimerService.stop(context)
                     },
                 )
             }

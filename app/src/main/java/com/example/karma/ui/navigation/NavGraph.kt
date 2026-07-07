@@ -14,7 +14,6 @@ import com.example.karma.ui.history.HistoryScreen
 import com.example.karma.ui.main.MainScreen
 import com.example.karma.ui.prayer.PrayerScreen
 import com.example.karma.ui.settings.SettingsScreen
-import com.example.karma.ui.timer.TimerScreen
 
 @Composable
 fun KarmaNavGraph(
@@ -45,9 +44,6 @@ fun KarmaNavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
-                },
-                onNavigateToTimer = { score, event ->
-                    navController.navigate(Screen.Timer.createRoute(score, event))
                 },
             )
         }
@@ -97,23 +93,6 @@ fun KarmaNavGraph(
             DivinationScreen(
                 appContainer = appContainer,
                 onBack = { navController.popBackStack() },
-            )
-        }
-        composable(
-            route = Screen.Timer.route,
-            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
-            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
-            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
-            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
-        ) { backStackEntry ->
-            val score = backStackEntry.arguments?.getString("score")?.toFloatOrNull() ?: 0f
-            val event = backStackEntry.arguments?.getString("event")
-                ?.let { java.net.URLDecoder.decode(it, "UTF-8") } ?: ""
-            TimerScreen(
-                score = score,
-                event = event,
-                appContainer = appContainer,
-                onComplete = { navController.popBackStack() },
             )
         }
     }
