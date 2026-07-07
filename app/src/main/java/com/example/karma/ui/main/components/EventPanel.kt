@@ -65,6 +65,8 @@ fun EventPanel(
     // 计时控制
     timerEnabled: Boolean = false,
     selectedScore: Float? = null,
+    dailyMustDoDeedNames: List<String> = emptyList(),
+    dailyMustDoDoneToday: Set<String> = emptySet(),
     onStopTimer: (elapsedMs: Long) -> Unit = {},
 ) {
     val selectedEvent by eventFlow.collectAsState()
@@ -102,6 +104,8 @@ fun EventPanel(
                 onEventSelected = onEventSelected,
                 customPlaceholder = "自定义善业...",
                 onCustomChanged = onCustomGoodDeedChanged,
+                dailyMustDoDeedNames = dailyMustDoDeedNames,
+                dailyMustDoDoneToday = dailyMustDoDoneToday,
             )
 
             // — 恶业 —
@@ -185,7 +189,7 @@ fun EventPanel(
                         .background(Color(0xFF1A1A1A))
                         .padding(vertical = 6.dp),
                 ) {
-                    // 上半：时间
+                    // 上半：时间（居中）
                     Box(
                         modifier = Modifier.weight(1f),
                         contentAlignment = Alignment.Center,
@@ -197,6 +201,7 @@ fun EventPanel(
                             color = Color(0xFFFFD700),
                             textAlign = TextAlign.Center,
                         )
+                    }
                     }
                     // 下半：固定大小图标按钮
                     Row(
@@ -276,6 +281,8 @@ private fun EventSection(
     onEventSelected: (String) -> Unit,
     customPlaceholder: String,
     onCustomChanged: (String) -> Unit,
+    dailyMustDoDeedNames: List<String> = emptyList(),
+    dailyMustDoDoneToday: Set<String> = emptySet(),
 ) {
     var customText by remember { mutableStateOf("") }
 
@@ -309,6 +316,9 @@ private fun EventSection(
                     .background(
                         when {
                             isSelected -> Color(0xFFffd700).copy(alpha = 0.1f)
+                            // 每日必做：未做蓝色，已做绿色
+                            event in dailyMustDoDeedNames && event !in dailyMustDoDoneToday -> Color(0xFF4488ff).copy(alpha = 0.15f)
+                            event in dailyMustDoDeedNames && event in dailyMustDoDoneToday -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "善业" -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "恶业" -> Color(0xFFff5252).copy(alpha = 0.08f)
                             title == "善果" -> Color(0xFFffd700).copy(alpha = 0.08f)
@@ -333,6 +343,7 @@ private fun EventSection(
                     color = when {
                         isSelected -> Color(0xFFffd700)
                         !canSelect -> Color(0xFF666666)
+                        event in dailyMustDoDeedNames && event !in dailyMustDoDoneToday -> Color(0xFF88bbff)
                         else -> Color(0xFFa0c4ff)
                     },
                     maxLines = 2,

@@ -200,6 +200,13 @@ fun SettingsScreen(
                 onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
                 onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
             )
+            DailyMustDoCard(
+                goodDeedPresets = draft.goodDeedPresets,
+                dailyMustDoDeedNames = draft.dailyMustDoDeedNames,
+                dailyMustDoDeedPenalties = draft.dailyMustDoDeedPenalties,
+                onToggle = { name, enabled -> viewModel.toggleDailyMustDo(name, enabled) },
+                onPenaltyChange = { name, penalty -> viewModel.updateDailyMustDoPenalty(name, penalty) },
+            )
             HistorySettingsCard(
                 historyLineThickness = draft.historyLineThickness,
                 historyDotRadius = draft.historyDotRadius,
@@ -1608,6 +1615,127 @@ private fun ScrollPicker(
             }
         }
     }
+}
+
+// ============================================================
+// DailyMustDoCard — 每日必做
+// ============================================================
+
+@Composable
+private fun DailyMustDoCard(
+    goodDeedPresets: List<String>,
+    dailyMustDoDeedNames: List<String>,
+    dailyMustDoDeedPenalties: List<Float>,
+    onToggle: (String, Boolean) -> Unit,
+    onPenaltyChange: (String, Float) -> Unit,
+) {
+    SettingsCard("每日必做") {
+        Text(
+            "勾选需要在每日完成的善业，并设置未完成扣分",
+            fontSize = 12.sp,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        if (goodDeedPresets.isEmpty()) {
+            Text(
+                "（暂无善业预设，请先在「右边事件列表」中添加善业）",
+                fontSize = 12.sp,
+                color = TextMuted,
+            )
+        } else {
+            goodDeedPresets.forEach { deed ->
+                val isDaily = deed in dailyMustDoDeedNames
+                val penaltyIdx = dailyMustDoDeedNames.indexOf(deed)
+                val penalty = if (penaltyIdx >= 0) dailyMustDoDeedPenalties.getOrElse(penaltyIdx) { -1f } else -1f
+                var penaltyText by remember(deed, isDaily, penalty) {
+                    mutableStateOf(if (isDaily) formatDailyPenalty(penalty) else "1")
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    // 开关
+                    Switch(
+                        checked = isDaily,
+                        onCheckedChange = { enabled -> onToggle(deed, enabled) },
+                        colors = androidx.compose.material3.SwitchDefaults.colors(
+                            checkedThumbColor = Gold,
+                            checkedTrackColor = Gold.copy(alpha = 0.3f),
+                        ),
+                        modifier = Modifier.padding(end = 8.dp),
+                    )
+
+                    // 事件名称
+                    Text(
+                        text = deed,
+                        fontSize = 13.sp,
+                        color = if (isDaily) TextPrimary else TextMuted,
+                        modifier = Modifier.weight(1f),
+                    )
+
+                    if (isDaily) {
+                        Text(
+                            "未完成扣",
+                            fontSize = 11.sp,
+                            color = TextMuted,
+                            modifier = Modifier.padding(end = 4.dp),
+                        )
+                        OutlinedTextField(
+                            value = penaltyText,
+                            onValueChange = { v ->
+                                penaltyText = v
+                                v.toFloatOrNull()?.let { onPenaltyChange(deed, it) }
+                            },
+                            modifier = Modifier.widthIn(min = 52.dp),
+                            singleLine = true,
+                            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFF4488ff),
+                                unfocusedBorderColor = BorderSubtle,
+                                focusedTextColor = TextPrimary,
+                                unfocusedTextColor = TextPrimary,
+                                cursorColor = Color(0xFF4488ff),
+                            ),
+                        )
+                        Text("分", fontSize = 11.sp, color = TextMuted, modifier = Modifier.padding(start = 2.dp))
+                    } else {
+                        // 未启用时显示灰色占位
+                        Text(
+                            "未完成扣_分",
+                            fontSize = 11.sp,
+                            color = TextMuted.copy(alpha = 0.4f),
+                        )
+                    }
+                }
+
+                // 分割线
+                if (deed != goodDeedPresets.last()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(1.dp)
+                            .background(BorderSubtle.copy(alpha = 0.15f)),
+                    )
+                }
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+        Text(
+            "（只有善业可以被设为每日必做）",
+            fontSize = 11.sp,
+            color = TextMuted.copy(alpha = 0.6f),
+        )
+    }
+}
+
+private fun formatDailyPenalty(v: Float): String {
+    return if (v % 1f == 0f) v.toInt().toString() else String.format("%.1f", v)
 }
 
 // ============================================================

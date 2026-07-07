@@ -214,6 +214,44 @@ class SettingsViewModel(
         setDraft(_draft.value.copy(themeGradientAccentColor = v))
     }
 
+    // ===== 每日必做 =====
+    fun toggleDailyMustDo(deedName: String, enabled: Boolean) {
+        val currentNames = _draft.value.dailyMustDoDeedNames.toMutableList()
+        val currentPenalties = _draft.value.dailyMustDoDeedPenalties.toMutableList()
+        if (enabled) {
+            currentNames.add(deedName)
+            currentPenalties.add(1f)  // 默认扣一分
+        } else {
+            val idx = currentNames.indexOf(deedName)
+            if (idx >= 0) {
+                currentNames.removeAt(idx)
+                currentPenalties.removeAt(idx)
+            }
+        }
+        setDraft(_draft.value.copy(
+            dailyMustDoDeedNames = currentNames,
+            dailyMustDoDeedPenalties = currentPenalties,
+        ))
+    }
+
+    fun updateDailyMustDoPenalty(deedName: String, penalty: Float) {
+        val names = _draft.value.dailyMustDoDeedNames
+        val penalties = _draft.value.dailyMustDoDeedPenalties.toMutableList()
+        val idx = names.indexOf(deedName)
+        if (idx >= 0) {
+            penalties[idx] = penalty
+            setDraft(_draft.value.copy(dailyMustDoDeedPenalties = penalties))
+        }
+    }
+
+    fun isDailyMustDo(deedName: String): Boolean =
+        deedName in _draft.value.dailyMustDoDeedNames
+
+    fun getDailyMustDoPenalty(deedName: String): Float {
+        val idx = _draft.value.dailyMustDoDeedNames.indexOf(deedName)
+        return if (idx >= 0) _draft.value.dailyMustDoDeedPenalties.getOrElse(idx) { 1f } else 0f
+    }
+
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {
@@ -232,6 +270,9 @@ class SettingsViewModel(
             goodDeedPresets = current.goodDeedPresets,
             badDeedPresets = current.badDeedPresets,
             goodResultPresets = current.goodResultPresets,
+            // 保留每日必做设置
+            dailyMustDoDeedNames = current.dailyMustDoDeedNames,
+            dailyMustDoDeedPenalties = current.dailyMustDoDeedPenalties,
         ))
     }
 

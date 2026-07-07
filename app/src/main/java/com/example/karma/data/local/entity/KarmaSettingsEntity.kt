@@ -68,4 +68,8 @@ data class KarmaSettingsEntity(
     val luckT: Float = 7f,
     val luckB: Float = 1f,
     val luckW: Float = 100f,
+
+    // ===== 每日必做 =====
+    val dailyMustDoDeedNames: List<String> = emptyList(),
+    val dailyMustDoDeedPenalties: List<Float> = emptyList(),
 )

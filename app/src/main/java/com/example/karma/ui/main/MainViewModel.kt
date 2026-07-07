@@ -38,6 +38,9 @@ data class MainUiState(
     val dotColor: Long = 0xFFFF0000L,
     // ===== 消息 =====
     val message: String? = null,
+    // ===== 每日必做 =====
+    val dailyMustDoDeedNames: List<String> = emptyList(),
+    val dailyMustDoDoneToday: Set<String> = emptySet(),
     // ===== 计时可用（直接判断源 flow，绕过 combine 链延迟） =====
     val hasScoreAndEvent: Boolean = false,
     // ===== 运气增幅 =====
@@ -58,8 +61,14 @@ class MainViewModel(
     /** 独立状态：是否有选中的分数+事件。每次变更时手动同步，不依赖 combine 链。 */
     private val _timerEnabled = MutableStateFlow(false)
 
+    /** 每日必做 — 今日已完成列表 */
+    private val _dailyMustDoDoneToday = MutableStateFlow<Set<String>>(emptySet())
+
     // 缓存当前善果预设列表，用于 onConfirm 时判断是否加前缀
     private var _currentGoodResultPresets: List<String> = emptyList()
+
+    // 缓存当前每日必做名称列表，用于 onConfirm 时标记已做
+    private var _currentDailyMustDoNames: List<String> = emptyList()
 
     /** 独立的选择状态流：ScorePanel/EventPanel 直接读此流，绕过 combine 链。
      *  拖动滑条时不会触发 MainScreen 整体重组。 */
@@ -95,6 +104,7 @@ class MainViewModel(
                 _settingsLuck, _msgTimer,
             ) { (settings, history, luckValue), (msg, timerEnabled) ->
                 _currentGoodResultPresets = settings.goodResultPresets
+                _currentDailyMustDoNames = settings.dailyMustDoDeedNames
                 val rankKey = listOf(settings.rankThresholds, settings.rankNames, settings.rankColors)
                 if (rankKey != _cachedRankSettings) {
                     _cachedRankSettings = rankKey
@@ -128,6 +138,8 @@ class MainViewModel(
                     message = msg,
                     hasScoreAndEvent = timerEnabled,
                     luckValue = luckValue,
+                    dailyMustDoDeedNames = settings.dailyMustDoDeedNames,
+                    dailyMustDoDoneToday = _dailyMustDoDoneToday.value,
                 )
             }.collect { _uiState.value = it }
         }
@@ -233,6 +245,11 @@ class MainViewModel(
         _effectiveEventState.value = null
         updateTimerEnabled()
 
+        // 如果是每日必做善业（且非自定义输入），标记为今日已做
+        if (rawEvent in _currentDailyMustDoNames && rawEvent !in _dailyMustDoDoneToday.value) {
+            markDailyMustDoDone(rawEvent)
+        }
+
         viewModelScope.launch {
             repository.addHistoryEntry(score, event, "record")
         }
@@ -260,6 +277,11 @@ class MainViewModel(
     // ★ 清除消息
     fun clearMessage() {
         _message.value = null
+    }
+
+    // ★ 每日必做：标记某善业为今日已做
+    fun markDailyMustDoDone(eventName: String) {
+        _dailyMustDoDoneToday.value = _dailyMustDoDoneToday.value + eventName
     }
 
     class Factory(private val repository: KarmaRepository) : ViewModelProvider.Factory {
