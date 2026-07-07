@@ -378,9 +378,14 @@ private fun AxisSettingsCard(
         Text("疏密程度", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
         Spacer(Modifier.height(2.dp))
         Text("上方¼处 = +${axisQuarterValue.toInt()} 分", fontSize = 12.sp, color = TextMuted)
+        var localQuarterValue by remember { mutableFloatStateOf(axisQuarterValue) }
+        LaunchedEffect(axisQuarterValue) {
+            if (axisQuarterValue != localQuarterValue) localQuarterValue = axisQuarterValue
+        }
         Slider(
-            value = axisQuarterValue,
-            onValueChange = onQuarterValueChange,
+            value = localQuarterValue,
+            onValueChange = { localQuarterValue = it },
+            onValueChangeFinished = { onQuarterValueChange(localQuarterValue) },
             valueRange = 2f..50f,
             steps = 47,
             modifier = Modifier.fillMaxWidth(),
