@@ -211,12 +211,11 @@ class HistoryViewModel(
         when (_viewMode.value) {
             ViewMode.DAY -> {
                 val cal = Calendar.getInstance().apply { timeInMillis = _focusDate.value }
-                // 安全计算下周一：先算本周一，再 +7 天
-                // 避免 set(DAY_OF_WEEK, MONDAY) 在周日时因 locale 差异跳到上周一
+                // 安全计算本周一，避免 set(DAY_OF_WEEK, MONDAY) 的 locale 差异
+                // 缩小后显示 focusDate 所在周（周一起始）
                 val dow = cal.get(Calendar.DAY_OF_WEEK)
                 val daysFromMonday = if (dow == Calendar.SUNDAY) 6 else dow - Calendar.MONDAY
                 cal.add(Calendar.DAY_OF_MONTH, -daysFromMonday) // 本周一
-                cal.add(Calendar.DAY_OF_MONTH, 7) // 下周一
                 _focusDate.value = cal.timeInMillis
                 _viewMode.value = ViewMode.WEEK
             }
