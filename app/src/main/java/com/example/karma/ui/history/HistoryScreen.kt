@@ -66,10 +66,6 @@ fun HistoryScreen(
     var tooltipY by remember { mutableStateOf(0f) }
 
     // File picker launchers — 必须在外层 remember
-    val exportCsvLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("text/csv")
-    ) { uri: Uri? -> uri?.let { viewModel.exportCsv(it) } }
-
     val exportJsonLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.CreateDocument("application/json")
     ) { uri: Uri? -> uri?.let { viewModel.exportJson(it) } }
@@ -185,13 +181,6 @@ fun HistoryScreen(
                         expanded = exportExpanded,
                         onDismissRequest = { exportExpanded = false },
                     ) {
-                        DropdownMenuItem(
-                            text = { Text("CSV", fontSize = 13.sp, color = Color.White) },
-                            onClick = {
-                                exportExpanded = false
-                                exportCsvLauncher.launch("karma_data.csv")
-                            },
-                        )
                         DropdownMenuItem(
                             text = { Text("JSON", fontSize = 13.sp, color = Color.White) },
                             onClick = {

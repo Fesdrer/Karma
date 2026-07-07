@@ -211,7 +211,12 @@ class HistoryViewModel(
         when (_viewMode.value) {
             ViewMode.DAY -> {
                 val cal = Calendar.getInstance().apply { timeInMillis = _focusDate.value }
-                cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                // 安全计算下周一：先算本周一，再 +7 天
+                // 避免 set(DAY_OF_WEEK, MONDAY) 在周日时因 locale 差异跳到上周一
+                val dow = cal.get(Calendar.DAY_OF_WEEK)
+                val daysFromMonday = if (dow == Calendar.SUNDAY) 6 else dow - Calendar.MONDAY
+                cal.add(Calendar.DAY_OF_MONTH, -daysFromMonday) // 本周一
+                cal.add(Calendar.DAY_OF_MONTH, 7) // 下周一
                 _focusDate.value = cal.timeInMillis
                 _viewMode.value = ViewMode.WEEK
             }
@@ -231,7 +236,10 @@ class HistoryViewModel(
             }
             ViewMode.MONTH -> {
                 val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
-                cal.set(Calendar.DAY_OF_WEEK, Calendar.MONDAY)
+                // 安全计算本周一，避免 set(DAY_OF_WEEK, MONDAY) 的 locale 差异
+                val dow = cal.get(Calendar.DAY_OF_WEEK)
+                val daysFromMonday = if (dow == Calendar.SUNDAY) 6 else dow - Calendar.MONDAY
+                cal.add(Calendar.DAY_OF_MONTH, -daysFromMonday)
                 _focusDate.value = cal.timeInMillis
                 _viewMode.value = ViewMode.WEEK
             }
@@ -293,21 +301,6 @@ class HistoryViewModel(
     }
 
     // ---- Export ----
-
-    fun exportCsv(uri: Uri) {
-        viewModelScope.launch {
-            try {
-                val csv = repository.exportCsv()
-                val bom = "﻿"
-                application.contentResolver.openOutputStream(uri)?.use { stream ->
-                    stream.write((bom + csv).toByteArray(Charsets.UTF_8))
-                }
-                _message.value = "CSV 导出成功"
-            } catch (e: Exception) {
-                _message.value = "导出失败: ${e.message}"
-            }
-        }
-    }
 
     fun exportJson(uri: Uri) {
         viewModelScope.launch {

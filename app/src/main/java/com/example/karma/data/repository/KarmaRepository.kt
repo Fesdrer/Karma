@@ -240,17 +240,6 @@ class KarmaRepository(
         return com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root)
     }
 
-    suspend fun exportCsv(): String {
-        val history = historyDao.getAllEntriesList()
-        val sb = StringBuilder()
-        sb.appendLine("timestamp,delta,event,totalAfter,type")
-        for (h in history) {
-            val ev = "\"" + h.event.replace("\"", "\"\"") + "\""
-            sb.appendLine("${h.timestamp},${h.delta},${ev},${h.totalAfter},${h.type}")
-        }
-        return sb.toString()
-    }
-
     suspend fun importData(raw: String, format: String): Boolean {
         return try {
             if (format == "json") {
