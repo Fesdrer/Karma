@@ -43,6 +43,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.timer.TimerService
 import com.example.karma.ui.timer.TimerStatus
@@ -65,8 +66,7 @@ fun EventPanel(
     // 计时控制
     timerEnabled: Boolean = false,
     selectedScore: Float? = null,
-    dailyMustDoDeedNames: List<String> = emptyList(),
-    dailyMustDoDoneToday: Set<String> = emptySet(),
+    dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
     onStopTimer: (elapsedMs: Long) -> Unit = {},
 ) {
     val selectedEvent by eventFlow.collectAsState()
@@ -104,8 +104,7 @@ fun EventPanel(
                 onEventSelected = onEventSelected,
                 customPlaceholder = "自定义善业...",
                 onCustomChanged = onCustomGoodDeedChanged,
-                dailyMustDoDeedNames = dailyMustDoDeedNames,
-                dailyMustDoDoneToday = dailyMustDoDoneToday,
+                dailyMustDoDeeds = dailyMustDoDeeds,
             )
 
             // — 恶业 —
@@ -282,8 +281,7 @@ private fun EventSection(
     onEventSelected: (String) -> Unit,
     customPlaceholder: String,
     onCustomChanged: (String) -> Unit,
-    dailyMustDoDeedNames: List<String> = emptyList(),
-    dailyMustDoDoneToday: Set<String> = emptySet(),
+    dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
 ) {
     var customText by remember { mutableStateOf("") }
 
@@ -302,6 +300,8 @@ private fun EventSection(
             val isSelected = selectedEvent == event
             val canSelect = !event.startsWith("（")
 
+            val deed = dailyMustDoDeeds.find { it.name == event }
+
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -317,9 +317,9 @@ private fun EventSection(
                     .background(
                         when {
                             isSelected -> Color(0xFFffd700).copy(alpha = 0.1f)
-                            // 每日必做：未做蓝色，已做绿色
-                            event in dailyMustDoDeedNames && event !in dailyMustDoDoneToday -> Color(0xFF4488ff).copy(alpha = 0.15f)
-                            event in dailyMustDoDeedNames && event in dailyMustDoDoneToday -> Color(0xFF69f0ae).copy(alpha = 0.08f)
+                            // 每日必做：deed.vis=0 未做蓝色，deed.vis=1 已做绿色
+                            deed != null && deed.vis == 0 -> Color(0xFF4488ff).copy(alpha = 0.15f)
+                            deed != null && deed.vis == 1 -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "善业" -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "恶业" -> Color(0xFFff5252).copy(alpha = 0.08f)
                             title == "善果" -> Color(0xFFffd700).copy(alpha = 0.08f)
@@ -344,7 +344,7 @@ private fun EventSection(
                     color = when {
                         isSelected -> Color(0xFFffd700)
                         !canSelect -> Color(0xFF666666)
-                        event in dailyMustDoDeedNames && event !in dailyMustDoDoneToday -> Color(0xFF88bbff)
+                        deed != null && deed.vis == 0 -> Color(0xFF88bbff)
                         else -> Color(0xFFa0c4ff)
                     },
                     maxLines = 2,

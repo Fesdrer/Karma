@@ -66,6 +66,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.di.AppContainer
 import com.example.karma.util.LuckAmplifier
 import com.example.karma.ui.theme.BorderSubtle
@@ -202,8 +203,7 @@ fun SettingsScreen(
             )
             DailyMustDoCard(
                 goodDeedPresets = draft.goodDeedPresets,
-                dailyMustDoDeedNames = draft.dailyMustDoDeedNames,
-                dailyMustDoDeedPenalties = draft.dailyMustDoDeedPenalties,
+                dailyMustDoDeeds = draft.dailyMustDoDeeds,
                 onToggle = { name, enabled -> viewModel.toggleDailyMustDo(name, enabled) },
                 onPenaltyChange = { name, penalty -> viewModel.updateDailyMustDoPenalty(name, penalty) },
             )
@@ -1624,8 +1624,7 @@ private fun ScrollPicker(
 @Composable
 private fun DailyMustDoCard(
     goodDeedPresets: List<String>,
-    dailyMustDoDeedNames: List<String>,
-    dailyMustDoDeedPenalties: List<Float>,
+    dailyMustDoDeeds: List<DailyMustDoDeed>,
     onToggle: (String, Boolean) -> Unit,
     onPenaltyChange: (String, Float) -> Unit,
 ) {
@@ -1645,9 +1644,9 @@ private fun DailyMustDoCard(
             )
         } else {
             goodDeedPresets.forEach { deed ->
-                val isDaily = deed in dailyMustDoDeedNames
-                val penaltyIdx = dailyMustDoDeedNames.indexOf(deed)
-                val penalty = if (penaltyIdx >= 0) dailyMustDoDeedPenalties.getOrElse(penaltyIdx) { -1f } else -1f
+                val matchingDeed = dailyMustDoDeeds.find { it.name == deed }
+                val isDaily = matchingDeed != null
+                val penalty = matchingDeed?.penalty ?: 1f
                 var penaltyText by remember(deed, isDaily, penalty) {
                     mutableStateOf(if (isDaily) formatDailyPenalty(penalty) else "1")
                 }

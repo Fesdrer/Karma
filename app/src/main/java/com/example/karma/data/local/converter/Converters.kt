@@ -1,6 +1,7 @@
 package com.example.karma.data.local.converter
 
 import androidx.room.TypeConverter
+import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
@@ -39,5 +40,16 @@ class Converters {
     fun toLongList(value: String): List<Long> {
         val listType = object : TypeToken<List<Long>>() {}.type
         return gson.fromJson(value, listType) ?: emptyList()
+    }
+
+    @TypeConverter
+    fun fromDailyMustDoDeedList(value: List<DailyMustDoDeed>): String {
+        return gson.toJson(value)
+    }
+
+    @TypeConverter
+    fun toDailyMustDoDeedList(value: String): List<DailyMustDoDeed> {
+        val type = object : TypeToken<List<DailyMustDoDeed>>() {}.type
+        return gson.fromJson(value, type) ?: emptyList()
     }
 }

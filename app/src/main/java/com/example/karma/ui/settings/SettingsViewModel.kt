@@ -3,6 +3,7 @@ package com.example.karma.ui.settings
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.repository.KarmaRepository
 import java.util.Calendar
@@ -216,46 +217,37 @@ class SettingsViewModel(
 
     // ===== 每日必做 =====
     fun toggleDailyMustDo(deedName: String, enabled: Boolean) {
-        val currentNames = _draft.value.dailyMustDoDeedNames.toMutableList()
-        val currentPenalties = _draft.value.dailyMustDoDeedPenalties.toMutableList()
+        val currentDeeds = _draft.value.dailyMustDoDeeds.toMutableList()
         if (enabled) {
-            currentNames.add(deedName)
-            currentPenalties.add(1f)  // 默认扣一分
+            currentDeeds.add(DailyMustDoDeed(name = deedName, penalty = 1f, vis = 0))
         } else {
-            val idx = currentNames.indexOf(deedName)
-            if (idx >= 0) {
-                currentNames.removeAt(idx)
-                currentPenalties.removeAt(idx)
-            }
+            currentDeeds.removeAll { it.name == deedName }
         }
-        setDraft(_draft.value.copy(
-            dailyMustDoDeedNames = currentNames,
-            dailyMustDoDeedPenalties = currentPenalties,
-        ))
+        setDraft(_draft.value.copy(dailyMustDoDeeds = currentDeeds))
     }
 
     fun updateDailyMustDoPenalty(deedName: String, penalty: Float) {
-        val names = _draft.value.dailyMustDoDeedNames
-        val penalties = _draft.value.dailyMustDoDeedPenalties.toMutableList()
-        val idx = names.indexOf(deedName)
-        if (idx >= 0) {
-            penalties[idx] = penalty
-            setDraft(_draft.value.copy(dailyMustDoDeedPenalties = penalties))
+        val deeds = _draft.value.dailyMustDoDeeds.map { deed ->
+            if (deed.name == deedName) deed.copy(penalty = penalty) else deed
         }
+        setDraft(_draft.value.copy(dailyMustDoDeeds = deeds))
     }
 
     fun isDailyMustDo(deedName: String): Boolean =
-        deedName in _draft.value.dailyMustDoDeedNames
+        _draft.value.dailyMustDoDeeds.any { it.name == deedName }
 
     fun getDailyMustDoPenalty(deedName: String): Float {
-        val idx = _draft.value.dailyMustDoDeedNames.indexOf(deedName)
-        return if (idx >= 0) _draft.value.dailyMustDoDeedPenalties.getOrElse(idx) { 1f } else 0f
+        return _draft.value.dailyMustDoDeeds.find { it.name == deedName }?.penalty ?: 0f
     }
 
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {
             repository.updateAllSettings(_draft.value)
+            // step 1：如果每日必做 deeds 有变动 → 所有 vis 重置为 0（未做）
+            if (_draft.value.dailyMustDoDeeds != _original.value.dailyMustDoDeeds) {
+                repository.resetDailyMustDoVis()
+            }
             _original.value = _draft.value  // 同步 original，hasChanges 恢复正常
         }
     }
@@ -271,8 +263,7 @@ class SettingsViewModel(
             badDeedPresets = current.badDeedPresets,
             goodResultPresets = current.goodResultPresets,
             // 保留每日必做设置
-            dailyMustDoDeedNames = current.dailyMustDoDeedNames,
-            dailyMustDoDeedPenalties = current.dailyMustDoDeedPenalties,
+            dailyMustDoDeeds = current.dailyMustDoDeeds,
         ))
     }
 

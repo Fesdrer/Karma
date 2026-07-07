@@ -144,8 +144,7 @@ fun MainScreen(
                         .fillMaxHeight(),
                     timerEnabled = s.hasScoreAndEvent,
                     selectedScore = s.effectiveScore,
-                    dailyMustDoDeedNames = s.dailyMustDoDeedNames,
-                    dailyMustDoDoneToday = s.dailyMustDoDoneToday,
+                    dailyMustDoDeeds = s.dailyMustDoDeeds,
                     onStopTimer = { elapsedMs ->
                         val ts = TimerService.timerState.value
                         val totMin = elapsedMs / 60000.0

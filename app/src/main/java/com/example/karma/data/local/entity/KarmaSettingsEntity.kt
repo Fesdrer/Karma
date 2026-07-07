@@ -72,4 +72,7 @@ data class KarmaSettingsEntity(
     // ===== 每日必做 =====
     val dailyMustDoDeedNames: List<String> = emptyList(),
     val dailyMustDoDeedPenalties: List<Float> = emptyList(),
+    val dailyMustDoLastDate: String = "",
+    val dailyMustDoDoneSet: List<String> = emptyList(),
+    val dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
 )

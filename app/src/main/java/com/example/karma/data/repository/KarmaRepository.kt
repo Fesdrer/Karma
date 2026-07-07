@@ -87,6 +87,32 @@ class KarmaRepository(
         settingsDao.upsertSettings(settings)
     }
 
+    // ---- Daily Must-Do ----
+
+    /** 将指定 deed 的 vis 标记为 1（已做），同时记录 lastDate=今天。 */
+    suspend fun markDeedDone(deedName: String) {
+        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        val updatedDeeds = settings.dailyMustDoDeeds.map {
+            if (it.name == deedName) it.copy(vis = 1) else it
+        }
+        val todayStr = formatDate(System.currentTimeMillis())
+        settingsDao.upsertSettings(settings.copy(
+            dailyMustDoDeeds = updatedDeeds,
+            dailyMustDoLastDate = todayStr,
+        ))
+    }
+
+    /** 将所有 deed 的 vis 重置为 0（新的一天/配置变更时调用）。 */
+    suspend fun resetDailyMustDoVis() {
+        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        val resetDeeds = settings.dailyMustDoDeeds.map { it.copy(vis = 0) }
+        val todayStr = formatDate(System.currentTimeMillis())
+        settingsDao.upsertSettings(settings.copy(
+            dailyMustDoDeeds = resetDeeds,
+            dailyMustDoLastDate = todayStr,
+        ))
+    }
+
     // ---- Decay ----
 
     /**
@@ -145,7 +171,11 @@ class KarmaRepository(
         // 时间戳统一为"此刻"，所有补扣记录相同
         val uniformTimestamp = System.currentTimeMillis()
 
+        // ---- 每日必做：每个 deed 有自己的 name/penalty/vis ----
+        val dailyDeeds = settings.dailyMustDoDeeds
+
         repeat(daysToCatchUp) {
+            // --- 业力衰减扣分 ---
             val rank = getDecayRank(currentScore, settings.rankThresholds)
             val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
             if (deduction > 0f) {
@@ -161,12 +191,38 @@ class KarmaRepository(
                     )
                 )
             }
+
+            // --- 每日必做扣分（step 2：每个 deed 有自己的 vis，vis=1 跳过，else 扣分） ---
+            for (deed in dailyDeeds) {
+                if (deed.vis == 1) continue  // vis=1 → 已做，跳过
+                if (deed.penalty > 0f) {
+                    currentScore = roundToOneDecimal(currentScore - deed.penalty)
+                    totalDeducted += deed.penalty
+                    historyDao.insertEntry(
+                        HistoryEntryEntity(
+                            timestamp = uniformTimestamp,
+                            delta = -deed.penalty,
+                            event = "未完成：${deed.name}",
+                            type = "daily_must_do",
+                            totalAfter = currentScore,
+                        )
+                    )
+                }
+            }
         }
 
-        // 更新总分和 lastDecayDate
+        // ---- step 3：循环完成后，需补扣天数>0 → 所有 deed 的 vis 重置为 0（新的一天） ----
+        val newDeeds = if (daysToCatchUp > 0) {
+            dailyDeeds.map { it.copy(vis = 0) }
+        } else {
+            dailyDeeds
+        }
+
+        // 更新总分、lastDecayDate、每日必做 deeds（每个 deed 有自己的 name/penalty/vis）
         settingsDao.upsertSettings(settings.copy(
             totalScore = currentScore,
             lastDecayDate = dateB,
+            dailyMustDoDeeds = newDeeds,
         ))
 
         return totalDeducted
