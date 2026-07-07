@@ -191,7 +191,9 @@ fun EventPanel(
                 ) {
                     // 上半：时间（居中）
                     Box(
-                        modifier = Modifier.weight(1f),
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
@@ -201,7 +203,6 @@ fun EventPanel(
                             color = Color(0xFFFFD700),
                             textAlign = TextAlign.Center,
                         )
-                    }
                     }
                     // 下半：固定大小图标按钮
                     Row(
