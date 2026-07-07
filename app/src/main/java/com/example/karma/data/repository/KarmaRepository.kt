@@ -318,7 +318,9 @@ class KarmaRepository(
         val settingsElement = root.get("settings")
         if (settingsElement != null) {
             val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
-            settingsDao.upsertSettings(importedSettings)
+            // 导入后重置所有每日必做 vis=0（导入是全新开始，不应保留旧的 vis 状态）
+            val resetDeeds = importedSettings.dailyMustDoDeeds.map { it.copy(vis = 0) }
+            settingsDao.upsertSettings(importedSettings.copy(dailyMustDoDeeds = resetDeeds))
         } else {
             // 旧格式：只更新 totalScore
             val totalScore = root.get("totalScore")?.asDouble?.toFloat() ?: return false
