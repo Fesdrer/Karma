@@ -129,11 +129,8 @@ object LuckAmplifier {
             Point(tDays, entry.totalAfter, entry.event)
         }
 
-        // 3. 同 t 的记录塌缩为最终 K 值，然后按 t 升序排列
-        val sorted = points
-            .groupBy { it.tDays }
-            .map { (t, pts) -> val p = pts.last(); Point(t, p.karma, p.event) }
-            .sortedBy { it.tDays }
+        // 3. 按 t 升序排列（稳定排序保留同 t 点的原始 ASC 顺序）
+        val sorted = points.sortedBy { it.tDays }
 
         if (sorted.size < 2) {
             return roundTo2(totalScore.toDouble() / b.toDouble())
@@ -153,15 +150,24 @@ object LuckAmplifier {
             if (pI.event.startsWith("善果：") || pI.event.startsWith("祈福：") || pI.event == "业力衰减") continue
 
             val dt = pJ.tDays - pI.tDays    // 前向时间差（天）
-            if (dt <= 0.0) continue
 
-            val dK = pI.karma - pJ.karma          // 前向 ΔK（K_new - K_old）
-            val kPrime = dK.toDouble() / dt        // K' = dK/dτ（前向时间导数）
+            if (dt > 0.0) {
+                // 正常情况：使用 K' * ∫f(t)dt
+                val dK = pI.karma - pJ.karma          // 前向 ΔK（K_new - K_old）
+                val kPrime = dK.toDouble() / dt        // K' = dK/dτ（前向时间导数）
 
-            // 在 T 处截断：若段跨越 T 边界，积分上限截断到 T
-            val segEnd = if (pJ.tDays > Td) Td else pJ.tDays
-            val segIntegral = integralExpMinusAt2(a, pI.tDays, segEnd)
-            totalIntegral += kPrime * segIntegral
+                // 在 T 处截断：若段跨越 T 边界，积分上限截断到 T
+                val segEnd = if (pJ.tDays > Td) Td else pJ.tDays
+                val segIntegral = integralExpMinusAt2(a, pI.tDays, segEnd)
+                totalIntegral += kPrime * segIntegral
+            } else if (dt == 0.0) {
+                // 时间相同：使用 y*f(t) 避免除以 0
+                // pJ 在 pI 之后（稳定排序保持原始 ASC 顺序），故 pJ 较新
+                val y = (pJ.karma - pI.karma).toDouble() // 前向业力变化量
+                val f = exp(-a * pI.tDays * pI.tDays)   // f(t) = e^{-at²}
+                totalIntegral += y * f
+            }
+            // dt < 0：理论不应发生，静默跳过
         }
 
         // 5. 运气 = (K + c·integral) / b
