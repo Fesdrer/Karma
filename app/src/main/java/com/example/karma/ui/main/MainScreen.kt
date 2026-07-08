@@ -49,6 +49,7 @@ fun MainScreen(
         factory = MainViewModel.Factory(appContainer.repository)
     )
     val state by viewModel.uiState.collectAsState()
+    val effectiveScore by viewModel.effectiveScoreState.collectAsState()
     val context = LocalContext.current
 
     // 数据就绪时从纯黑渐变到主页面
@@ -143,7 +144,7 @@ fun MainScreen(
                         .weight(1f)
                         .fillMaxHeight(),
                     timerEnabled = s.hasScoreAndEvent,
-                    selectedScore = s.effectiveScore,
+                    selectedScore = effectiveScore,
                     dailyMustDoDeeds = s.dailyMustDoDeeds,
                     onStopTimer = { elapsedMs ->
                         val ts = TimerService.timerState.value
