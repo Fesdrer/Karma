@@ -241,13 +241,15 @@ class MainViewModel(
         _effectiveEventState.value = null
         updateTimerEnabled()
 
-        // 如果是每日必做善业（且 vis=0 未做），标记为今日已做
-        val completedDeed = _currentDailyMustDoDeeds.find { it.name == rawEvent }
-        if (completedDeed != null && completedDeed.vis == 0) {
-            markDailyMustDoDone(rawEvent)
-        }
-
+        // 在单个协程中顺序执行，避免两个并发读写互覆盖：
+        // markDeedDone 读 settings→改 vis→写；addHistoryEntry 读 settings→改 totalScore→写，
+        // 并发时后写入的会覆盖前一个的改动（vis 或 totalScore 丢失）。
         viewModelScope.launch {
+            // 如果是每日必做善业（且 vis=0 未做），先标记为今日已做
+            val completedDeed = _currentDailyMustDoDeeds.find { it.name == rawEvent }
+            if (completedDeed != null && completedDeed.vis == 0) {
+                repository.markDeedDone(rawEvent)
+            }
             repository.addHistoryEntry(score, event, "record")
         }
     }
