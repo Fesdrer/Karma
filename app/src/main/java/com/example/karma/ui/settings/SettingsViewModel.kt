@@ -30,6 +30,9 @@ class SettingsViewModel(
     val original: StateFlow<KarmaSettingsEntity> = _original.asStateFlow()
     val deleteMode: StateFlow<Boolean> = _deleteMode.asStateFlow()
 
+    private val _addMode = MutableStateFlow(false)
+    val addMode: StateFlow<Boolean> = _addMode.asStateFlow()
+
     init {
         viewModelScope.launch {
             val initial = repository.settings.first()
@@ -306,9 +309,42 @@ class SettingsViewModel(
         if (newNames.size <= 1) _deleteMode.value = false
     }
 
+    /** 按下 + 号，切换「插入模式」：每个阶位右上角出现 +，点击可在该阶位下方插入新阶位。 */
+    fun toggleAddMode() {
+        _addMode.value = !_addMode.value
+        if (_addMode.value) _deleteMode.value = false
+    }
+
+    /** 在 index 阶位下方插入一个新阶位。 */
+    fun addRankAfter(index: Int) {
+        val d = _draft.value
+        val newNames = d.rankNames.toMutableList().apply { add(index + 1, "新阶位") }
+        val newColors = d.rankColors.toMutableList().apply { add(index + 1, d.rankColors.getOrElse(index) { 0xFFFFFFFF }) }
+        val newDecays = d.rankDecayAmounts.toMutableList().apply { add(index + 1, d.rankDecayAmounts.getOrElse(index) { 3f }) }
+        val newThresholds = d.rankThresholds.toMutableList()
+        val insertPos = index + 1
+        if (insertPos < d.rankThresholds.size) {
+            // 在两个已有阈值之间插入中点
+            val prev = d.rankThresholds[insertPos - 1]
+            val next = d.rankThresholds[insertPos]
+            newThresholds.add(insertPos, (prev + next) / 2f)
+        } else {
+            // 在最后一个阈值之后追加
+            val prev = d.rankThresholds.lastOrNull() ?: 50f
+            newThresholds.add(insertPos, prev + 50f)
+        }
+        setDraft(d.copy(
+            rankNames = newNames,
+            rankColors = newColors,
+            rankDecayAmounts = newDecays,
+            rankThresholds = newThresholds,
+        ))
+    }
+
     fun toggleDeleteMode() {
         if (_draft.value.rankNames.size > 1) {
             _deleteMode.value = !_deleteMode.value
+            if (_deleteMode.value) _addMode.value = false
         } else {
             _deleteMode.value = false
         }

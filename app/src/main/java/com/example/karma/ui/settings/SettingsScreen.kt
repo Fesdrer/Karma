@@ -91,6 +91,7 @@ fun SettingsScreen(
     val draft by viewModel.draft.collectAsState()
     val original by viewModel.original.collectAsState()
     val deleteMode by viewModel.deleteMode.collectAsState()
+    val addMode by viewModel.addMode.collectAsState()
 
     Scaffold(
         modifier = modifier,
@@ -185,12 +186,14 @@ fun SettingsScreen(
                 rankThresholds = draft.rankThresholds,
                 rankDecayAmounts = draft.rankDecayAmounts,
                 deleteMode = deleteMode,
+                addMode = addMode,
                 onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
                 onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
                 onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
                 onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
-                onAddRank = { viewModel.addRank() },
+                onAddRankAfter = { index -> viewModel.addRankAfter(index) },
                 onDeleteRank = { viewModel.deleteRank(it) },
+                onToggleAddMode = { viewModel.toggleAddMode() },
                 onToggleDeleteMode = { viewModel.toggleDeleteMode() },
             )
             EventSettingsCard(
@@ -920,12 +923,14 @@ private fun RankSettingsCard(
     rankThresholds: List<Float>,
     rankDecayAmounts: List<Float>,
     deleteMode: Boolean,
+    addMode: Boolean,
     onRankNameChange: (Int, String) -> Unit,
     onRankColorChange: (Int, Long) -> Unit,
     onRankThresholdChange: (Int, Float) -> Unit,
     onRankDecayChange: (Int, Float) -> Unit,
-    onAddRank: () -> Unit,
+    onAddRankAfter: (Int) -> Unit,
     onDeleteRank: (Int) -> Unit,
+    onToggleAddMode: () -> Unit,
     onToggleDeleteMode: () -> Unit,
 ) {
     var showColorPicker by remember { mutableStateOf(false) }
@@ -951,7 +956,7 @@ private fun RankSettingsCard(
                     .padding(12.dp),
             ) {
                 Column {
-                    // 第一行：名称 + 删除按钮
+                    // 第一行：名称 + 添加/删除按钮
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -973,6 +978,24 @@ private fun RankSettingsCard(
                             ),
                             modifier = Modifier.weight(1f),
                         )
+
+                        // 添加按钮（仅 addMode 显示）
+                        if (addMode) {
+                            Spacer(Modifier.width(8.dp))
+                            Box(
+                                modifier = Modifier
+                                    .size(22.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFF22aa44))
+                                    .clickable { onAddRankAfter(i) },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    "+", color = Color.White,
+                                    fontSize = 14.sp, fontWeight = FontWeight.Bold,
+                                )
+                            }
+                        }
 
                         // 删除按钮（仅 deleteMode 显示）
                         if (deleteMode) {
@@ -1061,16 +1084,26 @@ private fun RankSettingsCard(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.End,
         ) {
-            // [+] 添加
+            // [+] 添加模式切换
+            val addActive = addMode
             Box(
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF1A1A1A))
-                    .border(1.dp, Color(0xFF334444), RoundedCornerShape(6.dp))
-                    .clickable { onAddRank() }
+                    .background(
+                        if (addActive) Color(0xFF22aa44) else Color(0xFF1A1A1A)
+                    )
+                    .border(
+                        1.dp,
+                        if (addActive) Color(0xFF22aa44) else Color(0xFF334444),
+                        RoundedCornerShape(6.dp),
+                    )
+                    .clickable { onToggleAddMode() }
                     .padding(horizontal = 12.dp, vertical = 4.dp),
             ) {
-                Text("+", fontSize = 16.sp, color = Gold)
+                Text(
+                    "+", fontSize = 16.sp,
+                    color = if (addActive) Color.White else Gold,
+                )
             }
 
             Spacer(Modifier.width(8.dp))
