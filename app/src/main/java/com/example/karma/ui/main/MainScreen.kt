@@ -1,5 +1,6 @@
 package com.example.karma.ui.main
 
+import android.os.SystemClock
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -27,6 +28,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
+import com.example.karma.data.model.TimerStatus
 import com.example.karma.ui.main.components.AxisCanvas
 import com.example.karma.ui.main.components.EventPanel
 import com.example.karma.ui.main.components.Footer
@@ -59,6 +61,44 @@ fun MainScreen(
             return@Crossfade
         }
         val s = state!!
+
+    // 启动时恢复计时状态 + 持续观察状态变化并持久化
+    // 不依赖 TimerService 的生命周期，所有数据库读写通过 LaunchedEffect 的协程作用域执行
+    LaunchedEffect(Unit) {
+        // step 1：恢复上次未结束的计时
+        val saved = appContainer.repository.loadTimerState()
+        if (saved != null && (saved.status == TimerStatus.RUNNING || saved.status == TimerStatus.PAUSED)) {
+            TimerService.restoreTimerState(saved, SystemClock.elapsedRealtime())
+            if (saved.status == TimerStatus.RUNNING) {
+                val intent = android.content.Intent(context, com.example.karma.ui.timer.TimerService::class.java).apply { action = "RESTORE" }
+                if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                    context.startForegroundService(intent)
+                } else {
+                    context.startService(intent)
+                }
+            }
+        }
+
+        // step 2：持续观察计时状态，任何变化都写 Room
+        TimerService.timerState.collect { state ->
+            when (state.status) {
+                TimerStatus.RUNNING, TimerStatus.PAUSED -> {
+                    appContainer.repository.saveTimerState(
+                        status = state.status.name,
+                        startElapsed = state.startElapsed,
+                        resumeElapsed = state.resumeElapsed,
+                        accumulatedMs = state.accumulatedMs,
+                        selectedScore = state.selectedScore,
+                        selectedEvent = state.selectedEvent,
+                    )
+                }
+                TimerStatus.STOPPED -> {
+                    appContainer.repository.clearTimerState()
+                }
+                TimerStatus.IDLE -> { /* 首次打开没有计时，不操作 */ }
+            }
+        }
+    }
 
     // Snackbar
     val snackbarHostState = remember { SnackbarHostState() }

@@ -5,6 +5,8 @@ import com.example.karma.data.local.dao.KarmaSettingsDao
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.model.Rank
+import com.example.karma.data.model.TimerState
+import com.example.karma.data.model.TimerStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
 import java.util.Calendar
@@ -111,6 +113,47 @@ class KarmaRepository(
             dailyMustDoDeeds = resetDeeds,
             dailyMustDoLastDate = todayStr,
         ))
+    }
+
+    // ---- Timer Persistence ----
+
+    /** 保存计时器状态到 Room */
+    suspend fun saveTimerState(
+        status: String,
+        startElapsed: Long,
+        resumeElapsed: Long,
+        accumulatedMs: Long,
+        selectedScore: Float,
+        selectedEvent: String,
+    ) {
+        val s = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        settingsDao.upsertSettings(s.copy(
+            timerStatus = status,
+            timerStartElapsed = startElapsed,
+            timerResumeElapsed = resumeElapsed,
+            timerAccumulatedMs = accumulatedMs,
+            timerSelectedScore = selectedScore,
+            timerSelectedEvent = selectedEvent,
+        ))
+    }
+
+    /** 从 Room 读取计时器状态，返回 null 表示无计时 */
+    suspend fun loadTimerState(): TimerState? {
+        val s = settingsDao.getSettingsOnce() ?: return null
+        if (s.timerStatus == "IDLE") return null
+        return TimerState(
+            status = try { TimerStatus.valueOf(s.timerStatus) } catch (_: Exception) { TimerStatus.IDLE },
+            startElapsed = s.timerStartElapsed,
+            resumeElapsed = s.timerResumeElapsed,
+            accumulatedMs = s.timerAccumulatedMs,
+            selectedScore = s.timerSelectedScore,
+            selectedEvent = s.timerSelectedEvent,
+        )
+    }
+
+    /** 清除 Room 中的计时状态 */
+    suspend fun clearTimerState() {
+        saveTimerState("IDLE", 0L, 0L, 0L, 0f, "")
     }
 
     // ---- Decay ----

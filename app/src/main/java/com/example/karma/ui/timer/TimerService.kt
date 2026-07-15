@@ -10,8 +10,11 @@ import android.os.Build
 import android.os.IBinder
 import android.os.SystemClock
 import androidx.core.app.NotificationCompat
+import com.example.karma.KarmaApplication
 import com.example.karma.MainActivity
 import com.example.karma.R
+import com.example.karma.data.model.TimerState
+import com.example.karma.data.model.TimerStatus
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -22,26 +25,6 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
-
-data class TimerState(
-    val status: TimerStatus = TimerStatus.IDLE,
-    val startElapsed: Long = 0L,       // SystemClock.elapsedRealtime() 记录的开始点
-    val resumeElapsed: Long = 0L,      // 最近一次恢复时的 elapsedRealtime
-    val accumulatedMs: Long = 0L,      // 暂停期间累计的已计时毫秒数
-    val selectedScore: Float = 0f,
-    val selectedEvent: String = "",
-) {
-    /** 当前总已计时毫秒数 */
-    fun currentElapsedMs(): Long {
-        return when (status) {
-            TimerStatus.RUNNING -> accumulatedMs + (SystemClock.elapsedRealtime() - resumeElapsed)
-            TimerStatus.PAUSED -> accumulatedMs
-            TimerStatus.IDLE, TimerStatus.STOPPED -> accumulatedMs
-        }
-    }
-}
-
-enum class TimerStatus { IDLE, RUNNING, PAUSED, STOPPED }
 
 class TimerService : Service() {
 
@@ -79,6 +62,23 @@ class TimerService : Service() {
         fun stop(context: Context) {
             val intent = Intent(context, TimerService::class.java).apply { action = "STOP" }
             context.startService(intent)
+        }
+
+        /**
+         * 从 Room 恢复计时状态。
+         * 如果 timer 之前在 RUNNING 状态，回填离线经过的时间。
+         */
+        fun restoreTimerState(saved: TimerState, currentElapsed: Long) {
+            var restored = saved
+            if (saved.status == TimerStatus.RUNNING) {
+                // 回填离线时间（设备未重启的情况）
+                val offlineMs = currentElapsed - saved.resumeElapsed
+                if (offlineMs > 0 && offlineMs < 365L * 24 * 60 * 60 * 1000L) {
+                    restored = saved.copy(accumulatedMs = saved.accumulatedMs + offlineMs)
+                }
+                restored = restored.copy(resumeElapsed = currentElapsed)
+            }
+            _timerState.value = restored
         }
 
         /** 格式化毫秒为 HH:MM:SS */
@@ -120,6 +120,13 @@ class TimerService : Service() {
             "PAUSE" -> pauseTiming()
             "RESUME" -> resumeTiming()
             "STOP" -> stopTiming()
+            "RESTORE" -> {
+                // 恢复计时：不重置状态，只启动前台通知 + 计时 tick
+                if (_timerState.value.status == TimerStatus.RUNNING) {
+                    startForeground(NOTIFICATION_ID, buildNotification())
+                    startTick()
+                }
+            }
         }
         return START_STICKY
     }
@@ -209,6 +216,34 @@ class TimerService : Service() {
             .setOngoing(state.status == TimerStatus.RUNNING || state.status == TimerStatus.PAUSED)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build()
+    }
+
+    // ===== 持久化 =====
+    // 数据库的读写移到 UI 层（MainScreen）通过 ViewModel scope 执行，
+    // 避免 Service 生命周期（stopSelf/onDestroy → scope.cancel）导致写入被取消。
+
+    /** 将当前计时状态写入 Room，支持跨进程存活 */
+    fun saveToRoom() {
+        val app = application as? KarmaApplication ?: return
+        val state = _timerState.value
+        kotlinx.coroutines.runBlocking {
+            app.container.repository.saveTimerState(
+                status = state.status.name,
+                startElapsed = state.startElapsed,
+                resumeElapsed = state.resumeElapsed,
+                accumulatedMs = state.accumulatedMs,
+                selectedScore = state.selectedScore,
+                selectedEvent = state.selectedEvent,
+            )
+        }
+    }
+
+    /** 清除 Room 中的计时状态（停止时调用） */
+    fun clearFromRoom() {
+        val app = application as? KarmaApplication ?: return
+        kotlinx.coroutines.runBlocking {
+            app.container.repository.clearTimerState()
+        }
     }
 
     private fun createNotificationChannel() {

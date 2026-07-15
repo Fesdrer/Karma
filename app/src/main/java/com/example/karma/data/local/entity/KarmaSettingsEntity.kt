@@ -75,4 +75,12 @@ data class KarmaSettingsEntity(
     val dailyMustDoLastDate: String = "",
     val dailyMustDoDoneSet: List<String> = emptyList(),
     val dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
+
+    // ===== 计时持久化 =====
+    val timerStatus: String = "IDLE",           // IDLE / RUNNING / PAUSED / STOPPED
+    val timerStartElapsed: Long = 0L,           // SystemClock.elapsedRealtime() 开始点
+    val timerResumeElapsed: Long = 0L,          // SystemClock.elapsedRealtime() 最近恢复点
+    val timerAccumulatedMs: Long = 0L,          // 暂停时累计的毫秒数
+    val timerSelectedScore: Float = 0f,
+    val timerSelectedEvent: String = "",
 )

@@ -44,9 +44,9 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.data.local.entity.DailyMustDoDeed
+import com.example.karma.data.model.TimerStatus
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.timer.TimerService
-import com.example.karma.ui.timer.TimerStatus
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.StateFlow
 import com.example.karma.ui.theme.Gold
