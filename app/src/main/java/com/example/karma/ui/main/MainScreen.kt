@@ -36,7 +36,9 @@ import com.example.karma.ui.main.components.Header
 import com.example.karma.ui.main.components.ScorePanel
 import com.example.karma.ui.timer.TimerService
 import kotlin.math.round
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun MainScreen(
@@ -80,22 +82,26 @@ fun MainScreen(
         }
 
         // step 2：持续观察计时状态，任何变化都写 Room
+        // 用 NonCancellable 防止 LaunchedEffect 被取消（例如用户离开主屏）时
+        // Room 写入被回滚，留下「已停止但 DB 仍标记为 RUNNING」的残留状态。
         TimerService.timerState.collect { state ->
-            when (state.status) {
-                TimerStatus.RUNNING, TimerStatus.PAUSED -> {
-                    appContainer.repository.saveTimerState(
-                        status = state.status.name,
-                        startElapsed = state.startElapsed,
-                        resumeElapsed = state.resumeElapsed,
-                        accumulatedMs = state.accumulatedMs,
-                        selectedScore = state.selectedScore,
-                        selectedEvent = state.selectedEvent,
-                    )
+            withContext(NonCancellable) {
+                when (state.status) {
+                    TimerStatus.RUNNING, TimerStatus.PAUSED -> {
+                        appContainer.repository.saveTimerState(
+                            status = state.status.name,
+                            startElapsed = state.startElapsed,
+                            resumeElapsed = state.resumeElapsed,
+                            accumulatedMs = state.accumulatedMs,
+                            selectedScore = state.selectedScore,
+                            selectedEvent = state.selectedEvent,
+                        )
+                    }
+                    TimerStatus.STOPPED -> {
+                        appContainer.repository.clearTimerState()
+                    }
+                    TimerStatus.IDLE -> { /* 首次打开没有计时，不操作 */ }
                 }
-                TimerStatus.STOPPED -> {
-                    appContainer.repository.clearTimerState()
-                }
-                TimerStatus.IDLE -> { /* 首次打开没有计时，不操作 */ }
             }
         }
     }
@@ -191,14 +197,19 @@ fun MainScreen(
                         val totMin = elapsedMs / 60000.0
                         val delta = round(totMin / 60.0 * ts.selectedScore * 2.0) / 2.0
                         viewModel.viewModelScope.launch {
-                            // 如果是每日必做事件，标记已做
-                            val deed = s.dailyMustDoDeeds.find { it.name == ts.selectedEvent }
-                            if (deed != null && deed.vis == 0) {
-                                appContainer.repository.markDeedDone(ts.selectedEvent)
+                            try {
+                                // ★ 先写 DB（标记每日必做完成 + 添加历史记录）
+                                val deed = s.dailyMustDoDeeds.find { it.name == ts.selectedEvent }
+                                if (deed != null && deed.vis == 0) {
+                                    appContainer.repository.markDeedDone(ts.selectedEvent)
+                                }
+                                appContainer.repository.addHistoryEntry(delta.toFloat(), ts.selectedEvent, "record")
+                            } finally {
+                                // ★ DB 写入完成后才停服务，保证 LaunchedEffect 的 collect
+                                //    读到 STOPPED 时 DB 数据已经是最新的，不会并发覆盖。
+                                TimerService.stop(context)
                             }
-                            appContainer.repository.addHistoryEntry(delta.toFloat(), ts.selectedEvent, "record")
                         }
-                        TimerService.stop(context)
                     },
                 )
             }

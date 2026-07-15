@@ -117,7 +117,7 @@ class KarmaRepository(
 
     // ---- Timer Persistence ----
 
-    /** 保存计时器状态到 Room */
+    /** 保存计时器状态到 Room — 只更新 timer 相关字段，不碰其他列，避免并发写覆盖。 */
     suspend fun saveTimerState(
         status: String,
         startElapsed: Long,
@@ -126,15 +126,14 @@ class KarmaRepository(
         selectedScore: Float,
         selectedEvent: String,
     ) {
-        val s = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
-        settingsDao.upsertSettings(s.copy(
+        settingsDao.updateTimerFields(
             timerStatus = status,
             timerStartElapsed = startElapsed,
             timerResumeElapsed = resumeElapsed,
             timerAccumulatedMs = accumulatedMs,
             timerSelectedScore = selectedScore,
             timerSelectedEvent = selectedEvent,
-        ))
+        )
     }
 
     /** 从 Room 读取计时器状态，返回 null 表示无计时 */
@@ -151,9 +150,16 @@ class KarmaRepository(
         )
     }
 
-    /** 清除 Room 中的计时状态 */
+    /** 清除 Room 中的计时状态（只清 timer 字段，不碰其他列）。 */
     suspend fun clearTimerState() {
-        saveTimerState("IDLE", 0L, 0L, 0L, 0f, "")
+        settingsDao.updateTimerFields(
+            timerStatus = "IDLE",
+            timerStartElapsed = 0L,
+            timerResumeElapsed = 0L,
+            timerAccumulatedMs = 0L,
+            timerSelectedScore = 0f,
+            timerSelectedEvent = "",
+        )
     }
 
     // ---- Decay ----

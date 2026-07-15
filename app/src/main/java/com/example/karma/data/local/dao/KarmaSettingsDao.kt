@@ -33,4 +33,23 @@ interface KarmaSettingsDao {
 
     @Query("UPDATE karma_settings SET goodResultPresets = :presets WHERE id = 1")
     suspend fun updateGoodResultPresets(presets: List<String>)
+
+    @Query("""
+        UPDATE karma_settings SET
+            timerStatus = :timerStatus,
+            timerStartElapsed = :timerStartElapsed,
+            timerResumeElapsed = :timerResumeElapsed,
+            timerAccumulatedMs = :timerAccumulatedMs,
+            timerSelectedScore = :timerSelectedScore,
+            timerSelectedEvent = :timerSelectedEvent
+        WHERE id = 1
+    """)
+    suspend fun updateTimerFields(
+        timerStatus: String,
+        timerStartElapsed: Long,
+        timerResumeElapsed: Long,
+        timerAccumulatedMs: Long,
+        timerSelectedScore: Float,
+        timerSelectedEvent: String,
+    )
 }
