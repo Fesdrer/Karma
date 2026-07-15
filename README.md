@@ -2,7 +2,7 @@
 
 记录每日善恶因果，见证业力流转。一款以业力为主题的生活记录与可视化工具。
 
-> **版本**：3.7 | **技术栈**：Kotlin + Jetpack Compose + Material3 + Room | **最低 SDK**：Android 7.0
+> **版本**：3.8 | **技术栈**：Kotlin + Jetpack Compose + Material3 + Room | **最低 SDK**：Android 7.0
 
 ---
 
@@ -174,7 +174,7 @@
 - 保存设置时若必做配置有变动，所有 vis 重置为 0（新的一天）
 - 导出/导入 JSON 时包含全部每日必做配置，导入后 vis 自动归零
 
-### 计时记录（★ v3.4 新增，v3.7 内嵌改造）
+### 计时记录（★ v3.4 新增，v3.7 内嵌改造，v3.8 崩溃恢复）
 
 在右栏底部点击「▶ 开始计时」，按钮原地展开为计时控制栏：
 
@@ -182,6 +182,7 @@
 - **暂停 / 继续**：随时暂停后恢复，不影响累计时间（#b8860b 暗金色按钮）
 - **熄屏继续**：计时期间即使手机熄屏，后台前台服务继续计时，通知栏显示实时时间
 - **自由切换**：计时可随时点击 Footer 切换到设置/历史等页面，返回后时间正确显示
+- **崩溃恢复**：计时状态持久化到 Room 数据库，应用被系统杀死或崩溃后重启，自动恢复计时
 - **分数计算**：停止时按公式 `round(已计时分钟数 / 60 × 所选分数, 0.5)` 自动计算 delta 并写入数据库
 - **记录信息**：事件 = 所选事件，时间戳 = 停止时刻，type = "record"
 
@@ -209,7 +210,7 @@
 | | 阶位颜色 | 九色 | 点击色块 HSV+RGB 调色 |
 | | 分数上限 | 10~360 | 决定升级门槛（最后一阶无上限） |
 | | 衰减扣除量 | 2~3分 | − / + 按钮逐阶调整（金色） |
-| | 增减阶位 | 9 个 | [+] 新增阶位 / [−] 删除模式（红色×） |
+| | 增减阶位 | 9 个 | [+] 插入模式（绿色+在目标阶位旁插入）/ [−] 删除模式（红色×） |
 | **事件列表** | 善业/恶业/善果 | 默认5项 | 每行一个事件，直接编辑增删 |
 | **每日必做** | 必做清单 | 无 | 在善业旁开关注册为每日必做 |
 | | 未完成扣分 | 1 分 | 每个每日必做善业的独立扣分值 |
@@ -296,6 +297,7 @@ Kotlin + Jetpack Compose
 - **可配置渐变背景**：单层 `Brush.verticalGradient` + 星星装饰图叠加，颜色可在设置中实时调整
 - **运气增幅算法**：erf 误差函数 + 分段积分，双重变量代换消除符号歧义，同时间戳记录自动塌缩
 - **前台 Service 计时**：熄屏后持续计时，通知栏实时显示，SystemClock.elapsedRealtime() 保证精度不受系统时间影响
+- **计时崩溃恢复**（v3.8）：计时状态持久化到 Room 数据库，应用被系统杀死/崩溃后重启自动恢复计时，回填离线经过的时间
 - **纯 Canvas 渲染**：分数轴、业力轴、折线图、卦爻线、三柱六宫、金线光点动画、粒子动画全部手绘，零第三方图表依赖
 - **非线性映射**：业力轴采用动态指数算法，`y ∝ x^exp`，exp 由 quarterValue 自动推导
 - **粒子引擎**：4 级粒子系统，含 Bezier 曲线、光环、火花、符文，Paint 预分配 + Path 复用
@@ -309,9 +311,9 @@ Kotlin + Jetpack Compose
 ```
 app/src/main/java/com/example/karma/
 ├── data/                    # 数据层
-│   ├── local/               # Room 数据库 + Entity + DAO + 10 migrations
-│   ├── model/               # 领域模型 (Rank, ViewMode, HistoryEntry)
-│   └── repository/          # KarmaRepository (含导入导出/衰减引擎)
+│   ├── local/               # Room 数据库 + Entity + DAO + 12 migrations
+│   ├── model/               # 领域模型 (Rank, ViewMode, HistoryEntry, TimerState)
+│   └── repository/          # KarmaRepository (含导入导出/衰减引擎/计时持久化)
 ├── ui/
 │   ├── main/                # 主屏幕 + 组件(Header/ScorePanel/AxisCanvas/EventPanel/Footer)
 │   ├── history/             # 历史折线图 (Canvas 手绘 + tooltip)
@@ -335,12 +337,38 @@ app/src/main/java/com/example/karma/
 ```bash
 ./gradlew assembleDebug          # 调试构建
 ./gradlew installDebug           # 安装到设备
-# APK 输出: app/build/outputs/apk/debug/Karma-v3.7.apk
+# APK 输出: app/build/outputs/apk/debug/Karma-v3.8.apk
 ```
 
 ---
 
 ## 📜 版本更新记录
+
+### v3.8 — 计时持久化 & 阶位插入模式
+
+**计时状态持久化（全新）**
+- 计时状态（运行/暂停/累计时间/分数/事件）持久化到 Room 数据库，Room 迁移 v13→v14（新增 6 个计时字段）
+- 应用被系统杀死或崩溃后重启时，自动恢复上次未结束的计时：MainScreen 启动时 LaunchedEffect 读取 Room 中保存的计时状态，回填离线经过的时间
+- 计时状态实时持久化：MainScreen 持续观察 TimerService.timerState 变化并写入 Room
+- `TimerState` + `TimerStatus` 抽取到 `data/model/TimerState.kt` 独立 model 文件，Service 与 UI 层共用
+- TimerService 新增 `restoreTimerState()` 方法：回填离线时间（过滤异常偏移量防止误判）
+- 数据库的读写通过 MainScreen 的协程作用域执行，避免 Service 生命周期（stopSelf/onDestroy）导致写入被取消
+
+**阶位插入模式（★ 改造）**
+- 阶位添加从「追加到末尾」改造为「插入模式」：点击 [+] 按钮进入插入模式，每个阶位右上角出现绿色 [+] 按钮
+- 点击绿色 [+] 可在该阶位下方插入新阶位，自动计算上下阈值的中间值作为新阈值（末尾追加则在前阈值上 +50）
+- 绿色 [+] 与红色 [−] 删除模式互斥，切换时自动关闭另一方
+
+### v3.7.2 — 每日必做并发修复
+
+**Bug 修复**
+- 每日必做标记完成与历史记录写入的并发竞争修复：`markDeedDone` 与 `addHistoryEntry` 改为同一协程中顺序执行，避免两个 `viewModelScope.launch` 并发导致 settings 字段互相覆盖
+
+### v3.7.1 — 计时与运气 Bug 修复
+
+**Bug 修复**
+- 计时有效分数传递修复：`effectiveScore` 从 `uiState` 中分离为独立 `StateFlow`，解决计时器使用错误分数的问题（v3.7 将 TimerState 移出主屏 combine 链后，uiState 中的 effectiveScore 不再随左栏点击实时更新）
+- 运气增幅同时间戳记录修复：移除 `groupBy { it.tDays }` 塌缩逻辑，稳定排序保留原始 ASC 顺序；添加 `dt == 0.0` 分支使用 `y·f(t)` 代替 K'/dt 避免除零
 
 ### v3.7 — 每日必做 & 计时器内嵌
 

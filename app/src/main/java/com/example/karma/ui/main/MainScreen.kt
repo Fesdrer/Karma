@@ -191,6 +191,11 @@ fun MainScreen(
                         val totMin = elapsedMs / 60000.0
                         val delta = round(totMin / 60.0 * ts.selectedScore * 2.0) / 2.0
                         viewModel.viewModelScope.launch {
+                            // 如果是每日必做事件，标记已做
+                            val deed = s.dailyMustDoDeeds.find { it.name == ts.selectedEvent }
+                            if (deed != null && deed.vis == 0) {
+                                appContainer.repository.markDeedDone(ts.selectedEvent)
+                            }
                             appContainer.repository.addHistoryEntry(delta.toFloat(), ts.selectedEvent, "record")
                         }
                         TimerService.stop(context)
