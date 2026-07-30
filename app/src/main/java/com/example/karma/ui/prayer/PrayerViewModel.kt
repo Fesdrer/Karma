@@ -81,7 +81,7 @@ class PrayerViewModel(
 
         // Record prayer and start animation
         viewModelScope.launch {
-            val deitySuffix = if (state.deity.isNotBlank()) "（神明：${state.deity}）" else ""
+            val deitySuffix = if (state.deity.isNotBlank()) "\n神明：\n${state.deity}" else ""
             repository.addHistoryEntry(-amount, "祈福：\n${state.purpose}$deitySuffix", "prayer")
             _uiState.value = _uiState.value.copy(
                 showForm = false,

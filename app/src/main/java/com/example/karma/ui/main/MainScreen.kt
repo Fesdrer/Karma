@@ -46,6 +46,9 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** 进程级标志：经文启动画面只在每次进入应用时显示一次，导航到子页面再返回不重复显示 */
+private var splashShown = false
+
 @Composable
 fun MainScreen(
     appContainer: AppContainer,
@@ -62,15 +65,16 @@ fun MainScreen(
     val effectiveScore by viewModel.effectiveScoreState.collectAsState()
     val context = LocalContext.current
 
-    // 经文启动画面阶段
-    var splashDone by remember { mutableStateOf(false) }
+    // 经文启动画面阶段（进程级标志，导航回来不重复显示）
+    var splashDone by remember { mutableStateOf(splashShown) }
     val settings by appContainer.repository.settings.collectAsState(initial = KarmaSettingsEntity())
 
-    // 数据加载完成后等待指定秒数再显示主界面
+    // 仅在首次进入应用时显示经文启动画面
     LaunchedEffect(state != null) {
-        if (state != null) {
+        if (state != null && !splashShown) {
             delay((settings.splashDurationSec * 1000L).coerceAtLeast(1000L))
             splashDone = true
+            splashShown = true
         }
     }
 
@@ -260,7 +264,7 @@ fun MainScreen(
 }
 
 /**
- * 竖排经文画面：金色衬线体，从右到左排列，自动缩放适应屏幕
+ * 竖排经文画面：金色衬线体，从右到左排列，先填满一列再换下一列，左右居中、上下居中
  */
 @Composable
 private fun ScriptureOverlay(text: String, modifier: Modifier = Modifier) {
@@ -270,29 +274,57 @@ private fun ScriptureOverlay(text: String, modifier: Modifier = Modifier) {
         val charCount = text.length
         if (charCount == 0) return@Canvas
 
-        // 计算自适应字体大小
-        val maxFontSizeByWidth = w.toFloat() / (charCount * 1.5f)   // 宽：每字占 1.5倍字号
-        val maxFontSizeByHeight = h.toFloat() / 1.4f                // 高：单行占 1.4倍字号
-        val fontSize = maxFontSizeByWidth.coerceAtMost(maxFontSizeByHeight)
-
         val paint = android.graphics.Paint().apply {
             color = android.graphics.Color.argb(255, 255, 215, 0)   // 金色
-            textSize = fontSize
             isAntiAlias = true
             typeface = android.graphics.Typeface.SERIF              // 衬线体
             textAlign = android.graphics.Paint.Align.CENTER
         }
 
-        val charHeight = fontSize * 1.3f
-        val columnSpacing = fontSize * 0.5f                         // 列间距 = 0.5倍字号
+        val lineHeightFactor = 1.4f      // 行高倍率
+        val columnSpacingFactor = 0.5f   // 列间距倍率（相对于字号）
 
-        val startX = w - (fontSize / 2f)                            // 最右列中心 X
-        val centerY = h / 2f                                        // 垂直居中
+        // 迭代计算自适应字号：确保文字块不超出屏幕宽度
+        var fontSize = minOf(w / 3f, h / (3f * lineHeightFactor))
+        var maxCharsPerCol = 1
+        var columns = charCount
+        for (iter in 0 until 30) {
+            paint.textSize = fontSize
+            maxCharsPerCol = maxOf(1, (h / (fontSize * lineHeightFactor)).toInt())
+            columns = (charCount + maxCharsPerCol - 1) / maxCharsPerCol
+            val totalWidth = columns * fontSize * (1f + columnSpacingFactor) - fontSize * columnSpacingFactor
+            if (totalWidth <= w) break
+            fontSize *= 0.95f
+        }
 
-        text.forEachIndexed { index, ch ->
-            val colX = startX - index * (fontSize + columnSpacing)  // 从右到左
-            val charY = centerY + charHeight / 2f
-            drawContext.canvas.nativeCanvas.drawText(ch.toString(), colX, charY, paint)
+        val charHeight = fontSize * lineHeightFactor   // 每字占用高度
+        val colWidth = fontSize * (1f + columnSpacingFactor)  // 列宽（字宽+列间距）
+
+        // 文字块总宽度（所有列）
+        val totalWidth = columns * colWidth - fontSize * columnSpacingFactor
+
+        // 最右列中心 X（左右居中）
+        val rightEdgeX = (w + totalWidth) / 2f
+
+        // 竖排：从右到左逐列绘制，每列从上到下填满字符
+        for (col in 0 until columns) {
+            val charStart = col * maxCharsPerCol
+            val charEnd = minOf(charStart + maxCharsPerCol, charCount)
+            val charsInThisCol = charEnd - charStart
+
+            // 此列中心 X（从右到左递减）
+            val colX = rightEdgeX - col * colWidth
+
+            // 此列文字垂直居中
+            val colHeight = charsInThisCol * charHeight
+            val startY = (h - colHeight) / 2f + fontSize  // baseline 偏移
+
+            for (row in 0 until charsInThisCol) {
+                val charIndex = charStart + row
+                val ch = text[charIndex].toString()
+                val charY = startY + row * charHeight
+                drawContext.canvas.nativeCanvas.drawText(ch, colX, charY, paint)
+            }
         }
     }
 }

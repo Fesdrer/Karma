@@ -238,7 +238,7 @@ fun PrayerScreen(
                             placeholder = { Text("输入神明名称...", color = Color(0xFF666666)) },
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
                             textStyle = TextStyle(color = Color(0xFFff0000), fontSize = 16.sp),
-                            singleLine = true,
+                            minLines = 1,
                             shape = RoundedCornerShape(10.dp),
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedBorderColor = Color(0xFFffd700),
