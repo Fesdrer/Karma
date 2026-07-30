@@ -146,13 +146,13 @@ fun ParticleEngineCanvas(
         }
     }
     val divineTextPaint = remember {
-        android.text.TextPaint().apply { isFakeBoldText = true; isAntiAlias = true }
+        android.text.TextPaint().apply { isFakeBoldText = true; isAntiAlias = true; color = android.graphics.Color.RED }
     }
     val divineBracketPaint = remember {
         android.graphics.Paint().apply { isFakeBoldText = true; isAntiAlias = true }
     }
     val normalTextPaint = remember {
-        android.text.TextPaint().apply { isAntiAlias = true }
+        android.text.TextPaint().apply { isAntiAlias = true; color = android.graphics.Color.RED }
     }
     val normalBracketPaint = remember {
         android.graphics.Paint().apply { isAntiAlias = true }
@@ -292,7 +292,7 @@ fun ParticleEngineCanvas(
         if (textVisible > 0f) {
             val textAlpha = (textVisible * 255f).toInt().coerceIn(0, 255)
             // 确保 StaticLayout 已缓存（仅在 canvas 宽度或 purpose 变化时重建）
-            state.ensureLayouts(w, purpose, divineTextPaint, normalTextPaint, scale)
+            state.ensureLayouts(w, purpose, divineTextPaint, normalTextPaint, scale, textAlpha)
             if (state.isDivine) {
                 amountPaint.apply {
                     color = android.graphics.Color.argb(textAlpha, 255, 68, 68)
@@ -396,6 +396,7 @@ private class ParticleState(
     var cachedNormalLayout: android.text.StaticLayout? = null
     private var lastLayoutCanvasW: Float = -1f
     private var lastLayoutPurpose: String = ""
+    private var lastLayoutAlpha: Int = -1
 
     /** 在 Canvas 中调用：仅在 canvas 宽度或 purpose 变化时重建 StaticLayout */
     fun ensureLayouts(
@@ -404,19 +405,23 @@ private class ParticleState(
         divineTextPaint: android.text.TextPaint,
         normalTextPaint: android.text.TextPaint,
         scale: Float,
+        textAlpha: Int = 255,
     ) {
-        if (canvasW == lastLayoutCanvasW && purpose == lastLayoutPurpose) return
+        if (canvasW == lastLayoutCanvasW && purpose == lastLayoutPurpose && textAlpha == lastLayoutAlpha) return
         lastLayoutCanvasW = canvasW
         lastLayoutPurpose = purpose
+        lastLayoutAlpha = textAlpha
         val maxWidth = (canvasW * 0.74f).toInt()
         if (isDivine && maxWidth > 0) {
             divineTextPaint.textSize = 44f * scale
+            divineTextPaint.alpha = textAlpha
             cachedDivineLayout = android.text.StaticLayout.Builder
                 .obtain(purpose, 0, purpose.length, divineTextPaint, maxWidth)
                 .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)
                 .build()
         } else if (!isDivine && maxWidth > 0) {
             normalTextPaint.textSize = 36f * scale
+            normalTextPaint.alpha = textAlpha
             cachedNormalLayout = android.text.StaticLayout.Builder
                 .obtain(purpose, 0, purpose.length, normalTextPaint, maxWidth)
                 .setAlignment(android.text.Layout.Alignment.ALIGN_CENTER)

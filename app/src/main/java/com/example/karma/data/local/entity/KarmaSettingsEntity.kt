@@ -83,4 +83,8 @@ data class KarmaSettingsEntity(
     val timerAccumulatedMs: Long = 0L,          // 暂停时累计的毫秒数
     val timerSelectedScore: Float = 0f,
     val timerSelectedEvent: String = "",
+
+    // ===== 启动经文 =====
+    val splashScripture: String = "凡所有相，皆是虚妄。若见诸相非相，即见如来。",
+    val splashDurationSec: Int = 3,
 )

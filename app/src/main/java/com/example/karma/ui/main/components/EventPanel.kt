@@ -317,13 +317,20 @@ private fun EventSection(
                     .background(
                         when {
                             isSelected -> Color(0xFFffd700).copy(alpha = 0.1f)
-                            // 每日必做：deed.vis=0 未做蓝色，deed.vis=1 已做绿色
+                            // 每日必做：deed.vis=0 未做蓝色（带天蓝色边框），deed.vis=1 已做绿色
                             deed != null && deed.vis == 0 -> Color(0xFF4488ff).copy(alpha = 0.15f)
                             deed != null && deed.vis == 1 -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "善业" -> Color(0xFF69f0ae).copy(alpha = 0.08f)
                             title == "恶业" -> Color(0xFFff5252).copy(alpha = 0.08f)
                             title == "善果" -> Color(0xFFffd700).copy(alpha = 0.08f)
                             else -> ScoreBtnBg
+                        }
+                    )
+                    .then(
+                        if (deed != null && deed.vis == 0) {
+                            Modifier.border(1.dp, Color(0xFF00D4FF).copy(alpha = 0.55f), RoundedCornerShape(7.dp))
+                        } else {
+                            Modifier
                         }
                     )
                     .padding(horizontal = 8.dp)

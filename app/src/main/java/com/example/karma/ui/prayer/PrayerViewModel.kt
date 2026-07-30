@@ -19,6 +19,8 @@ data class PrayerUiState(
     val rankLevel: Int = 1,
     val totalRanks: Int = 9,
     val errorMessage: String? = null,
+    val showDeityInput: Boolean = false,
+    val deity: String = "",
 )
 
 class PrayerViewModel(
@@ -49,6 +51,14 @@ class PrayerViewModel(
         _uiState.value = _uiState.value.copy(purpose = text)
     }
 
+    fun onToggleDeityInput() {
+        _uiState.value = _uiState.value.copy(showDeityInput = !_uiState.value.showDeityInput)
+    }
+
+    fun onDeityChanged(text: String) {
+        _uiState.value = _uiState.value.copy(deity = text)
+    }
+
     fun confirmPrayer() {
         val state = _uiState.value
         val amount = state.amount.toFloatOrNull()
@@ -71,7 +81,8 @@ class PrayerViewModel(
 
         // Record prayer and start animation
         viewModelScope.launch {
-            repository.addHistoryEntry(-amount, "祈福：\n${state.purpose}", "prayer")
+            val deitySuffix = if (state.deity.isNotBlank()) "（神明：${state.deity}）" else ""
+            repository.addHistoryEntry(-amount, "祈福：\n${state.purpose}$deitySuffix", "prayer")
             _uiState.value = _uiState.value.copy(
                 showForm = false,
                 isAnimating = true,

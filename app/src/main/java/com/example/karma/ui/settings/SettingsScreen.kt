@@ -243,6 +243,12 @@ fun SettingsScreen(
                 onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
                 onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
             )
+            SplashSettingsCard(
+                splashScripture = draft.splashScripture,
+                splashDurationSec = draft.splashDurationSec,
+                onScriptureChange = { viewModel.updateSplashScripture(it) },
+                onDurationChange = { viewModel.updateSplashDuration(it) },
+            )
             ResetCard(
                 onReset = { viewModel.resetToDefaults() },
             )
@@ -789,6 +795,73 @@ private fun BackgroundGradientCard(
             onColorSelected = { onAccentColorChange(it); showAccentColorPicker = false },
             onDismiss = { showAccentColorPicker = false },
         )
+    }
+}
+
+// ============================================================
+// SplashSettingsCard — 启动经文设置
+// ============================================================
+
+@Composable
+private fun SplashSettingsCard(
+    splashScripture: String,
+    splashDurationSec: Int,
+    onScriptureChange: (String) -> Unit,
+    onDurationChange: (Int) -> Unit,
+) {
+    SettingsCard("启动经文") {
+        Text(
+            "输入启动时显示的经文或境界语（金色竖排文字，自动缩放）",
+            fontSize = 12.sp,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Text("经文内容", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = splashScripture,
+            onValueChange = onScriptureChange,
+            modifier = Modifier.fillMaxWidth().heightIn(min = 80.dp),
+            singleLine = false,
+            minLines = 3,
+            textStyle = MaterialTheme.typography.bodySmall.copy(
+                fontFamily = FontFamily.Serif,
+                color = Color(0xFFffd700),
+            ),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = BorderSubtle,
+                focusedTextColor = Color(0xFFffd700),
+                unfocusedTextColor = Color(0xFFffd700),
+                cursorColor = Gold,
+            ),
+        )
+
+        Spacer(Modifier.height(16.dp))
+
+        Text("停留秒数", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        var durationText by remember(splashDurationSec) { mutableStateOf(splashDurationSec.toString()) }
+        OutlinedTextField(
+            value = durationText,
+            onValueChange = { v ->
+                durationText = v
+                v.toIntOrNull()?.let { onDurationChange(it.coerceIn(1, 30)) }
+            },
+            modifier = Modifier.widthIn(min = 70.dp),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Serif),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = BorderSubtle,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+            ),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text("建议 1~10 秒", fontSize = 11.sp, color = TextMuted)
     }
 }
 

@@ -134,6 +134,7 @@ class TimerService : Service() {
     override fun onBind(intent: Intent?): IBinder? = null
 
     private fun startTiming(score: Float, event: String) {
+        if (_timerState.value.status == TimerStatus.RUNNING || _timerState.value.status == TimerStatus.PAUSED) return
         val now = SystemClock.elapsedRealtime()
         _timerState.value = TimerState(
             status = TimerStatus.RUNNING,

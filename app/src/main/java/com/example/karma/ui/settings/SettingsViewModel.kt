@@ -243,6 +243,14 @@ class SettingsViewModel(
         return _draft.value.dailyMustDoDeeds.find { it.name == deedName }?.penalty ?: 0f
     }
 
+    // ===== 启动经文 =====
+    fun updateSplashScripture(text: String) {
+        setDraft(_draft.value.copy(splashScripture = text))
+    }
+    fun updateSplashDuration(sec: Int) {
+        setDraft(_draft.value.copy(splashDurationSec = sec.coerceIn(1, 30)))
+    }
+
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {

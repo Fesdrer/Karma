@@ -3,6 +3,7 @@ package com.example.karma.ui.main
 import android.os.SystemClock
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -15,13 +16,17 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Scaffold
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import com.example.karma.data.local.entity.KarmaSettingsEntity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -37,6 +42,7 @@ import com.example.karma.ui.main.components.ScorePanel
 import com.example.karma.ui.timer.TimerService
 import kotlin.math.round
 import kotlinx.coroutines.NonCancellable
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -55,6 +61,18 @@ fun MainScreen(
     val state by viewModel.uiState.collectAsState()
     val effectiveScore by viewModel.effectiveScoreState.collectAsState()
     val context = LocalContext.current
+
+    // 经文启动画面阶段
+    var splashDone by remember { mutableStateOf(false) }
+    val settings by appContainer.repository.settings.collectAsState(initial = KarmaSettingsEntity())
+
+    // 数据加载完成后等待指定秒数再显示主界面
+    LaunchedEffect(state != null) {
+        if (state != null) {
+            delay((settings.splashDurationSec * 1000L).coerceAtLeast(1000L))
+            splashDone = true
+        }
+    }
 
     // 数据就绪时从纯黑渐变到主页面
     Crossfade(targetState = state != null, animationSpec = tween(300)) { ready ->
@@ -195,15 +213,17 @@ fun MainScreen(
                     onStopTimer = { elapsedMs ->
                         val ts = TimerService.timerState.value
                         val totMin = elapsedMs / 60000.0
-                        val delta = round(totMin / 60.0 * ts.selectedScore * 2.0) / 2.0
+                        val capturedEvent = ts.selectedEvent
+                        val capturedScore = ts.selectedScore
+                        val delta = round(totMin / 60.0 * capturedScore * 2.0) / 2.0
                         viewModel.viewModelScope.launch {
                             try {
                                 // ★ 先写 DB（标记每日必做完成 + 添加历史记录）
-                                val deed = s.dailyMustDoDeeds.find { it.name == ts.selectedEvent }
+                                val deed = s.dailyMustDoDeeds.find { it.name == capturedEvent }
                                 if (deed != null && deed.vis == 0) {
-                                    appContainer.repository.markDeedDone(ts.selectedEvent)
+                                    appContainer.repository.markDeedDone(capturedEvent)
                                 }
-                                appContainer.repository.addHistoryEntry(delta.toFloat(), ts.selectedEvent, "record")
+                                appContainer.repository.addHistoryEntry(delta.toFloat(), capturedEvent, "record")
                             } finally {
                                 // ★ DB 写入完成后才停服务，保证 LaunchedEffect 的 collect
                                 //    读到 STOPPED 时 DB 数据已经是最新的，不会并发覆盖。
@@ -228,5 +248,51 @@ fun MainScreen(
             )
         }
     }
+    }
+
+    // ---- 经文启动画面覆盖层 ----
+    if (!splashDone && state != null) {
+        ScriptureOverlay(
+            text = settings.splashScripture.ifEmpty { "凡所有相，皆是虚妄。若见诸相非相，即见如来。" },
+            modifier = Modifier.fillMaxSize(),
+        )
+    }
+}
+
+/**
+ * 竖排经文画面：金色衬线体，从右到左排列，自动缩放适应屏幕
+ */
+@Composable
+private fun ScriptureOverlay(text: String, modifier: Modifier = Modifier) {
+    Canvas(modifier = modifier.background(Color(0xFF0a0a0f))) {
+        val w = size.width
+        val h = size.height
+        val charCount = text.length
+        if (charCount == 0) return@Canvas
+
+        // 计算自适应字体大小
+        val maxFontSizeByWidth = w.toFloat() / (charCount * 1.5f)   // 宽：每字占 1.5倍字号
+        val maxFontSizeByHeight = h.toFloat() / 1.4f                // 高：单行占 1.4倍字号
+        val fontSize = maxFontSizeByWidth.coerceAtMost(maxFontSizeByHeight)
+
+        val paint = android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(255, 255, 215, 0)   // 金色
+            textSize = fontSize
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.SERIF              // 衬线体
+            textAlign = android.graphics.Paint.Align.CENTER
+        }
+
+        val charHeight = fontSize * 1.3f
+        val columnSpacing = fontSize * 0.5f                         // 列间距 = 0.5倍字号
+
+        val startX = w - (fontSize / 2f)                            // 最右列中心 X
+        val centerY = h / 2f                                        // 垂直居中
+
+        text.forEachIndexed { index, ch ->
+            val colX = startX - index * (fontSize + columnSpacing)  // 从右到左
+            val charY = centerY + charHeight / 2f
+            drawContext.canvas.nativeCanvas.drawText(ch.toString(), colX, charY, paint)
+        }
     }
 }

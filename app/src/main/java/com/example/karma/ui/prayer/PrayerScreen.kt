@@ -21,6 +21,8 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -197,7 +199,58 @@ fun PrayerScreen(
                                 .padding(end = 8.dp, bottom = 4.dp),
                         )
                     }
-                    Spacer(Modifier.height(20.dp))
+                    Spacer(Modifier.height(16.dp))
+
+                    // ———— 神明切换 ————
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "添加神明",
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFffd700),
+                        )
+                        Switch(
+                            checked = state.showDeityInput,
+                            onCheckedChange = { viewModel.onToggleDeityInput() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFffd700),
+                                checkedTrackColor = Color(0xFFffd700).copy(alpha = 0.3f),
+                            ),
+                        )
+                    }
+
+                    if (state.showDeityInput) {
+                        Spacer(Modifier.height(12.dp))
+                        Text(
+                            text = "神明",
+                            fontSize = 13.sp,
+                            color = Color(0xFF888888),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(Modifier.height(4.dp))
+                        OutlinedTextField(
+                            value = state.deity,
+                            onValueChange = { viewModel.onDeityChanged(it) },
+                            placeholder = { Text("输入神明名称...", color = Color(0xFF666666)) },
+                            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
+                            textStyle = TextStyle(color = Color(0xFFff0000), fontSize = 16.sp),
+                            singleLine = true,
+                            shape = RoundedCornerShape(10.dp),
+                            colors = OutlinedTextFieldDefaults.colors(
+                                focusedBorderColor = Color(0xFFffd700),
+                                unfocusedBorderColor = BorderSubtle,
+                                cursorColor = Color(0xFFff0000),
+                                focusedContainerColor = ScoreBtnBg,
+                                unfocusedContainerColor = ScoreBtnBg,
+                            ),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    Spacer(Modifier.height(16.dp))
 
                     // Action buttons
                     Row(

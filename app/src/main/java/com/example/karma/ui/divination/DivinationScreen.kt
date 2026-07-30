@@ -39,6 +39,10 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -69,6 +73,13 @@ fun DivinationScreen(
     var luckComputing by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+
+    // 占卜输入面板状态
+    var divinationTopic by remember { mutableStateOf("") }
+    var divinationCost by remember { mutableStateOf("") }
+    var divinationReady by remember { mutableStateOf(false) }
+    var xlrRecorded by remember { mutableStateOf(false) }
+    var yarrowRecorded by remember { mutableStateOf(false) }
 
     // 小六壬 ViewModel（tab 2）
     val xlrViewModel: DivinationViewModel = viewModel(
@@ -166,6 +177,16 @@ fun DivinationScreen(
                 // 大衍筮法 — ViewModel 在此内部创建，切换 tab 后自动释放
                 val yv: YarrowViewModel = viewModel(factory = YarrowViewModel.Factory())
                 val ys by yv.uiState.collectAsState()
+
+                // 占卜完成自动记录
+                LaunchedEffect(ys.showResult) {
+                    if (ys.showResult && !yarrowRecorded) {
+                        val cost = divinationCost.toFloatOrNull() ?: return@LaunchedEffect
+                        appContainer.repository.addHistoryEntry(-cost, "占卜：${divinationTopic}", "divination")
+                        yarrowRecorded = true
+                    }
+                }
+
                 Box(modifier = Modifier.fillMaxSize()) {
                     YarrowCanvas(
                         state = ys,
@@ -217,6 +238,16 @@ fun DivinationScreen(
             }
             2 -> {
                 // 小六壬 — 完整功能
+
+                // 占卜完成自动记录
+                LaunchedEffect(xlrState.animationPhase) {
+                    if (xlrState.animationPhase == AnimationPhase.COMPLETE && !xlrRecorded) {
+                        val cost = divinationCost.toFloatOrNull() ?: return@LaunchedEffect
+                        appContainer.repository.addHistoryEntry(-cost, "占卜：${divinationTopic}", "divination")
+                        xlrRecorded = true
+                    }
+                }
+
                 XiaoLiuRenContent(
                     state = xlrState,
                     onInputModeChanged = xlrViewModel::setInputMode,
@@ -280,7 +311,77 @@ fun DivinationScreen(
                 }
             }
         }
+
+        // 占卜输入面板（未确认输入时覆盖全屏）
+        if (!divinationReady) {
+            Box(
+                modifier = Modifier.fillMaxSize().background(Color(0xFF0a0a0f)),
+                contentAlignment = Alignment.Center,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth(0.9f)
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(Color(0xFF1a1a2e))
+                        .border(1.dp, Color(0xFFb8860b).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                        .padding(24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("🔮 占卜", fontSize = 24.sp, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, color = Color(0xFFffd700))
+                    Spacer(Modifier.height(20.dp))
+                    Text("占卜的事情", fontSize = 13.sp, color = Color(0xFF888888), modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = divinationTopic,
+                        onValueChange = { divinationTopic = it },
+                        placeholder = { Text("输入占卜事情...", color = Color(0xFF666666)) },
+                        textStyle = TextStyle(color = Color(0xFFff0000), fontFamily = FontFamily.Serif, fontSize = 16.sp),
+                        singleLine = false, minLines = 2, maxLines = 4,
+                        shape = RoundedCornerShape(10.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFffd700), unfocusedBorderColor = Color(0xFF334444),
+                            cursorColor = Color(0xFFff0000), focusedContainerColor = Color(0xFF111122), unfocusedContainerColor = Color(0xFF111122),
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(16.dp))
+                    Text("本次扣除业力分数", fontSize = 13.sp, color = Color(0xFF888888), modifier = Modifier.fillMaxWidth())
+                    Spacer(Modifier.height(4.dp))
+                    OutlinedTextField(
+                        value = divinationCost,
+                        onValueChange = { divinationCost = it.filter { c -> c.isDigit() } },
+                        placeholder = { Text("输入正数...", color = Color(0xFF666666)) },
+                        textStyle = TextStyle(color = Color(0xFFe0e0e0), fontFamily = FontFamily.Serif, fontSize = 16.sp),
+                        singleLine = true,
+                        shape = RoundedCornerShape(10.dp),
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedBorderColor = Color(0xFFffd700), unfocusedBorderColor = Color(0xFF334444),
+                            cursorColor = Color(0xFFe0e0e0), focusedContainerColor = Color(0xFF111122), unfocusedContainerColor = Color(0xFF111122),
+                        ),
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                    Spacer(Modifier.height(20.dp))
+                    Button(
+                        onClick = {
+                            if (divinationTopic.isBlank()) {
+                                Toast.makeText(context, "请输入占卜的事情", Toast.LENGTH_SHORT).show()
+                            } else if (divinationCost.toFloatOrNull() == null || divinationCost.toFloat() <= 0f) {
+                                Toast.makeText(context, "请输入有效的业力分数（正数）", Toast.LENGTH_SHORT).show()
+                            } else {
+                                divinationReady = true
+                            }
+                        },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFb8860b), contentColor = Color.White),
+                        modifier = Modifier.fillMaxWidth().height(48.dp),
+                    ) {
+                        Text("开始占卜", fontFamily = FontFamily.Serif, fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+            }
         }
+    }
     }
 }
 
