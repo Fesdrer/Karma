@@ -29,6 +29,7 @@ import androidx.compose.runtime.setValue
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -264,66 +265,132 @@ fun MainScreen(
 }
 
 /**
- * 竖排经文画面：金色衬线体，从右到左排列，先填满一列再换下一列，左右居中、上下居中
+ * 竖排经文画面：金色衬线体，从右到左排列，先填满一列再换下一列。
+ * 上下预留空间避开系统栏，列间有金色分割线，四周有金色边框（仿古书样式）。
  */
 @Composable
 private fun ScriptureOverlay(text: String, modifier: Modifier = Modifier) {
+    val density = LocalDensity.current
+    val topPadPx = with(density) { 56.dp.toPx() }       // 顶部预留（状态栏）
+    val botPadPx = with(density) { 56.dp.toPx() }       // 底部预留（导航栏）
+    val maxFontSizePx = with(density) { 42.dp.toPx() }  // 最大字号
+    val borderPadPx = with(density) { 12.dp.toPx() }    // 边框与文字间距
+    val lineStroke = with(density) { 1.dp.toPx() }      // 线宽
+
     Canvas(modifier = modifier.background(Color(0xFF0a0a0f))) {
         val w = size.width
         val h = size.height
-        val charCount = text.length
-        if (charCount == 0) return@Canvas
+        if (text.isEmpty()) return@Canvas
 
-        val paint = android.graphics.Paint().apply {
+        val textPaint = android.graphics.Paint().apply {
             color = android.graphics.Color.argb(255, 255, 215, 0)   // 金色
             isAntiAlias = true
             typeface = android.graphics.Typeface.SERIF              // 衬线体
             textAlign = android.graphics.Paint.Align.CENTER
         }
 
-        val lineHeightFactor = 1.4f      // 行高倍率
-        val columnSpacingFactor = 0.5f   // 列间距倍率（相对于字号）
+        val borderPaint = android.graphics.Paint().apply {
+            color = android.graphics.Color.argb(200, 255, 215, 0)  // 半透明金
+            isAntiAlias = true
+            strokeWidth = lineStroke
+            style = android.graphics.Paint.Style.STROKE
+        }
 
-        // 迭代计算自适应字号：确保文字块不超出屏幕宽度
-        var fontSize = minOf(w / 3f, h / (3f * lineHeightFactor))
+        val lineHeightFactor = 1.4f
+        val columnSpacingFactor = 0.5f
+
+        val availH = h - topPadPx - botPadPx   // 扣除上下预留后的可用高度
+
+        /** 按 \n 分段，每段内按 maxCharsPerCol 自动换列，返回各列字符串 */
+        fun buildColumns(maxPerCol: Int): List<String> {
+            val result = mutableListOf<String>()
+            val sb = StringBuilder()
+            for (ch in text) {
+                if (ch == '\n') {
+                    result.add(sb.toString())
+                    sb.clear()
+                } else {
+                    if (sb.length >= maxPerCol) {
+                        result.add(sb.toString())
+                        sb.clear()
+                    }
+                    sb.append(ch)
+                }
+            }
+            if (sb.isNotEmpty()) result.add(sb.toString())
+            return result
+        }
+
+        // 迭代计算自适应字号：不超过最大字号，且文字块不超出屏幕宽度
+        var fontSize = minOf(w / 3f, availH / (3f * lineHeightFactor), maxFontSizePx)
         var maxCharsPerCol = 1
-        var columns = charCount
+        var columnTexts: List<String> = buildColumns(maxCharsPerCol)
         for (iter in 0 until 30) {
-            paint.textSize = fontSize
-            maxCharsPerCol = maxOf(1, (h / (fontSize * lineHeightFactor)).toInt())
-            columns = (charCount + maxCharsPerCol - 1) / maxCharsPerCol
+            textPaint.textSize = fontSize
+            maxCharsPerCol = maxOf(1, (availH / (fontSize * lineHeightFactor)).toInt())
+            columnTexts = buildColumns(maxCharsPerCol)
+            val columns = columnTexts.size
             val totalWidth = columns * fontSize * (1f + columnSpacingFactor) - fontSize * columnSpacingFactor
-            if (totalWidth <= w) break
+            if (totalWidth + borderPadPx * 2 + lineStroke * 2 <= w) break
             fontSize *= 0.95f
         }
 
-        val charHeight = fontSize * lineHeightFactor   // 每字占用高度
-        val colWidth = fontSize * (1f + columnSpacingFactor)  // 列宽（字宽+列间距）
+        val columns = columnTexts.size
+        if (columns == 0) return@Canvas
 
-        // 文字块总宽度（所有列）
-        val totalWidth = columns * colWidth - fontSize * columnSpacingFactor
+        val charHeight = fontSize * lineHeightFactor
+        val colWidth = fontSize * (1f + columnSpacingFactor)
 
-        // 最右列中心 X（左右居中）
-        val rightEdgeX = (w + totalWidth) / 2f
+        // 文字块尺寸
+        val textBlockW = columns * colWidth - fontSize * columnSpacingFactor
+        val textBlockH = maxCharsPerCol * charHeight
 
-        // 竖排：从右到左逐列绘制，每列从上到下填满字符
+        // 文字块左右居中、上下置顶
+        val blockLeft = (w - textBlockW) / 2f
+        val blockTop = topPadPx
+
+        // 边框矩形（文字块 + 内边距）
+        val frameLeft = blockLeft - borderPadPx
+        val frameTop = blockTop - borderPadPx
+        val frameRight = blockLeft + textBlockW + borderPadPx
+        val frameBottom = blockTop + textBlockH + borderPadPx
+
+        // === 绘制金色边框 ===
+        // 上下边框（比左右稍粗，仿古籍线装）
+        borderPaint.strokeWidth = lineStroke * 1.5f
+        drawContext.canvas.nativeCanvas.drawLine(frameLeft, frameTop, frameRight, frameTop, borderPaint)
+        drawContext.canvas.nativeCanvas.drawLine(frameLeft, frameBottom, frameRight, frameBottom, borderPaint)
+
+        // 左右边框
+        borderPaint.strokeWidth = lineStroke
+        drawContext.canvas.nativeCanvas.drawLine(frameLeft, frameTop, frameLeft, frameBottom, borderPaint)
+        drawContext.canvas.nativeCanvas.drawLine(frameRight, frameTop, frameRight, frameBottom, borderPaint)
+
+        // === 列间分割竖线 ===
+        // 最右列中心 X（col=0 在最右，从右到左排列）
+        val rightColX = blockLeft + textBlockW - fontSize / 2f
+        borderPaint.strokeWidth = lineStroke
+        for (col in 1 until columns) {
+            val dividerX = rightColX - col * colWidth + colWidth / 2f
+            drawContext.canvas.nativeCanvas.drawLine(dividerX, frameTop, dividerX, frameBottom, borderPaint)
+        }
+
+        // === 绘制竖排文字（从右到左），每列顶部对齐 ===
         for (col in 0 until columns) {
-            val charStart = col * maxCharsPerCol
-            val charEnd = minOf(charStart + maxCharsPerCol, charCount)
-            val charsInThisCol = charEnd - charStart
+            val colText = columnTexts[col]
+            val charsInThisCol = colText.length
+            if (charsInThisCol == 0) continue  // 空列（段落间距）
 
-            // 此列中心 X（从右到左递减）
-            val colX = rightEdgeX - col * colWidth
+            // 列中心 X：col=0 在最右
+            val colX = rightColX - col * colWidth
 
-            // 此列文字垂直居中
-            val colHeight = charsInThisCol * charHeight
-            val startY = (h - colHeight) / 2f + fontSize  // baseline 偏移
+            // 此列文字从顶部开始
+            val startY = blockTop + fontSize
 
             for (row in 0 until charsInThisCol) {
-                val charIndex = charStart + row
-                val ch = text[charIndex].toString()
+                val ch = colText[row].toString()
                 val charY = startY + row * charHeight
-                drawContext.canvas.nativeCanvas.drawText(ch, colX, charY, paint)
+                drawContext.canvas.nativeCanvas.drawText(ch, colX, charY, textPaint)
             }
         }
     }
