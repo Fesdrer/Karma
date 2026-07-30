@@ -11,9 +11,9 @@
       "type": "SINGLE",
       "filters": [],
       "attributes": [],
-      "versionCode": 16,
-      "versionName": "3.8",
-      "outputFile": "Karma-v3.8.apk"
+      "versionCode": 17,
+      "versionName": "3.9",
+      "outputFile": "Karma-v3.9.apk"
     }
   ],
   "elementType": "File",
@@ -22,14 +22,14 @@
       "minApi": 28,
       "maxApi": 30,
       "baselineProfiles": [
-        "baselineProfiles/1/Karma-v3.8.dm"
+        "baselineProfiles/1/Karma-v3.9.dm"
       ]
     },
     {
       "minApi": 31,
       "maxApi": 2147483647,
       "baselineProfiles": [
-        "baselineProfiles/0/Karma-v3.8.dm"
+        "baselineProfiles/0/Karma-v3.9.dm"
       ]
     }
   ],
