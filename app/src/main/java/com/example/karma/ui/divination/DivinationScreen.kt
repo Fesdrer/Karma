@@ -14,6 +14,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -137,7 +138,8 @@ fun DivinationScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = 32.dp)
-                        .padding(bottom = 72.dp),
+                        .padding(bottom = 72.dp)
+                        .navigationBarsPadding(),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center,
                 ) {
@@ -221,7 +223,7 @@ fun DivinationScreen(
                             else yv.onSplitTap(num)
                         },
                         onPhaseComplete = yv::advancePhase,
-                        modifier = Modifier.fillMaxSize().padding(bottom = 52.dp),
+                        modifier = Modifier.fillMaxSize().padding(bottom = 52.dp).navigationBarsPadding(),
                     )
                     // 十八变完成后，显示神圣"查看启示"按钮
                     if (ys.phase == YarrowPhase.REVELATION_READY && ys.result != null) {
@@ -318,18 +320,20 @@ fun DivinationScreen(
                     },
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(bottom = 52.dp),
+                        .padding(bottom = 52.dp)
+                        .navigationBarsPadding(),
                 )
                 } // end else xlrReady
             }
             } // end when
         } // end Crossfade
 
-        // Bottom tab bar
+        // Bottom tab bar（底部导航栏存在时整体上移避开系统栏）
         Row(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .navigationBarsPadding()
                 .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(12.dp))
                 .clip(RoundedCornerShape(12.dp))
                 .padding(horizontal = 16.dp, vertical = 8.dp),

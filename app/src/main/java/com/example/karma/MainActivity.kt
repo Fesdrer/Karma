@@ -18,9 +18,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         super.onCreate(savedInstanceState)
 
-        // 沉浸式状态栏/导航栏：深色背景 + 浅色图标
-        window.statusBarColor = android.graphics.Color.rgb(10, 10, 10)
-        window.navigationBarColor = android.graphics.Color.rgb(10, 10, 10)
+        // 沉浸式状态栏/导航栏：系统栏透明化由 enableEdgeToEdge 处理，
+        // 栏后区域由 App 自身的渐变背景接管（消除系统绘制的"黑框"）。
+        // 图标明暗自适应（随渐变顶色亮度）在 Theme.kt 中动态设置；
+        // 此处先设浅色图标作为深色主题下的初始默认值。
         WindowCompat.getInsetsController(window, window.decorView).apply {
             isAppearanceLightStatusBars = false
             isAppearanceLightNavigationBars = false

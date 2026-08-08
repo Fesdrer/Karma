@@ -9,7 +9,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.navigationBars
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -294,8 +297,9 @@ fun MainScreen(
 @Composable
 private fun ScriptureOverlay(text: String, modifier: Modifier = Modifier) {
     val density = LocalDensity.current
-    val topPadPx = with(density) { 56.dp.toPx() }       // 顶部预留（状态栏）
-    val botPadPx = with(density) { 56.dp.toPx() }       // 底部预留（导航栏）
+    // 上下预留 = 真实系统栏 inset + 16dp 呼吸边距（不再硬编码 56dp，适应任意机型栏高/刘海）
+    val topPadPx = with(density) { WindowInsets.statusBars.getTop(density).toFloat() + 16.dp.toPx() }
+    val botPadPx = with(density) { WindowInsets.navigationBars.getBottom(density).toFloat() + 16.dp.toPx() }
     val maxFontSizePx = with(density) { 42.dp.toPx() }  // 最大字号
     val borderPadPx = with(density) { 12.dp.toPx() }    // 边框与文字间距
     val lineStroke = with(density) { 1.dp.toPx() }      // 线宽
