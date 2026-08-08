@@ -2,7 +2,7 @@
 
 记录每日善恶因果，见证业力流转。一款以业力为主题的生活记录与可视化工具。
 
-> **版本**：3.9 | **技术栈**：Kotlin + Jetpack Compose + Material3 + Room | **最低 SDK**：Android 7.0
+> **版本**：3.10 | **技术栈**：Kotlin + Jetpack Compose + Material3 + Room | **最低 SDK**：Android 7.0
 
 ---
 
@@ -28,7 +28,7 @@
 │        │             │   ...             │
 │        │             │  ▶ 开始计时 +1.5  │  ← 计时按钮
 ├────────┴──────────────┴──────────────────┤
-│  [确认]  [祈福]  [占卜]  [历史]  [⚙]     │
+│  [确认] [祈福] [誓约] [占卜] [历史] [⚙] │
 └─────────────────────────────────────────┘
 ```
 
@@ -86,18 +86,19 @@
 
 ## 🧭 导航总览
 
-底部五个按钮 + 右栏内嵌计时控制：
+底部六个按钮 + 右栏内嵌计时控制：
 
 | 按钮 | 条件 | 用途 |
 |:---:|:---:|:------|
 | **确认** | 需同时选择分数和事件 | 提交本次业力变动（即时记录） |
 | **▶ 开始计时** | 需同时选择分数和事件 | 右栏底部内嵌计时控制，正计时累计，暂停/继续，停止时按公式 `round(分钟/60×分数, 0.5)` 记录 |
 | **祈福** | 总分 ≥ 30 分才可点击 | 消耗业力换取心愿，可换行输入祈福目的和神明（开关控制），伴随粒子动画 |
+| **誓约** | 始终可用 | 立下对赌誓言（内容/期限/成功加分/失败减分），信守 ✔ 加分、违背 × 减分，点击行查看详情 |
 | **占卜** | 气运测试始终可用；小六壬/大衍筮法需 3 阶以上 | 三标签页：气运测试（随机概率）/ 大衍筮法（需输入事情+扣分）/ 小六壬（需输入事情+扣分），完成后自动记录 |
 | **历史** | 始终可用 | 折线图查看业力变化趋势（支持日期导航与缩放） |
 | **⚙** | 始终可用 | 自定义所有设置项 |
 
-> 所有页面切换带有 300ms 渐入渐出动画 (Crossfade / fadeIn)，体验平滑流畅。
+> 页面切换动画：除设置页外均为 250ms 淡入淡出；设置页为瞬间切换——它是全应用最重的页面，淡入淡出会每帧整树重绘导致掉帧（详见版本记录 v3.10）。
 
 ---
 
@@ -154,6 +155,16 @@
 - **气运测试**（tab 0）：无需输入和扣除分数，直接点击「开始」→ 在后台协程中模拟 1000 次随机抛硬币（49% 正面概率），不阻塞 UI，显示正面次数
 - **大衍筮法**（tab 1）：需达到 **3 阶**以上，进入前须输入占卜事情和扣除业力分数。最古老的周易起卦方法（揲蓍法），以 50 根翠绿策棒模拟天地运行，经 18 变（6 爻 × 3 变）得出本卦与变卦。完成后展示四块启示：本卦｜变卦（Canvas 手绘六爻+阴阳线）、卦象总纲、六爻精解（动爻标 ★ 高亮）、变卦指向总结。卦库含 64 卦完整启示 + 体用生克合解引擎，采用 load/release 模式。占卜完成后自动记录扣分到历史，点击「再来一次」重新弹出输入框
 - **小六壬**（tab 2）：需达到 **3 阶**以上，进入前须输入占卜事情和扣除业力分数。传统掌诀占卜（马前课），以月、日、时辰在手掌六宫上掐指推算吉凶。输入支持传统农历和任意数字双模式，动画采用移动光点+虚幻拖尾沿六宫路径游走，最终展示古卷轴风格结果卡（宫名/吉凶/五行/六神/口诀/五项启示）。占卜完成后自动记录扣分到历史，点击「再来一次」重新弹出输入框
+
+### 誓约（★ v3.10 新增）
+
+底部「祈福」与「占卜」之间的「誓约」入口。立下对赌誓言，信守加分、违背减分：
+
+- 右上角「+」填写四项：对赌内容、时间期限（纯文本）、成功加分、失败减分（填正数，失败时扣除）
+- 点「确定」：历史新增 `誓约：内容/期限/+加分/-减分` 四行记录（分数不变），誓约进入进行中列表
+- 列表每行有独立 ✔（成功 → 总分加成功分）和 ×（失败 → 总分减失败分）按钮，了结后该誓约从列表消失
+- 点击誓约行 → 详情弹窗查看完整信息（含立誓时间）；不支持中途撤销
+- 数据存于 settings 的 JSON 列，随 JSON 导出/导入自动备份
 
 ### 运气增幅（★ v3.5 新增）
 
@@ -280,17 +291,18 @@
 
 ```
 Kotlin + Jetpack Compose
-├── UI Layer     → 5个 Compose Screen（主屏/历史/祈福/占卜/设置）
+├── UI Layer     → 6个 Compose Screen（主屏/历史/祈福/誓约/占卜/设置）
 ├── ViewModel    → MainVM / HistoryVM / PrayerVM / DivinationVM / YarrowVM / SettingsVM
 ├── Service      → TimerService（前台 Service，熄屏持续计时 + 通知栏显示）
 ├── Repository   → KarmaRepository（业务逻辑 + 数据聚合 + 导入导出）
-├── Data Layer   → Room (HistoryEntry + KarmaSettings, 2 DAO, 10 migrations)
+├── Data Layer   → Room (HistoryEntry + KarmaSettings, 2 DAO, 13 migrations)
 └── DI           → AppContainer（手动依赖注入）
 ```
 
 ### 技术亮点
 
 - **多轮性能优化**（v3.6）：粒子引擎 StaticLayout 缓存 + Path 复用、AxisCanvas exp/scale 预计算、PillarCanvas withFrameMillis 同步 vsync、ThreadCanvas 缓存计数 + 去重分配、TimerService PendingIntent 缓存、1000 次随机移后台协程、LuckAmplifier debounce 出 combine 热路径、多处 Paint 预分配 + Calendar 复用、死代码清理
+- **流体交互打磨**（v3.10）：全局按压反馈（0.95 缩放 + 弹簧回弹）、功德分数弹跳、分数轴拖动 1:1 跟手 + 释放吸附半格、弹窗材质化入场（遮罩淡入 + 卡片弹簧放大）
 - **HSV+RGB 颜色选择器**：零依赖自制，Material3 Slider + android.graphics.Color 转换，HSV 滑块与 R/G/B 数字双向实时同步
 - **JSON 全量备份**：导出含完整 KarmaSettingsEntity + 历史记录，导入自动检测新旧格式，跨版本字段默认值兼容
 - **全局衬线字体**：思源宋体（Noto Serif SC），Compose Text 统一 `FontFamily.Serif`，Canvas Paint 统一 `Typeface.SERIF`
@@ -311,20 +323,21 @@ Kotlin + Jetpack Compose
 ```
 app/src/main/java/com/example/karma/
 ├── data/                    # 数据层
-│   ├── local/               # Room 数据库 + Entity + DAO + 12 migrations
+│   ├── local/               # Room 数据库 + Entity + DAO + 13 migrations
 │   ├── model/               # 领域模型 (Rank, ViewMode, HistoryEntry, TimerState)
 │   └── repository/          # KarmaRepository (含导入导出/衰减引擎/计时持久化)
 ├── ui/
 │   ├── main/                # 主屏幕 + 组件(Header/ScorePanel/AxisCanvas/EventPanel/Footer)
 │   ├── history/             # 历史折线图 (Canvas 手绘 + tooltip)
 │   ├── prayer/              # 祈福粒子动画 (4级粒子引擎)
+│   ├── bet/                 # 誓约页面 (进行中列表 + 新建/详情弹窗)
 │   ├── divination/          # 占卜
 │   │   ├── model/           # YarrowData / HexagramRevelation(64卦+合解引擎) / XiaoLiuRenData(六宫)
 │   │   └── components/      # YarrowCanvas / YarrowResultPanel / XiaoLiuRen三件套
 │   ├── settings/            # 设置页 (HSV+RGB取色器 / 轮盘选择器 / 阶位编辑)
 │   ├── timer/               # 前台 Service（熄屏持续计时 + 通知栏）
-│   ├── navigation/          # NavGraph 路由 (fadeIn/fadeOut 动画)
-│   ├── components/          # 通用组件 (BackButton / ChartTooltip / ScoreEditModal)
+│   ├── navigation/          # NavGraph 路由 (除设置页外 250ms 淡入淡出，设置页瞬间切换)
+│   ├── components/          # 通用组件 (BackButton / ChartTooltip / ScoreEditModal / PressFeedback / DialogEntrance)
 │   └── theme/               # 暗色主题 (Gold 配色 / 衬线字体 / 渐变背景)
 ├── di/                      # 依赖注入 (AppContainer)
 ├── util/                    # 工具类 (LuckAmplifier erf积分)
@@ -337,12 +350,38 @@ app/src/main/java/com/example/karma/
 ```bash
 ./gradlew assembleDebug          # 调试构建
 ./gradlew installDebug           # 安装到设备
-# APK 输出: app/build/outputs/apk/debug/Karma-v3.9.apk
+# APK 输出: app/build/outputs/apk/debug/Karma-v3.10.apk
 ```
 
 ---
 
 ## 📜 版本更新记录
+
+### v3.10 — 系统栏黑框适配 & 誓约功能 & 流体交互打磨
+
+**系统导航栏黑框适配（三键手机）**
+- 布局全部改用 `WindowInsets.navigationBars` 自适应：有黑框（三键）才加底部间距，手势导航不加，无需手动判断模式
+- 修复占卜/祈福/历史/设置页底部内容被黑框遮挡；经文画面上下预留从硬编码 56dp 改为真实系统栏 inset
+
+**顶部状态栏黑框优化**
+- 删除手工设置状态栏/导航栏颜色的代码（与 edge-to-edge 冲突、API 35+ 被忽略），栏后区域由 App 自己的渐变背景接管
+- 状态栏/导航栏图标明暗自适应：随渐变顶部色亮度自动切换深浅色图标（`Color.luminance()`）
+
+**誓约功能（全新）**
+- 底部栏新增「誓约」入口（6 分区，加宽与上方面板对齐），新建誓约表单（内容/期限/成功加分/失败减分）
+- 列表 ✔/× 独立按钮了结誓约（加分/减分），点击行查看详情弹窗
+- 历史记录格式：立约 4 行、结果 3 行（type=bet / bet_result）
+- 数据存 settings JSON 列（数据库 v14→v15），随 JSON 导出/导入自动备份
+
+**Apple 流体交互打磨**
+- 全局按压反馈：按下 90ms 缩至 0.95、松开弹簧回弹（底部栏/计时按钮/返回/事件项）
+- Header 功德分数变化 spring 弹跳（成就感时刻）
+- 分数轴拖动 1:1 跟手、释放吸附最近半格
+- 誓约/祈福弹窗材质化入场：遮罩淡入 + 卡片弹簧放大
+
+**设置页过渡卡顿修复**
+- 设置页过渡恢复瞬间进入/瞬间离开：设置页是全应用最重页面（一次性组合全部卡片），淡入淡出时每帧整树重绘超帧预算导致掉帧
+- 其余页面保持 250ms 淡入淡出不变（详见 docs/update-v3.10/任务4）
 
 ### v3.9 — 占卜输入系统 & 经文启动画面 & 祈福神明
 

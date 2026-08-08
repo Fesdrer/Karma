@@ -77,10 +77,12 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Settings.route,
-            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
-            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
-            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
-            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            // 设置页是全应用最重的页面，任何方向的淡入淡出都会让每帧重绘超预算掉帧，
+            // 最终方案：瞬间进入 + 瞬间离开。
+            enterTransition = { fadeIn(tween(0)) },
+            exitTransition = { fadeOut(tween(0)) },
+            popEnterTransition = { fadeIn(tween(0)) },
+            popExitTransition = { fadeOut(tween(0)) },
         ) {
             SettingsScreen(
                 appContainer = appContainer,
