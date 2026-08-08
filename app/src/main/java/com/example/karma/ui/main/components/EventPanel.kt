@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -45,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.model.TimerStatus
+import com.example.karma.ui.components.pressFeedback
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.timer.TimerService
 import kotlinx.coroutines.delay
@@ -148,6 +150,7 @@ fun EventPanel(
 
         when (timerState.status) {
             TimerStatus.IDLE, TimerStatus.STOPPED -> {
+                val startInteraction = remember { MutableInteractionSource() }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -157,7 +160,12 @@ fun EventPanel(
                             if (timerEnabled) Color(0xFF1A1A1A)
                             else Color(0xFF111122)
                         )
-                        .clickable(enabled = timerEnabled) {
+                        .pressFeedback(startInteraction)
+                        .clickable(
+                            interactionSource = startInteraction,
+                            indication = null,
+                            enabled = timerEnabled,
+                        ) {
                             TimerService.start(context, selectedScore ?: 0f, selectedEvent ?: "")
                         },
                     contentAlignment = Alignment.Center,
@@ -210,12 +218,17 @@ fun EventPanel(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         // 暂停/继续
+                        val pauseInteraction = remember { MutableInteractionSource() }
                         Box(
                             modifier = Modifier
                                 .size(width = 56.dp, height = 34.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFFb8860b))
-                                .clickable {
+                                .pressFeedback(pauseInteraction)
+                                .clickable(
+                                    interactionSource = pauseInteraction,
+                                    indication = null,
+                                ) {
                                     if (isRunning) TimerService.pause(context)
                                     else TimerService.resume(context)
                                 },
@@ -224,12 +237,17 @@ fun EventPanel(
                             if (isRunning) PauseIcon() else PlayIcon()
                         }
                         // 停止
+                        val stopInteraction = remember { MutableInteractionSource() }
                         Box(
                             modifier = Modifier
                                 .size(width = 56.dp, height = 34.dp)
                                 .clip(RoundedCornerShape(8.dp))
                                 .background(Color(0xFF333333))
-                                .clickable { onStopTimer(displayMs) },
+                                .pressFeedback(stopInteraction)
+                                .clickable(
+                                    interactionSource = stopInteraction,
+                                    indication = null,
+                                ) { onStopTimer(displayMs) },
                             contentAlignment = Alignment.Center,
                         ) {
                             StopIcon()
@@ -284,6 +302,7 @@ private fun EventSection(
     dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
 ) {
     var customText by remember { mutableStateOf("") }
+    val interactionSource = remember { MutableInteractionSource() }
 
     Column {
         // Section title
@@ -338,7 +357,12 @@ private fun EventSection(
                     .fillMaxWidth()
                     .then(
                         if (canSelect) {
-                            Modifier.clickable { onEventSelected(event) }
+                            Modifier
+                                .pressFeedback(interactionSource)
+                                .clickable(
+                                    interactionSource = interactionSource,
+                                    indication = null,
+                                ) { onEventSelected(event) }
                         } else {
                             Modifier
                         }

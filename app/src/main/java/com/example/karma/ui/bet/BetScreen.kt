@@ -46,6 +46,7 @@ import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.repository.KarmaRepository
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.components.BackButton
+import com.example.karma.ui.components.DialogEntranceContainer
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
@@ -257,12 +258,7 @@ private fun NewBetDialog(
         success != null && success > 0f &&
         failure != null && failure > 0f
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
-        contentAlignment = Alignment.Center,
-    ) {
+    DialogEntranceContainer {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
@@ -401,12 +397,7 @@ private fun BetDetailDialog(
     bet: Bet,
     onDismiss: () -> Unit,
 ) {
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(Color.Black.copy(alpha = 0.5f)),
-        contentAlignment = Alignment.Center,
-    ) {
+    DialogEntranceContainer {
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)

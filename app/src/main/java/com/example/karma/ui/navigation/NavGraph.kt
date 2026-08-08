@@ -77,10 +77,10 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Settings.route,
-            enterTransition = { fadeIn(tween(0)) },
-            exitTransition = { fadeOut(tween(0)) },
-            popEnterTransition = { fadeIn(tween(0)) },
-            popExitTransition = { fadeOut(tween(0)) },
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             SettingsScreen(
                 appContainer = appContainer,

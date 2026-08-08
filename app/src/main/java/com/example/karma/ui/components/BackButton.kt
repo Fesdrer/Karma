@@ -2,6 +2,7 @@ package com.example.karma.ui.components
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -29,12 +30,17 @@ fun BackButton(
     bgColor: Color = Color(0xFF333333),
 ) {
     var handled by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
 
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(8.dp))
             .background(bgColor)
-            .clickable {
+            .pressFeedback(interactionSource)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+            ) {
                 if (!handled) {
                     handled = true
                     onBack()

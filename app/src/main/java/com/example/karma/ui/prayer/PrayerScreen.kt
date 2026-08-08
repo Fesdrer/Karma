@@ -44,6 +44,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.components.DialogEntranceContainer
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.theme.ScoreBtnBg
 
@@ -89,10 +90,7 @@ fun PrayerScreen(
 
         // Prayer form (centered)
         if (state.showForm) {
-            Box(
-                modifier = Modifier.fillMaxSize(),
-                contentAlignment = Alignment.Center,
-            ) {
+            DialogEntranceContainer(maskAlpha = 0f) {
                 Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
