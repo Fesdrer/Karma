@@ -28,6 +28,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.dp
@@ -70,10 +71,22 @@ fun MainScreen(
     var splashDone by remember { mutableStateOf(splashShown) }
     val settings by appContainer.repository.settings.collectAsState(initial = KarmaSettingsEntity())
 
+    // 触摸暂停标志：按下（touching=true）暂停倒计时，放手继续
+    var touching by remember { mutableStateOf(false) }
+
     // 仅在首次进入应用时显示经文启动画面
+    // 倒计时可被触摸暂停：以 50ms 为刻度累计实际流逝时间，按下期间不计时
     LaunchedEffect(state != null) {
         if (state != null && !splashShown) {
-            delay((settings.splashDurationSec * 1000L).coerceAtLeast(1000L))
+            val totalMs = (settings.splashDurationSec * 1000L).coerceAtLeast(1000L)
+            var elapsedMs = 0L
+            var lastTick = SystemClock.elapsedRealtime()
+            while (elapsedMs < totalMs) {
+                val now = SystemClock.elapsedRealtime()
+                if (!touching) elapsedMs += now - lastTick
+                lastTick = now
+                delay(50L)
+            }
             splashDone = true
             splashShown = true
         }
@@ -259,7 +272,17 @@ fun MainScreen(
     if (!splashDone && state != null) {
         ScriptureOverlay(
             text = settings.splashScripture.ifEmpty { "凡所有相，皆是虚妄。若见诸相非相，即见如来。" },
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier
+                .fillMaxSize()
+                .pointerInput(Unit) {
+                    awaitPointerEventScope {
+                        while (true) {
+                            // 有任何手指按下 → 暂停倒计时；全部松开 → 继续
+                            val event = awaitPointerEvent()
+                            touching = event.changes.any { it.pressed }
+                        }
+                    }
+                },
         )
     }
 }

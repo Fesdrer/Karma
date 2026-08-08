@@ -81,6 +81,9 @@ fun DivinationScreen(
     var yarrowReady by remember { mutableStateOf(false) }
     var xlrRecorded by remember { mutableStateOf(false) }
     var yarrowRecorded by remember { mutableStateOf(false) }
+    // 占卜资格锁定：确认占卜（扣分前）即锁定，扣分后分数下降不再重新判定，防止扣分后低于3阶导致启示不显示
+    var yarrowUnlocked by remember { mutableStateOf(false) }
+    var xlrUnlocked by remember { mutableStateOf(false) }
 
     // 小六壬 ViewModel（tab 2）
     val xlrViewModel: DivinationViewModel = viewModel(
@@ -181,8 +184,8 @@ fun DivinationScreen(
                 }
             }
             1 -> {
-                if (userRankLevel < 3) {
-                    // 大衍筮法：需要3阶以上
+                if (userRankLevel < 3 && !yarrowUnlocked) {
+                    // 大衍筮法：需要3阶以上（以扣分前分数为准）
                     DivinationLockedOverlay(title = "大衍筮法")
                 } else if (!yarrowReady) {
                     // 大衍筮法：先输入占卜事情和扣除分数
@@ -191,7 +194,10 @@ fun DivinationScreen(
                         cost = divinationCost,
                         onTopicChange = { divinationTopic = it },
                         onCostChange = { divinationCost = it },
-                        onConfirm = { yarrowReady = true },
+                        onConfirm = {
+                            yarrowReady = true
+                            yarrowUnlocked = true
+                        },
                     )
                 } else {
                 // 大衍筮法 — ViewModel 在此内部创建，切换 tab 后自动释放
@@ -258,6 +264,7 @@ fun DivinationScreen(
                                 yv.reset()
                                 yarrowReady = false
                                 yarrowRecorded = false
+                                yarrowUnlocked = false
                             },
                         )
                     }
@@ -265,8 +272,8 @@ fun DivinationScreen(
                 } // end else yarrowReady
             }
             2 -> {
-                if (userRankLevel < 3) {
-                    // 小六壬：需要3阶以上
+                if (userRankLevel < 3 && !xlrUnlocked) {
+                    // 小六壬：需要3阶以上（以扣分前分数为准）
                     DivinationLockedOverlay(title = "小六壬")
                 } else if (!xlrReady) {
                     // 小六壬：先输入占卜事情和扣除分数
@@ -275,7 +282,10 @@ fun DivinationScreen(
                         cost = divinationCost,
                         onTopicChange = { divinationTopic = it },
                         onCostChange = { divinationCost = it },
-                        onConfirm = { xlrReady = true },
+                        onConfirm = {
+                            xlrReady = true
+                            xlrUnlocked = true
+                        },
                     )
                 } else {
                 // 小六壬 — 完整功能
@@ -304,6 +314,7 @@ fun DivinationScreen(
                         xlrViewModel.reset()
                         xlrReady = false
                         xlrRecorded = false
+                        xlrUnlocked = false
                     },
                     modifier = Modifier
                         .fillMaxSize()
