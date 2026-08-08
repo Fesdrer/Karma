@@ -2,6 +2,7 @@ package com.example.karma.data.repository
 
 import com.example.karma.data.local.dao.HistoryEntryDao
 import com.example.karma.data.local.dao.KarmaSettingsDao
+import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.model.Rank
@@ -113,6 +114,35 @@ class KarmaRepository(
             dailyMustDoDeeds = resetDeeds,
             dailyMustDoLastDate = todayStr,
         ))
+    }
+
+    // ---- 誓约 ----
+
+    /** 立下誓约：写入 bets 列表 + 历史记录（分数不变）。 */
+    suspend fun addBet(bet: Bet) {
+        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        settingsDao.upsertSettings(settings.copy(bets = settings.bets + bet))
+        addHistoryEntry(
+            delta = 0f,
+            // 四项分 4 行显示，不用分隔符（历史显示支持换行，祈福记录已有 \n 先例）
+            event = "誓约：${bet.content}\n${bet.deadline}\n+${formatPoints(bet.successPoints)}\n-${formatPoints(bet.failurePoints)}",
+            type = "bet",
+        )
+    }
+
+    /** 了结誓约：success=true 加分，false 减分；从列表移除；写结果记录。 */
+    suspend fun resolveBet(bet: Bet, success: Boolean) {
+        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        // 防重复：快速连点 ✔/× 时，第二次点击可能发生在 Flow 刷新前，
+        // 若该誓约已不在列表（已了结）则直接忽略，避免重复加减分。
+        if (bet !in settings.bets) return
+        val delta = if (success) bet.successPoints else -bet.failurePoints
+        settingsDao.upsertSettings(settings.copy(bets = settings.bets.filter { it != bet }))
+        addHistoryEntry(
+            delta = delta,
+            event = "誓约结果：${bet.content}\n${bet.deadline}\n${if (success) "成功" else "失败"}",
+            type = "bet_result",
+        )
     }
 
     // ---- Timer Persistence ----
@@ -369,7 +399,14 @@ class KarmaRepository(
             val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
             // 导入后重置所有每日必做 vis=0（导入是全新开始，不应保留旧的 vis 状态）
             val resetDeeds = importedSettings.dailyMustDoDeeds.map { it.copy(vis = 0) }
-            settingsDao.upsertSettings(importedSettings.copy(dailyMustDoDeeds = resetDeeds))
+            // bets 兜底：旧版本备份没有 bets 键 → gson 反序列化为 null，
+            // 写 NULL 到 NOT NULL 列会抛异常导致整个导入失败，这里补空列表。
+            // 注意：gson 用 unsafe 分配实例绕过构造函数（默认值不生效），
+            // 缺键时 bets 运行时确实为 null，尽管声明类型是非空的。
+            settingsDao.upsertSettings(importedSettings.copy(
+                dailyMustDoDeeds = resetDeeds,
+                bets = gsonNullable(importedSettings.bets) ?: emptyList(),
+            ))
         } else {
             // 旧格式：只更新 totalScore
             val totalScore = root.get("totalScore")?.asDouble?.toFloat() ?: return false
@@ -465,4 +502,15 @@ class KarmaRepository(
     private fun roundToOneDecimal(value: Float): Float {
         return kotlin.math.round(value * 10f) / 10f
     }
+
+    /** 誓约分数格式化：整数去小数点（3 而非 3.0），小数保留原样（3.5）。 */
+    private fun formatPoints(value: Float): String {
+        return if (value % 1f == 0f) value.toInt().toString() else value.toString()
+    }
+
+    /**
+     * gson 反序列化缺键时字段为 null（unsafe 分配实例，绕过构造函数，默认值不生效），
+     * 此辅助函数把「非空声明」的字段按运行时实际值转为可空，供兜底使用。
+     */
+    private fun <T> gsonNullable(value: T): T? = value
 }

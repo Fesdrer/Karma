@@ -28,6 +28,7 @@ fun Footer(
     prayerEnabled: Boolean,
     onConfirm: () -> Unit,
     onPrayer: () -> Unit,
+    onBet: () -> Unit,
     onDivination: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
@@ -36,7 +37,8 @@ fun Footer(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 10.dp, vertical = 8.dp)
+            // 不加水平内缩：边框盒左右与上方分数栏左边/事件栏右边对齐
+            .padding(vertical = 8.dp)
             .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(10.dp))
             .clip(RoundedCornerShape(10.dp)),
         verticalAlignment = Alignment.CenterVertically,
@@ -58,6 +60,17 @@ fun Footer(
             enabled = prayerEnabled,
             activeColor = Color(0xFFb8860b),
             onClick = onPrayer,
+            modifier = Modifier.weight(1f),
+        )
+
+        FooterDivider()
+
+        // 誓约
+        FooterSegment(
+            text = "誓约",
+            enabled = true,
+            activeColor = Color(0xFF7b68ee),   // 区别于祈福(金)、占卜(灰) 的紫色系
+            onClick = onBet,
             modifier = Modifier.weight(1f),
         )
 
@@ -122,6 +135,7 @@ private fun FooterSegment(
                 !enabled -> Color(0xFF555555)
                 activeColor == Color(0xFF4a90d9) -> Color(0xFF4a90d9)
                 activeColor == Color(0xFFb8860b) -> Color(0xFFb8860b)
+                activeColor == Color(0xFF7b68ee) -> Color(0xFF7b68ee)
                 else -> Color(0xFFa0c4ff)
             },
         )

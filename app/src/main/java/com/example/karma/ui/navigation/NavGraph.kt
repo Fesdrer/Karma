@@ -9,6 +9,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.bet.BetScreen
 import com.example.karma.ui.divination.DivinationScreen
 import com.example.karma.ui.history.HistoryScreen
 import com.example.karma.ui.main.MainScreen
@@ -38,6 +39,9 @@ fun KarmaNavGraph(
                 },
                 onNavigateToPrayer = {
                     navController.navigate(Screen.Prayer.route)
+                },
+                onNavigateToBet = {
+                    navController.navigate(Screen.Bet.route)
                 },
                 onNavigateToDivination = {
                     navController.navigate(Screen.Divination.route)
@@ -79,6 +83,18 @@ fun KarmaNavGraph(
             popExitTransition = { fadeOut(tween(0)) },
         ) {
             SettingsScreen(
+                appContainer = appContainer,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Screen.Bet.route,
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+        ) {
+            BetScreen(
                 appContainer = appContainer,
                 onBack = { navController.popBackStack() },
             )

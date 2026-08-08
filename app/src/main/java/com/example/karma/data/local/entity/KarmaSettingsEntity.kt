@@ -87,4 +87,7 @@ data class KarmaSettingsEntity(
     // ===== 启动经文 =====
     val splashScripture: String = "凡所有相，皆是虚妄。若见诸相非相，即见如来。",
     val splashDurationSec: Int = 3,
+
+    // ===== 誓约（进行中） =====
+    val bets: List<Bet> = emptyList(),
 )
