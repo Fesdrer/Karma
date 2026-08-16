@@ -186,7 +186,9 @@ fun DivinationScreen(
                 }
             }
             1 -> {
-                if (!yarrowReady && divinationRemaining <= 0) {
+                if (settings == null) {
+                    // 数据未就绪：不渲染，避免剩余次数 0 导致锁定画面首帧闪现
+                } else if (!yarrowReady && divinationRemaining <= 0) {
                     // 大衍筮法：今日次数用完
                     DivinationLockedOverlay(title = "大衍筮法")
                 } else if (!yarrowReady) {
@@ -274,7 +276,9 @@ fun DivinationScreen(
                 } // end else yarrowReady
             }
             2 -> {
-                if (!xlrReady && divinationRemaining <= 0) {
+                if (settings == null) {
+                    // 数据未就绪：不渲染，避免剩余次数 0 导致锁定画面首帧闪现
+                } else if (!xlrReady && divinationRemaining <= 0) {
                     // 小六壬：今日次数用完
                     DivinationLockedOverlay(title = "小六壬")
                 } else if (!xlrReady) {

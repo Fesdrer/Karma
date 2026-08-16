@@ -85,9 +85,10 @@ class HistoryViewModel(
                     canGoForward = !isAtNewest(focusDate, mode),
                     dateLabel = formatDateLabel(focusDate, mode),
                     isZoomEnabled = zoomEnabled,
+                    // 正阶 + 负阶色带（历史图负数区域显示负阶颜色）
                     ranks = com.example.karma.data.model.Rank.listFrom(
                         settings.rankThresholds, settings.rankNames, settings.rankColors
-                    ),
+                    ) + repository.buildNegativeRanks(settings),
                     message = msg,
                 )
             }.collect { _uiState.value = it }
