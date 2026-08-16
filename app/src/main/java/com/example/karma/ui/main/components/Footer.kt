@@ -83,7 +83,7 @@ fun Footer(
         FooterSegment(
             text = "占卜",
             enabled = true,
-            activeColor = Color(0xFF555555),
+            activeColor = Color(0xFF00bcd4),
             onClick = onDivination,
             modifier = Modifier.weight(1f),
         )
@@ -94,7 +94,7 @@ fun Footer(
         FooterSegment(
             text = "历史",
             enabled = true,
-            activeColor = Color(0xFF555555),
+            activeColor = Color(0xFF66bb6a),
             onClick = onHistory,
             modifier = Modifier.weight(1f),
         )
@@ -105,7 +105,7 @@ fun Footer(
         FooterSegment(
             text = "⚙",
             enabled = true,
-            activeColor = Color(0xFF555555),
+            activeColor = Color(0xFFff9800),
             onClick = onSettings,
             modifier = Modifier.weight(1f),
         )
@@ -140,13 +140,7 @@ private fun FooterSegment(
             text = text,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = when {
-                !enabled -> Color(0xFF555555)
-                activeColor == Color(0xFF4a90d9) -> Color(0xFF4a90d9)
-                activeColor == Color(0xFFb8860b) -> Color(0xFFb8860b)
-                activeColor == Color(0xFF7b68ee) -> Color(0xFF7b68ee)
-                else -> Color(0xFFa0c4ff)
-            },
+            color = if (!enabled) Color(0xFF555555) else activeColor,
         )
     }
 }

@@ -90,4 +90,28 @@ data class KarmaSettingsEntity(
 
     // ===== 誓约（进行中） =====
     val bets: List<Bet> = emptyList(),
+
+    // ===== 占卜每日次数限制 =====
+    // 废弃字段（divinationLimitLow/High/Boundary）：列保留以兼容已升级到 v16 的旧库，
+    // 逻辑改用每个阶位各自的占卜次数（正阶：rankDivinationLimits[level-1]；负阶：negativeRankDivinationLimits[-level-1]）
+    // 默认：1~2阶 0 次、3~5阶 2 次、6阶及以上 3 次；负数阶位全部 0 次
+    val divinationLimitLow: Int = 2,
+    val divinationLimitHigh: Int = 3,
+    val divinationLimitBoundary: Int = 5,
+    val rankDivinationLimits: List<Int> = listOf(0, 0, 2, 2, 2, 3, 3, 3, 3),
+    val divinationDate: String = "",          // 最近一次占卜日期（yyyy-MM-dd），用于按天重置
+    val divinationCount: Int = 0,             // 当天已占卜次数（气运测试不计入）
+
+    // ===== 负数阶位 =====
+    // 阈值降序：(-10,0]→-1，(-20,-10]→-2，…，(-∞,-80]→-9；数量随负阶增删变化
+    val negativeRankNames: List<String> = listOf(
+        "微愆", "过失", "迷途", "堕落", "沉沦", "罪业", "空亡", "深渊", "无间"
+    ),
+    val negativeRankThresholds: List<Float> = listOf(-10f, -20f, -30f, -40f, -50f, -60f, -70f, -80f),
+    // 负阶默认颜色渐变：-1 级 (80,80,80) → -9 级 (0,0,0)，每级 -10
+    val negativeRankColors: List<Long> = listOf(
+        0xFF505050L, 0xFF464646L, 0xFF3C3C3CL, 0xFF323232L, 0xFF282828L,
+        0xFF1E1E1EL, 0xFF141414L, 0xFF0A0A0AL, 0xFF000000L,
+    ),
+    val negativeRankDivinationLimits: List<Int> = List(9) { 0 },    // 负阶占卜次数全部默认 0
 )

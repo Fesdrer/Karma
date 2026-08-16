@@ -88,6 +88,7 @@ fun XiaoLiuRenResultPanel(
                 ) {
                     Text(
                         text = "【 占 卜 结 果 】",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                         color = Gold,
@@ -110,6 +111,7 @@ fun XiaoLiuRenResultPanel(
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         Text(
                             text = result.name,
+                            fontFamily = FontFamily.Serif,
                             fontSize = 42.sp,
                             fontWeight = FontWeight.Bold,
                             color = Gold,
@@ -129,6 +131,7 @@ fun XiaoLiuRenResultPanel(
                         ) {
                             Text(
                                 text = result.fortuneLevel.label,
+                                fontFamily = FontFamily.Serif,
                                 color = if (isAuspicious) GreenPositive else RedNegative,
                                 fontSize = 16.sp,
                                 fontWeight = FontWeight.Bold,
@@ -139,6 +142,7 @@ fun XiaoLiuRenResultPanel(
                         // 五行 · 方位 · 六神
                         Text(
                             text = "${result.wuxing} · ${result.direction} · ${result.sixGods}",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 14.sp,
                             color = BlueLight,
                         )
@@ -168,6 +172,7 @@ fun XiaoLiuRenResultPanel(
                     Column {
                         Text(
                             text = "📜 口诀",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 13.sp,
                             fontWeight = FontWeight.Bold,
                             color = Gold.copy(alpha = 0.7f),
@@ -175,6 +180,7 @@ fun XiaoLiuRenResultPanel(
                         Spacer(Modifier.height(8.dp))
                         Text(
                             text = result.verse,
+                            fontFamily = FontFamily.Serif,
                             fontSize = 13.sp,
                             fontStyle = FontStyle.Italic,
                             color = BlueLight,
@@ -213,6 +219,7 @@ private fun RevelationSection(title: String, content: String) {
     ) {
         Text(
             text = "▸ $title",
+            fontFamily = FontFamily.Serif,
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
             color = Gold.copy(alpha = 0.75f),
@@ -220,6 +227,7 @@ private fun RevelationSection(title: String, content: String) {
         Spacer(Modifier.height(3.dp))
         Text(
             text = content,
+            fontFamily = FontFamily.Serif,
             fontSize = 14.sp,
             color = TextPrimary,
             lineHeight = 20.sp,

@@ -23,6 +23,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.offset
+import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -65,6 +67,8 @@ fun HistoryScreen(
     var showTooltip by remember { mutableStateOf(false) }
     var tooltipX by remember { mutableStateOf(0f) }
     var tooltipY by remember { mutableStateOf(0f) }
+    // tooltip 实际测量尺寸（首帧未测量前为 0，回退估算值）
+    var tooltipSize by remember { mutableStateOf(IntSize.Zero) }
 
     // File picker launchers — 必须在外层 remember
     val exportJsonLauncher = rememberLauncherForActivityResult(
@@ -373,12 +377,12 @@ fun HistoryScreen(
             // Chart viewport state — 每个 viewMode 独立实例
             val viewport = remember(state.viewMode, state.focusDate) { ChartViewport() }
 
-            // Chart
+            // Chart（clip 只作用于图表画布，tooltip 不裁剪：
+            // 详情框优先移到不超出的位置，实在必须超出时可以超出）
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .border(1.dp, Color(0xFFffd700).copy(alpha = 0.25f), RoundedCornerShape(16.dp))
-                    .clip(RoundedCornerShape(16.dp)),
+                    .border(1.dp, Color(0xFFffd700).copy(alpha = 0.25f), RoundedCornerShape(16.dp)),
             ) {
                 val parentWidth = maxWidth
                 val parentHeight = maxHeight
@@ -408,7 +412,7 @@ fun HistoryScreen(
                             tooltipPoint = null
                         }
                     },
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().clip(RoundedCornerShape(16.dp)),
                 )
 
                 // Tooltip overlay - positioned near the clicked point with bounds checking
@@ -417,9 +421,12 @@ fun HistoryScreen(
                     val tooltipDpX = with(density) { tooltipX.toDp() }
                     val tooltipDpY = with(density) { tooltipY.toDp() }
 
-                    // Fixed tooltip max width (matches ChartTooltip's widthIn)
-                    val tooltipMaxWidth = 220.dp
-                    val tooltipMaxHeight = 200.dp
+                    // 用实际测量尺寸钳制（首帧未测量时回退估算值），
+                    // 避免事件文本换行导致实际高度超过估算值而超出图表边界
+                    val measuredWidth = with(density) { tooltipSize.width.toDp() }
+                    val measuredHeight = with(density) { tooltipSize.height.toDp() }
+                    val tooltipMaxWidth = if (tooltipSize.width > 0) measuredWidth else 220.dp
+                    val tooltipMaxHeight = if (tooltipSize.height > 0) measuredHeight else 200.dp
 
                     // X direction: prefer right, flip left if overflow; prefer left, flip right if overflow
                     val rawXRight = tooltipDpX + 12.dp
@@ -451,7 +458,8 @@ fun HistoryScreen(
 
                     Box(
                         modifier = Modifier
-                            .offset(x = finalX, y = finalY),
+                            .offset(x = finalX, y = finalY)
+                            .onSizeChanged { tooltipSize = it },
                     ) {
                         ChartTooltip(point = tooltipPoint)
                     }

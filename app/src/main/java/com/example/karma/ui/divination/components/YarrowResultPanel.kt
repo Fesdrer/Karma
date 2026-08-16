@@ -113,6 +113,7 @@ fun YarrowResultPanel(
                         Spacer(Modifier.height(6.dp))
                         Text(
                             text = primary.summary,
+                            fontFamily = FontFamily.Serif,
                             fontSize = 14.sp,
                             color = TextPrimary,
                             lineHeight = 22.sp,
@@ -142,6 +143,7 @@ fun YarrowResultPanel(
                             ) {
                                 Text(
                                     text = revText + star,
+                                    fontFamily = FontFamily.Serif,
                                     fontSize = 13.sp,
                                     color = if (isMoving) Gold else TextPrimary,
                                     lineHeight = 20.sp,
@@ -161,6 +163,7 @@ fun YarrowResultPanel(
                             "【变卦指向】此卦无动爻，以静卦为断。本卦即是全部答案，当前气场维持${transformed.trend}态势，宜守不宜变。"
                         else
                             "【变卦指向】变卦为${transformed.fullName}，提示最终外部环境将趋于${transformed.trend}，建议结合上述动爻焦点，权衡进退。",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 14.sp,
                         color = TextPrimary,
                         lineHeight = 22.sp,
@@ -350,6 +353,7 @@ private fun TrendDisplay(integration: IntegrationResult) {
     ) {
         Text(
             text = "【能量趋势】",
+            fontFamily = FontFamily.Serif,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
             color = Gold,
@@ -357,6 +361,7 @@ private fun TrendDisplay(integration: IntegrationResult) {
         Spacer(Modifier.width(6.dp))
         Text(
             text = "${integration.energyFlow}，${integration.trendDesc}",
+            fontFamily = FontFamily.Serif,
             fontSize = 13.sp,
             color = TextPrimary,
         )

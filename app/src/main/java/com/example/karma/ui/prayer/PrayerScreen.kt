@@ -3,6 +3,8 @@ package com.example.karma.ui.prayer
 import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,6 +38,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -91,16 +94,19 @@ fun PrayerScreen(
         // Prayer form (centered)
         if (state.showForm) {
             DialogEntranceContainer(maskAlpha = 0f) {
+                // 窗口高度不超过屏幕，内容超高时窗口内部滚动，确认祈福按钮始终可达
                 Column(
                     modifier = Modifier
                         .clip(RoundedCornerShape(20.dp))
                         .background(Color(0xFF1A1A1A))
+                        .verticalScroll(rememberScrollState())
                         .padding(32.dp)
                         .fillMaxWidth(0.9f),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Text(
                         text = "🙏 祈福",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 24.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFffd700),
@@ -109,6 +115,7 @@ fun PrayerScreen(
                     Spacer(Modifier.height(8.dp))
                     Text(
                         text = "诚心祈福，扣减业力值",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 14.sp,
                         color = Color(0xFF888888),
                     )
@@ -117,6 +124,7 @@ fun PrayerScreen(
                     // Amount input
                     Text(
                         text = "扣减分数",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 13.sp,
                         color = Color(0xFF888888),
                         modifier = Modifier.fillMaxWidth(),
@@ -125,12 +133,12 @@ fun PrayerScreen(
                     OutlinedTextField(
                         value = state.amount,
                         onValueChange = { viewModel.onAmountChanged(it) },
-                        placeholder = { Text("输入正数...", color = Color(0xFF666666)) },
+                        placeholder = { Text("输入正数...", fontFamily = FontFamily.Serif, color = Color(0xFF666666)) },
                         keyboardOptions = KeyboardOptions(
                             keyboardType = KeyboardType.Decimal,
                             imeAction = ImeAction.Next,
                         ),
-                        textStyle = TextStyle(color = Color(0xFFe0e0e0), fontSize = 16.sp),
+                        textStyle = TextStyle(color = Color(0xFFe0e0e0), fontFamily = FontFamily.Serif, fontSize = 16.sp),
                         singleLine = true,
                         shape = RoundedCornerShape(10.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -147,6 +155,7 @@ fun PrayerScreen(
                     // Purpose input with bracket decoration
                     Text(
                         text = "祈福目的",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 13.sp,
                         color = Color(0xFF888888),
                         modifier = Modifier.fillMaxWidth(),
@@ -162,6 +171,7 @@ fun PrayerScreen(
                     ) {
                         Text(
                             text = "「",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFff0000),
@@ -172,9 +182,9 @@ fun PrayerScreen(
                         OutlinedTextField(
                             value = state.purpose,
                             onValueChange = { viewModel.onPurposeChanged(it) },
-                            placeholder = { Text("输入祈福内容...", color = Color(0xFF666666)) },
+                            placeholder = { Text("输入祈福内容...", fontFamily = FontFamily.Serif, color = Color(0xFF666666)) },
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
-                            textStyle = TextStyle(color = Color(0xFFff0000), fontSize = 16.sp),
+                            textStyle = TextStyle(color = Color(0xFFff0000), fontFamily = FontFamily.Serif, fontSize = 16.sp),
                             minLines = 1,
                             colors = OutlinedTextFieldDefaults.colors(
                                 focusedContainerColor = Color.Transparent,
@@ -191,6 +201,7 @@ fun PrayerScreen(
                         )
                         Text(
                             text = "」",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 22.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFff0000),
@@ -209,6 +220,7 @@ fun PrayerScreen(
                     ) {
                         Text(
                             text = "添加神明",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 14.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFffd700),
@@ -227,6 +239,7 @@ fun PrayerScreen(
                         Spacer(Modifier.height(12.dp))
                         Text(
                             text = "神明",
+                            fontFamily = FontFamily.Serif,
                             fontSize = 13.sp,
                             color = Color(0xFF888888),
                             modifier = Modifier.fillMaxWidth(),
@@ -235,9 +248,9 @@ fun PrayerScreen(
                         OutlinedTextField(
                             value = state.deity,
                             onValueChange = { viewModel.onDeityChanged(it) },
-                            placeholder = { Text("输入神明名称...", color = Color(0xFF666666)) },
+                            placeholder = { Text("输入神明名称...", fontFamily = FontFamily.Serif, color = Color(0xFF666666)) },
                             keyboardOptions = KeyboardOptions(imeAction = ImeAction.Default),
-                            textStyle = TextStyle(color = Color(0xFFff0000), fontSize = 16.sp),
+                            textStyle = TextStyle(color = Color(0xFFff0000), fontFamily = FontFamily.Serif, fontSize = 16.sp),
                             minLines = 1,
                             shape = RoundedCornerShape(10.dp),
                             colors = OutlinedTextFieldDefaults.colors(
@@ -265,7 +278,7 @@ fun PrayerScreen(
                             ),
                             modifier = Modifier.height(44.dp),
                         ) {
-                            Text("取消", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("取消", fontFamily = FontFamily.Serif, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                         Button(
                             onClick = { viewModel.confirmPrayer() },
@@ -276,7 +289,7 @@ fun PrayerScreen(
                             ),
                             modifier = Modifier.height(44.dp),
                         ) {
-                            Text("确认祈福", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+                            Text("确认祈福", fontFamily = FontFamily.Serif, fontSize = 16.sp, fontWeight = FontWeight.Bold)
                         }
                     }
                 }

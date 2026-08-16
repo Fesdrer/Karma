@@ -100,7 +100,12 @@ fun Header(
                     val totalRanks = ranks.size
                     val textColor = if (totalRanks > 0 && rank.level <= totalRanks * 2 / 3)
                         Color.White else Color(0xFFffd700)
-                    val bgColor = Color(rank.colorHex).copy(alpha = 0.4f)
+                    // 正阶徽章半透明底；负阶纯色显示（默认纯黑，40% 透明度会视觉上变成灰色）
+                    val bgColor = if (rank.level > 0) {
+                        Color(rank.colorHex).copy(alpha = 0.4f)
+                    } else {
+                        Color(rank.colorHex)
+                    }
                     Text(
                         text = rank.name,
                         fontSize = 14.sp,
@@ -110,13 +115,6 @@ fun Header(
                             .clip(RoundedCornerShape(20.dp))
                             .background(bgColor)
                             .padding(horizontal = 12.dp, vertical = 2.dp),
-                    )
-                } else if (totalScore < 0) {
-                    Spacer(Modifier.width(10.dp))
-                    Text(
-                        text = "—",
-                        fontSize = 12.sp,
-                        color = Color(0xFF888888),
                     )
                 }
             }

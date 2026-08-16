@@ -97,6 +97,7 @@ fun XiaoLiuRenInputPanel(
             // 标题
             Text(
                 text = "🙏 小六壬占卜",
+                fontFamily = FontFamily.Serif,
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
                 color = Gold,
@@ -104,6 +105,7 @@ fun XiaoLiuRenInputPanel(
             Spacer(Modifier.height(4.dp))
             Text(
                 text = "诚心叩问，以决吉凶",
+                fontFamily = FontFamily.Serif,
                 fontSize = 14.sp,
                 color = TextSecondary,
             )
@@ -215,6 +217,7 @@ private fun ToggleOption(
     ) {
         Text(
             text = text,
+            fontFamily = FontFamily.Serif,
             fontSize = 14.sp,
             fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             color = if (selected) Color.White else TextMuted,
@@ -347,6 +350,7 @@ private fun TraditionalInputs(
 private fun TraditionalLabel(text: String) {
     Text(
         text = text,
+        fontFamily = FontFamily.Serif,
         fontSize = 13.sp,
         color = TextSecondary,
         modifier = Modifier.fillMaxWidth(),
@@ -418,7 +422,7 @@ private fun NumberField(
         onValueChange = onValueChange,
         enabled = enabled,
         label = { Text(label, fontFamily = FontFamily.Serif, fontSize =12.sp) },
-        placeholder = { Text("...", color = TextMuted) },
+        placeholder = { Text("...", fontFamily = FontFamily.Serif, color = TextMuted) },
         keyboardOptions = KeyboardOptions(
             keyboardType = KeyboardType.Number,
             imeAction = ImeAction.Next,

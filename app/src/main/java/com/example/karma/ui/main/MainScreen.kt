@@ -207,7 +207,8 @@ fun MainScreen(
                     showNearby = s.showNearbyTicks,
                     nearbyRange = s.nearbyTickRange,
                     quarterValue = s.axisQuarterValue,
-                    ranks = s.ranks,
+                    // 正阶 + 负阶色带（数轴负数区域显示负阶颜色）
+                    ranks = s.ranks + s.negativeRanks,
                     dotColor = s.dotColor,
                     modifier = Modifier
                         .width(75.dp)

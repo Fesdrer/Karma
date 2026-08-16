@@ -170,6 +170,29 @@ class SettingsViewModel(
         }
     }
 
+    // ★ 每阶占卜次数（正阶 / 负阶）
+    fun updateRankDivinationLimit(index: Int, value: Int) {
+        val limits = _draft.value.rankDivinationLimits.toMutableList()
+        if (index in limits.indices) {
+            limits[index] = value.coerceIn(0, 99)
+            setDraft(_draft.value.copy(rankDivinationLimits = limits))
+        }
+    }
+    fun updateNegativeRankDivinationLimit(index: Int, value: Int) {
+        val limits = _draft.value.negativeRankDivinationLimits.toMutableList()
+        if (index in limits.indices) {
+            limits[index] = value.coerceIn(0, 99)
+            setDraft(_draft.value.copy(negativeRankDivinationLimits = limits))
+        }
+    }
+    fun updateNegativeRankColor(index: Int, color: Long) {
+        val colors = _draft.value.negativeRankColors.toMutableList()
+        if (index in colors.indices) {
+            colors[index] = color
+            setDraft(_draft.value.copy(negativeRankColors = colors))
+        }
+    }
+
     fun updateRankThreshold(index: Int, value: Float) {
         val thresholds = _draft.value.rankThresholds.toMutableList()
         if (index in thresholds.indices) {
@@ -183,6 +206,23 @@ class SettingsViewModel(
         if (index in names.indices) {
             names[index] = name
             setDraft(_draft.value.copy(rankNames = names))
+        }
+    }
+
+    // ★ 负数阶位
+    fun updateNegativeRankThreshold(index: Int, value: Float) {
+        val thresholds = _draft.value.negativeRankThresholds.toMutableList()
+        if (index in thresholds.indices) {
+            thresholds[index] = value
+            setDraft(_draft.value.copy(negativeRankThresholds = thresholds))
+        }
+    }
+
+    fun updateNegativeRankName(index: Int, name: String) {
+        val names = _draft.value.negativeRankNames.toMutableList()
+        if (index in names.indices) {
+            names[index] = name
+            setDraft(_draft.value.copy(negativeRankNames = names))
         }
     }
 
@@ -285,12 +325,14 @@ class SettingsViewModel(
         val newNames = d.rankNames + "新阶位"
         val newColors = d.rankColors + (d.rankColors.lastOrNull() ?: 0xFFFFFFFF)
         val newDecays = d.rankDecayAmounts + (d.rankDecayAmounts.lastOrNull() ?: 3f)
+        val newLimits = d.rankDivinationLimits + (d.rankDivinationLimits.lastOrNull() ?: 2)
         val lastThreshold = d.rankThresholds.lastOrNull() ?: 360f
         val newThresholds = d.rankThresholds + (lastThreshold + 50f)
         setDraft(d.copy(
             rankNames = newNames,
             rankColors = newColors,
             rankDecayAmounts = newDecays,
+            rankDivinationLimits = newLimits,
             rankThresholds = newThresholds,
         ))
     }
@@ -301,6 +343,7 @@ class SettingsViewModel(
         val newNames = d.rankNames.toMutableList().apply { removeAt(index) }
         val newColors = d.rankColors.toMutableList().apply { removeAt(index) }
         val newDecays = d.rankDecayAmounts.toMutableList().apply { removeAt(index) }
+        val newLimits = d.rankDivinationLimits.toMutableList().apply { removeAt(index) }
         val newThresholds = d.rankThresholds.toMutableList()
         // 删除第 index 个阶位，对应的阈值也需要调整
         if (index < newThresholds.size) {
@@ -312,6 +355,7 @@ class SettingsViewModel(
             rankNames = newNames,
             rankColors = newColors,
             rankDecayAmounts = newDecays,
+            rankDivinationLimits = newLimits,
             rankThresholds = newThresholds,
         ))
         if (newNames.size <= 1) _deleteMode.value = false
@@ -329,6 +373,7 @@ class SettingsViewModel(
         val newNames = d.rankNames.toMutableList().apply { add(index + 1, "新阶位") }
         val newColors = d.rankColors.toMutableList().apply { add(index + 1, d.rankColors.getOrElse(index) { 0xFFFFFFFF }) }
         val newDecays = d.rankDecayAmounts.toMutableList().apply { add(index + 1, d.rankDecayAmounts.getOrElse(index) { 3f }) }
+        val newLimits = d.rankDivinationLimits.toMutableList().apply { add(index + 1, d.rankDivinationLimits.getOrElse(index) { 2 }) }
         val newThresholds = d.rankThresholds.toMutableList()
         val insertPos = index + 1
         if (insertPos < d.rankThresholds.size) {
@@ -345,7 +390,71 @@ class SettingsViewModel(
             rankNames = newNames,
             rankColors = newColors,
             rankDecayAmounts = newDecays,
+            rankDivinationLimits = newLimits,
             rankThresholds = newThresholds,
+        ))
+    }
+
+    // ===== 负数阶位增删（与正阶同构：阈值 ts[i] 为 -(i+1) 级下限，降序） =====
+
+    /** 在最深一层下方追加新负阶。 */
+    fun addNegativeRank() {
+        val d = _draft.value
+        val lastThreshold = d.negativeRankThresholds.lastOrNull() ?: -10f
+        setDraft(d.copy(
+            negativeRankNames = d.negativeRankNames + "新负阶",
+            negativeRankColors = d.negativeRankColors + 0xFF000000L,
+            negativeRankDivinationLimits = d.negativeRankDivinationLimits + 0,
+            negativeRankThresholds = d.negativeRankThresholds + (lastThreshold - 10f),
+        ))
+    }
+
+    /** 在 index 负阶下方（更深处）插入新负阶。 */
+    fun addNegativeRankAfter(index: Int) {
+        val d = _draft.value
+        val newNames = d.negativeRankNames.toMutableList().apply { add(index + 1, "新负阶") }
+        val newColors = d.negativeRankColors.toMutableList().apply {
+            add(index + 1, d.negativeRankColors.getOrElse(index) { 0xFF000000L })
+        }
+        val newLimits = d.negativeRankDivinationLimits.toMutableList().apply { add(index + 1, 0) }
+        val newThresholds = d.negativeRankThresholds.toMutableList()
+        val insertPos = index + 1
+        if (insertPos < d.negativeRankThresholds.size) {
+            // 在两个已有阈值之间插入中点（均为负数，中点即更细分级）
+            val prev = d.negativeRankThresholds[insertPos - 1]
+            val next = d.negativeRankThresholds[insertPos]
+            newThresholds.add(insertPos, (prev + next) / 2f)
+        } else {
+            // 在最后一个阈值之后追加（比最深更负 10 分）
+            val prev = d.negativeRankThresholds.lastOrNull() ?: -10f
+            newThresholds.add(insertPos, prev - 10f)
+        }
+        setDraft(d.copy(
+            negativeRankNames = newNames,
+            negativeRankColors = newColors,
+            negativeRankDivinationLimits = newLimits,
+            negativeRankThresholds = newThresholds,
+        ))
+    }
+
+    fun deleteNegativeRank(index: Int) {
+        val d = _draft.value
+        if (d.negativeRankNames.size <= 1) return
+        val newNames = d.negativeRankNames.toMutableList().apply { removeAt(index) }
+        val newColors = d.negativeRankColors.toMutableList().apply { removeAt(index) }
+        val newLimits = d.negativeRankDivinationLimits.toMutableList().apply { removeAt(index) }
+        val newThresholds = d.negativeRankThresholds.toMutableList()
+        // 删除第 index 个负阶，对应下限（阈值）同步移除
+        if (index < newThresholds.size) {
+            newThresholds.removeAt(index)
+        } else if (newThresholds.isNotEmpty()) {
+            newThresholds.removeAt(newThresholds.lastIndex)
+        }
+        setDraft(d.copy(
+            negativeRankNames = newNames,
+            negativeRankColors = newColors,
+            negativeRankDivinationLimits = newLimits,
+            negativeRankThresholds = newThresholds,
         ))
     }
 

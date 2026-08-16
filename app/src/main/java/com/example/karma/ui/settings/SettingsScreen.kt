@@ -187,16 +187,28 @@ fun SettingsScreen(
                 rankColors = draft.rankColors,
                 rankThresholds = draft.rankThresholds,
                 rankDecayAmounts = draft.rankDecayAmounts,
+                rankDivinationLimits = draft.rankDivinationLimits,
+                negativeRankNames = draft.negativeRankNames,
+                negativeRankColors = draft.negativeRankColors,
+                negativeRankThresholds = draft.negativeRankThresholds,
+                negativeRankDivinationLimits = draft.negativeRankDivinationLimits,
                 deleteMode = deleteMode,
                 addMode = addMode,
                 onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
                 onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
                 onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
                 onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
+                onRankDivinationLimitChange = { i, v -> viewModel.updateRankDivinationLimit(i, v) },
+                onNegativeRankNameChange = { i, v -> viewModel.updateNegativeRankName(i, v) },
+                onNegativeRankColorChange = { i, v -> viewModel.updateNegativeRankColor(i, v) },
+                onNegativeRankThresholdChange = { i, v -> viewModel.updateNegativeRankThreshold(i, v) },
+                onNegativeRankDivinationLimitChange = { i, v -> viewModel.updateNegativeRankDivinationLimit(i, v) },
                 onAddRankAfter = { index -> viewModel.addRankAfter(index) },
                 onDeleteRank = { viewModel.deleteRank(it) },
                 onToggleAddMode = { viewModel.toggleAddMode() },
                 onToggleDeleteMode = { viewModel.toggleDeleteMode() },
+                onAddNegativeRankAfter = { index -> viewModel.addNegativeRankAfter(index) },
+                onDeleteNegativeRank = { viewModel.deleteNegativeRank(it) },
             )
             EventSettingsCard(
                 goodDeedPresets = draft.goodDeedPresets,
@@ -997,19 +1009,35 @@ private fun RankSettingsCard(
     rankColors: List<Long>,
     rankThresholds: List<Float>,
     rankDecayAmounts: List<Float>,
+    rankDivinationLimits: List<Int>,
+    negativeRankNames: List<String>,
+    negativeRankColors: List<Long>,
+    negativeRankThresholds: List<Float>,
+    negativeRankDivinationLimits: List<Int>,
     deleteMode: Boolean,
     addMode: Boolean,
     onRankNameChange: (Int, String) -> Unit,
     onRankColorChange: (Int, Long) -> Unit,
     onRankThresholdChange: (Int, Float) -> Unit,
     onRankDecayChange: (Int, Float) -> Unit,
+    onRankDivinationLimitChange: (Int, Int) -> Unit,
+    onNegativeRankNameChange: (Int, String) -> Unit,
+    onNegativeRankColorChange: (Int, Long) -> Unit,
+    onNegativeRankThresholdChange: (Int, Float) -> Unit,
+    onNegativeRankDivinationLimitChange: (Int, Int) -> Unit,
     onAddRankAfter: (Int) -> Unit,
     onDeleteRank: (Int) -> Unit,
     onToggleAddMode: () -> Unit,
     onToggleDeleteMode: () -> Unit,
+    onAddNegativeRankAfter: (Int) -> Unit,
+    onDeleteNegativeRank: (Int) -> Unit,
 ) {
     var showColorPicker by remember { mutableStateOf(false) }
     var colorPickerTarget by remember { mutableStateOf(0) }
+    var colorPickerForNegative by remember { mutableStateOf(false) }
+    // 负阶增删模式（独立于正阶）
+    var negativeAddMode by remember { mutableStateOf(false) }
+    var negativeDeleteMode by remember { mutableStateOf(false) }
 
     SettingsCard("阶位设置") {
         val count = rankNames.size
@@ -1020,6 +1048,7 @@ private fun RankSettingsCard(
             val color = rankColors.getOrElse(i) { 0xFFFFFFFF }
             val threshold = rankThresholds.getOrElse(i) { 0f }
             val decay = rankDecayAmounts.getOrElse(i) { 2f }
+            val divLimit = rankDivinationLimits.getOrElse(i) { 2 }
 
             // 每个阶位卡片
             Box(
@@ -1096,6 +1125,7 @@ private fun RankSettingsCard(
                     // 第二行：颜色 + 上限
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         ColorSwatch(color = color) {
+                            colorPickerForNegative = false
                             colorPickerTarget = i
                             showColorPicker = true
                         }
@@ -1144,6 +1174,31 @@ private fun RankSettingsCard(
                         )
                         IconButton(
                             onClick = { onRankDecayChange(i, decay + 1f) },
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Text("+", fontSize = 16.sp, color = TextSecondary)
+                        }
+                    }
+
+                    Spacer(Modifier.height(4.dp))
+
+                    // 第四行：每日占卜次数（UI 同业力衰减）
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Text("占卜次数：", fontSize = 12.sp, color = TextMuted)
+                        IconButton(
+                            onClick = { onRankDivinationLimitChange(i, divLimit - 1) },
+                            modifier = Modifier.size(28.dp),
+                        ) {
+                            Text("−", fontSize = 16.sp, color = TextSecondary)
+                        }
+                        Text(
+                            divLimit.toString(),
+                            fontSize = 14.sp, color = Gold,
+                            modifier = Modifier.width(20.dp),
+                            textAlign = TextAlign.Center,
+                        )
+                        IconButton(
+                            onClick = { onRankDivinationLimitChange(i, divLimit + 1) },
                             modifier = Modifier.size(28.dp),
                         ) {
                             Text("+", fontSize = 16.sp, color = TextSecondary)
@@ -1209,14 +1264,220 @@ private fun RankSettingsCard(
                 )
             }
         }
+
+        // ---- 负数阶位（业力为负时显示，与正阶同构：名称/颜色/下限/占卜次数，可增删） ----
+        Spacer(Modifier.height(16.dp))
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .border(1.dp, Color(0xFF000000).copy(alpha = 0.7f), RoundedCornerShape(8.dp))
+                .clip(RoundedCornerShape(8.dp))
+                .padding(12.dp),
+        ) {
+            Column {
+                Text("负数阶位（业力为负）", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color(0xFF888888))
+                Spacer(Modifier.height(6.dp))
+                Text("下限即本级的业力下限（最深一级无下限）；颜色显示在首页徽章；占卜次数同正阶设置", fontSize = 12.sp, color = TextMuted)
+                Spacer(Modifier.height(6.dp))
+
+                val negCount = negativeRankNames.size
+                for (i in 0 until negCount) {
+                    val isLast = i == negCount - 1
+                    val name = negativeRankNames.getOrElse(i) { "?" }
+                    val color = negativeRankColors.getOrElse(i) { 0xFF000000L }
+                    val threshold = negativeRankThresholds.getOrElse(i) { 0f }
+                    val negLimit = negativeRankDivinationLimits.getOrElse(i) { 0 }
+
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(vertical = 2.dp)
+                            .border(1.dp, Color(0xFF000000).copy(alpha = 0.5f), RoundedCornerShape(8.dp))
+                            .clip(RoundedCornerShape(8.dp))
+                            .padding(12.dp),
+                    ) {
+                        Column {
+                            // 第一行：名称 + 添加/删除按钮
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) {
+                                OutlinedTextField(
+                                    value = name,
+                                    onValueChange = { onNegativeRankNameChange(i, it) },
+                                    singleLine = true,
+                                    textStyle = MaterialTheme.typography.bodyMedium.copy(
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary,
+                                    ),
+                                    colors = OutlinedTextFieldDefaults.colors(
+                                        focusedBorderColor = Gold,
+                                        unfocusedBorderColor = Color.Transparent,
+                                        focusedContainerColor = Color.Transparent,
+                                        unfocusedContainerColor = Color.Transparent,
+                                        cursorColor = Gold,
+                                    ),
+                                    modifier = Modifier.weight(1f),
+                                )
+                                if (negativeAddMode) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFF22aa44))
+                                            .clickable { onAddNegativeRankAfter(i) },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                                if (negativeDeleteMode) {
+                                    Spacer(Modifier.width(8.dp))
+                                    Box(
+                                        modifier = Modifier
+                                            .size(22.dp)
+                                            .clip(CircleShape)
+                                            .background(Color(0xFFcc0000))
+                                            .clickable { onDeleteNegativeRank(i) },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text("×", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                                    }
+                                }
+                            }
+
+                            Spacer(Modifier.height(6.dp))
+
+                            // 第二行：颜色 + 下限
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                ColorSwatch(color = color) {
+                                    colorPickerForNegative = true
+                                    colorPickerTarget = i
+                                    showColorPicker = true
+                                }
+                                Spacer(Modifier.width(12.dp))
+                                Text("下限：", fontSize = 12.sp, color = TextMuted)
+                                if (isLast) {
+                                    Text("-∞", fontSize = 14.sp, color = TextMuted)
+                                } else {
+                                    var negativeThresholdText by remember(threshold) {
+                                        mutableStateOf(formatFloat(threshold))
+                                    }
+                                    OutlinedTextField(
+                                        value = negativeThresholdText,
+                                        onValueChange = { v ->
+                                            negativeThresholdText = v
+                                            v.toFloatOrNull()?.let { onNegativeRankThresholdChange(i, it) }
+                                        },
+                                        modifier = Modifier.widthIn(min = 52.dp),
+                                        singleLine = true,
+                                        textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                                        colors = OutlinedTextFieldDefaults.colors(
+                                            focusedBorderColor = Gold,
+                                            unfocusedBorderColor = BorderSubtle,
+                                            focusedTextColor = TextPrimary,
+                                            unfocusedTextColor = TextPrimary,
+                                        ),
+                                    )
+                                }
+                            }
+
+                            Spacer(Modifier.height(4.dp))
+
+                            // 第三行：每日占卜次数（UI 同业力衰减）
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text("占卜次数：", fontSize = 12.sp, color = TextMuted)
+                                IconButton(
+                                    onClick = { onNegativeRankDivinationLimitChange(i, negLimit - 1) },
+                                    modifier = Modifier.size(28.dp),
+                                ) {
+                                    Text("−", fontSize = 16.sp, color = TextSecondary)
+                                }
+                                Text(
+                                    negLimit.toString(),
+                                    fontSize = 14.sp, color = Gold,
+                                    modifier = Modifier.width(20.dp),
+                                    textAlign = TextAlign.Center,
+                                )
+                                IconButton(
+                                    onClick = { onNegativeRankDivinationLimitChange(i, negLimit + 1) },
+                                    modifier = Modifier.size(28.dp),
+                                ) {
+                                    Text("+", fontSize = 16.sp, color = TextSecondary)
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // 底部按钮：+ / -（负阶独立增删模式）
+                Spacer(Modifier.height(8.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (negativeAddMode) Color(0xFF22aa44) else Color(0xFF1A1A1A))
+                            .border(
+                                1.dp,
+                                if (negativeAddMode) Color(0xFF22aa44) else Color(0xFF334444),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable {
+                                negativeAddMode = !negativeAddMode
+                                if (negativeAddMode) negativeDeleteMode = false
+                            }
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Text("+", fontSize = 16.sp, color = if (negativeAddMode) Color.White else Gold)
+                    }
+
+                    Spacer(Modifier.width(8.dp))
+
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(6.dp))
+                            .background(if (negativeDeleteMode) Color(0xFFb8860b) else Color(0xFF1A1A1A))
+                            .border(
+                                1.dp,
+                                if (negativeDeleteMode) Color(0xFFb8860b) else Color(0xFF334444),
+                                RoundedCornerShape(6.dp),
+                            )
+                            .clickable {
+                                negativeDeleteMode = !negativeDeleteMode
+                                if (negativeDeleteMode) negativeAddMode = false
+                            }
+                            .padding(horizontal = 12.dp, vertical = 4.dp),
+                    ) {
+                        Text("−", fontSize = 16.sp, color = when {
+                            negativeDeleteMode -> Color.White
+                            negCount <= 1 -> Color(0xFF666666)
+                            else -> Gold
+                        })
+                    }
+                }
+            }
+        }
     }
 
-    // 颜色选择器
+    // 颜色选择器（正阶/负阶共用一个，用 colorPickerForNegative 区分回写目标）
     if (showColorPicker) {
         ColorPickerDialog(
-            currentColor = rankColors.getOrElse(colorPickerTarget) { 0xFFFFFFFF },
+            currentColor = if (colorPickerForNegative) {
+                negativeRankColors.getOrElse(colorPickerTarget) { 0xFF000000L }
+            } else {
+                rankColors.getOrElse(colorPickerTarget) { 0xFFFFFFFF }
+            },
             onColorSelected = {
-                onRankColorChange(colorPickerTarget, it)
+                if (colorPickerForNegative) {
+                    onNegativeRankColorChange(colorPickerTarget, it)
+                } else {
+                    onRankColorChange(colorPickerTarget, it)
+                }
                 showColorPicker = false
             },
             onDismiss = { showColorPicker = false },

@@ -6,6 +6,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -82,9 +84,6 @@ fun DivinationScreen(
     var yarrowReady by remember { mutableStateOf(false) }
     var xlrRecorded by remember { mutableStateOf(false) }
     var yarrowRecorded by remember { mutableStateOf(false) }
-    // 占卜资格锁定：确认占卜（扣分前）即锁定，扣分后分数下降不再重新判定，防止扣分后低于3阶导致启示不显示
-    var yarrowUnlocked by remember { mutableStateOf(false) }
-    var xlrUnlocked by remember { mutableStateOf(false) }
 
     // 小六壬 ViewModel（tab 2）
     val xlrViewModel: DivinationViewModel = viewModel(
@@ -103,11 +102,11 @@ fun DivinationScreen(
         }
     }
 
-    // 获取当前用户阶位，小六壬和大衍筮法需要3阶以上
+    // 占卜资格由每日次数限制控制（不再要求 3 阶解锁）
     val settings by appContainer.repository.settings.collectAsState(initial = null)
-    val userRankLevel = settings?.let { s ->
-        appContainer.repository.getRank(s.totalScore, s)?.level ?: 1
-    } ?: 1
+    val divinationRemaining = settings?.let { s ->
+        appContainer.repository.getDivinationRemaining(s)
+    } ?: 0
 
     val tabs = listOf("气运测试", "大衍筮法", "小六壬")
 
@@ -146,6 +145,7 @@ fun DivinationScreen(
                     Spacer(Modifier.weight(1f))
                     Text(
                         text = luckResult?.toString() ?: "?",
+                        fontFamily = FontFamily.Serif,
                         fontSize = 80.sp,
                         fontWeight = FontWeight.Bold,
                         color = Color(0xFFffd700),
@@ -186,19 +186,20 @@ fun DivinationScreen(
                 }
             }
             1 -> {
-                if (userRankLevel < 3 && !yarrowUnlocked) {
-                    // 大衍筮法：需要3阶以上（以扣分前分数为准）
+                if (!yarrowReady && divinationRemaining <= 0) {
+                    // 大衍筮法：今日次数用完
                     DivinationLockedOverlay(title = "大衍筮法")
                 } else if (!yarrowReady) {
                     // 大衍筮法：先输入占卜事情和扣除分数
                     DivinationInputOverlay(
                         topic = divinationTopic,
                         cost = divinationCost,
+                        remaining = divinationRemaining,
                         onTopicChange = { divinationTopic = it },
                         onCostChange = { divinationCost = it },
-                        onConfirm = {
+                        onDivination = {
+                            scope.launch { appContainer.repository.recordDivination() }
                             yarrowReady = true
-                            yarrowUnlocked = true
                         },
                     )
                 } else {
@@ -266,7 +267,6 @@ fun DivinationScreen(
                                 yv.reset()
                                 yarrowReady = false
                                 yarrowRecorded = false
-                                yarrowUnlocked = false
                             },
                         )
                     }
@@ -274,19 +274,20 @@ fun DivinationScreen(
                 } // end else yarrowReady
             }
             2 -> {
-                if (userRankLevel < 3 && !xlrUnlocked) {
-                    // 小六壬：需要3阶以上（以扣分前分数为准）
+                if (!xlrReady && divinationRemaining <= 0) {
+                    // 小六壬：今日次数用完
                     DivinationLockedOverlay(title = "小六壬")
                 } else if (!xlrReady) {
                     // 小六壬：先输入占卜事情和扣除分数
                     DivinationInputOverlay(
                         topic = divinationTopic,
                         cost = divinationCost,
+                        remaining = divinationRemaining,
                         onTopicChange = { divinationTopic = it },
                         onCostChange = { divinationCost = it },
-                        onConfirm = {
+                        onDivination = {
+                            scope.launch { appContainer.repository.recordDivination() }
                             xlrReady = true
-                            xlrUnlocked = true
                         },
                     )
                 } else {
@@ -316,7 +317,6 @@ fun DivinationScreen(
                         xlrViewModel.reset()
                         xlrReady = false
                         xlrRecorded = false
-                        xlrUnlocked = false
                     },
                     modifier = Modifier
                         .fillMaxSize()
@@ -360,6 +360,7 @@ fun DivinationScreen(
                 ) {
                     Text(
                         text = label,
+                        fontFamily = FontFamily.Serif,
                         fontSize = 13.sp,
                         fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
                         color = if (isSelected) Gold else Color(0xFFa0c4ff),
@@ -377,38 +378,42 @@ fun DivinationScreen(
 }
 
 /**
- * 占卜输入覆盖层：输入占卜事情 + 扣除分数，确认后进入占卜
+ * 占卜输入覆盖层：输入占卜事情 + 扣除分数，确认后进入占卜。
+ * 每日次数限制：remaining <= 0 时拦截（气运测试 tab 不经过此覆盖层，天然不计入）。
  */
 @Composable
 private fun DivinationInputOverlay(
     topic: String,
     cost: String,
+    remaining: Int,
     onTopicChange: (String) -> Unit,
     onCostChange: (String) -> Unit,
-    onConfirm: () -> Unit,
+    onDivination: () -> Unit,
 ) {
     val context = LocalContext.current
     Box(
         modifier = Modifier.fillMaxSize().background(Color(0xFF0a0a0f)),
         contentAlignment = Alignment.Center,
     ) {
+        // 窗口高度不超过屏幕（Box 约束），内容超高时窗口内部滚动，确认按钮始终可达
         Column(
             modifier = Modifier
                 .fillMaxWidth(0.9f)
                 .clip(RoundedCornerShape(16.dp))
                 .background(Color(0xFF1a1a2e))
                 .border(1.dp, Color(0xFFb8860b).copy(alpha = 0.5f), RoundedCornerShape(16.dp))
+                .verticalScroll(rememberScrollState())
                 .padding(24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text("🔮 占卜", fontSize = 24.sp, fontFamily = FontFamily.Serif, fontWeight = FontWeight.Bold, color = Color(0xFFffd700))
             Spacer(Modifier.height(20.dp))
-            Text("占卜的事情", fontSize = 13.sp, color = Color(0xFF888888), modifier = Modifier.fillMaxWidth())
+            Text("占卜的事情", fontSize = 13.sp, fontFamily = FontFamily.Serif, color = Color(0xFF888888), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = topic,
                 onValueChange = onTopicChange,
-                placeholder = { Text("输入占卜事情...", color = Color(0xFF666666)) },
+                placeholder = { Text("输入占卜事情...", fontFamily = FontFamily.Serif, color = Color(0xFF666666)) },
                 textStyle = TextStyle(color = Color(0xFFff0000), fontFamily = FontFamily.Serif, fontSize = 16.sp),
                 singleLine = false, minLines = 2, maxLines = 4,
                 shape = RoundedCornerShape(10.dp),
@@ -419,12 +424,12 @@ private fun DivinationInputOverlay(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(16.dp))
-            Text("本次扣除业力分数", fontSize = 13.sp, color = Color(0xFF888888), modifier = Modifier.fillMaxWidth())
+            Text("本次扣除业力分数", fontSize = 13.sp, fontFamily = FontFamily.Serif, color = Color(0xFF888888), modifier = Modifier.fillMaxWidth())
             Spacer(Modifier.height(4.dp))
             OutlinedTextField(
                 value = cost,
                 onValueChange = onCostChange,
-                placeholder = { Text("输入正数...", color = Color(0xFF666666)) },
+                placeholder = { Text("输入正数...", fontFamily = FontFamily.Serif, color = Color(0xFF666666)) },
                 textStyle = TextStyle(color = Color(0xFFe0e0e0), fontFamily = FontFamily.Serif, fontSize = 16.sp),
                 singleLine = true,
                 shape = RoundedCornerShape(10.dp),
@@ -436,14 +441,23 @@ private fun DivinationInputOverlay(
                 modifier = Modifier.fillMaxWidth(),
             )
             Spacer(Modifier.height(20.dp))
+            Text(
+                text = "今日剩余占卜次数：$remaining",
+                fontSize = 13.sp,
+                color = if (remaining <= 0) Color(0xFFff5252) else Color(0xFF888888),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Spacer(Modifier.height(12.dp))
             Button(
                 onClick = {
-                    if (topic.isBlank()) {
+                    if (remaining <= 0) {
+                        Toast.makeText(context, "今日占卜次数已用完，请明天再来", Toast.LENGTH_SHORT).show()
+                    } else if (topic.isBlank()) {
                         Toast.makeText(context, "请输入占卜的事情", Toast.LENGTH_SHORT).show()
                     } else if (cost.toFloatOrNull() == null || cost.toFloat() <= 0f) {
                         Toast.makeText(context, "请输入有效的业力分数（正数）", Toast.LENGTH_SHORT).show()
                     } else {
-                        onConfirm()
+                        onDivination()
                     }
                 },
                 shape = RoundedCornerShape(12.dp),
@@ -457,7 +471,7 @@ private fun DivinationInputOverlay(
 }
 
 /**
- * 阶位不足锁定画面
+ * 占卜锁定画面：今日占卜次数用完（原 3 阶解锁画面改造）
  */
 @Composable
 private fun DivinationLockedOverlay(title: String) {
@@ -469,7 +483,7 @@ private fun DivinationLockedOverlay(title: String) {
             Text("🔒", fontSize = 48.sp)
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "「$title」需要达到3阶才能使用",
+                text = "「$title」今日占卜次数已用完",
                 fontSize = 18.sp,
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
@@ -477,7 +491,8 @@ private fun DivinationLockedOverlay(title: String) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "请积累更多业力值提升阶位",
+                text = "请明天再来",
+                fontFamily = FontFamily.Serif,
                 fontSize = 14.sp,
                 color = Color(0xFF888888),
             )

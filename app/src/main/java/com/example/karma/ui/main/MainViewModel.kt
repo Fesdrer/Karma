@@ -34,6 +34,8 @@ data class MainUiState(
     val nearbyTickRange: Float = 10f,
     val axisQuarterValue: Float = 15f,
     val ranks: List<Rank> = emptyList(),
+    // 负数阶位色带（数轴负数区域），与正阶 ranks 分开（Header 的 totalRanks 只统计正阶）
+    val negativeRanks: List<Rank> = emptyList(),
     val historyLineThickness: Float = 2f,
     val historyDotRadius: Float = 3.5f,
     val dotColor: Long = 0xFFFF0000L,
@@ -90,6 +92,8 @@ class MainViewModel(
     // 缓存 ranks 列表，仅在 rank 相关设置变更时重建。
     private var _cachedRankSettings: List<Any> = emptyList()
     private var _cachedRanks: List<Rank> = emptyList()
+    private var _cachedNegativeRankSettings: List<Any> = emptyList()
+    private var _cachedNegativeRanks: List<Rank> = emptyList()
 
     /** uiState 初始为 null，首帧不渲染。combine 首次发射后一次性显示全部内容。 */
     private val _uiState = MutableStateFlow<MainUiState?>(null)
@@ -106,6 +110,13 @@ class MainViewModel(
                 if (rankKey != _cachedRankSettings) {
                     _cachedRankSettings = rankKey
                     _cachedRanks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors)
+                }
+                val negativeRankKey = listOf(
+                    settings.negativeRankThresholds, settings.negativeRankNames, settings.negativeRankColors,
+                )
+                if (negativeRankKey != _cachedNegativeRankSettings) {
+                    _cachedNegativeRankSettings = negativeRankKey
+                    _cachedNegativeRanks = repository.buildNegativeRanks(settings)
                 }
                 MainUiState(
                     totalScore = settings.totalScore,
@@ -129,6 +140,7 @@ class MainViewModel(
                     nearbyTickRange = settings.nearbyTickRange,
                     axisQuarterValue = settings.axisQuarterValue,
                     ranks = _cachedRanks,
+                    negativeRanks = _cachedNegativeRanks,
                     historyLineThickness = settings.historyLineThickness,
                     historyDotRadius = settings.historyDotRadius,
                     dotColor = settings.dotColor,

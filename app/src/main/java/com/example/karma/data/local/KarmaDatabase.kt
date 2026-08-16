@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 15,
+    version = 18,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -147,6 +147,62 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_15_16 = object : Migration(15, 16) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                // 占卜每日次数限制
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN divinationLimitLow INTEGER NOT NULL DEFAULT 2")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN divinationLimitHigh INTEGER NOT NULL DEFAULT 3")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN divinationLimitBoundary INTEGER NOT NULL DEFAULT 5")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN divinationDate TEXT NOT NULL DEFAULT ''")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN divinationCount INTEGER NOT NULL DEFAULT 0")
+                // 负数阶位
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN negativeRankNames TEXT NOT NULL DEFAULT '[\"微愆\",\"过失\",\"迷途\",\"堕落\",\"沉沦\",\"罪业\",\"空亡\",\"深渊\",\"无间\"]'")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN negativeRankThresholds TEXT NOT NULL DEFAULT '[-10.0,-20.0,-30.0,-40.0,-50.0,-60.0,-70.0,-80.0]'")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN negativeRankColors TEXT NOT NULL DEFAULT '[4283453520,4282795590,4282137660,4281479730,4280821800,4280163870,4279505940,4278848010,4278190080]'")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN negativeRankDivinationLimits TEXT NOT NULL DEFAULT '[0,0,0,0,0,0,0,0,0]'")
+                // 每阶占卜次数（正阶）
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN rankDivinationLimits TEXT NOT NULL DEFAULT '[0,0,2,2,2,3,3,3,3]'")
+            }
+        }
+
+        /**
+         * v16 库存在两种历史状态（旧 APK 7 列版 / 完整 10 列版），
+         * 统一补齐三个"每阶占卜/负阶颜色"列（缺哪列补哪列）。
+         */
+        private val MIGRATION_16_17 = object : Migration(16, 17) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                val columns = mutableSetOf<String>()
+                db.query("PRAGMA table_info(karma_settings)").use { cursor ->
+                    while (cursor.moveToNext()) {
+                        columns.add(cursor.getString(1))
+                    }
+                }
+                if ("negativeRankColors" !in columns) {
+                    db.execSQL("ALTER TABLE karma_settings ADD COLUMN negativeRankColors TEXT NOT NULL DEFAULT '[4283453520,4282795590,4282137660,4281479730,4280821800,4280163870,4279505940,4278848010,4278190080]'")
+                }
+                if ("negativeRankDivinationLimits" !in columns) {
+                    db.execSQL("ALTER TABLE karma_settings ADD COLUMN negativeRankDivinationLimits TEXT NOT NULL DEFAULT '[0,0,0,0,0,0,0,0,0]'")
+                }
+                if ("rankDivinationLimits" !in columns) {
+                    db.execSQL("ALTER TABLE karma_settings ADD COLUMN rankDivinationLimits TEXT NOT NULL DEFAULT '[0,0,2,2,2,3,3,3,3]'")
+                }
+            }
+        }
+
+        /**
+         * v18：负阶默认颜色从"全纯黑"更新为渐变（-1 级 (80,80,80) → -9 级 (0,0,0)）。
+         * 只更新仍为默认纯黑列表的行（用户手动改过色的不受影响）。
+         */
+        private val MIGRATION_17_18 = object : Migration(17, 18) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "UPDATE karma_settings SET negativeRankColors = " +
+                        "'[4283453520,4282795590,4282137660,4281479730,4280821800,4280163870,4279505940,4278848010,4278190080]' " +
+                        "WHERE negativeRankColors = '[4278190080,4278190080,4278190080,4278190080,4278190080,4278190080,4278190080,4278190080,4278190080]'"
+                )
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -154,7 +210,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

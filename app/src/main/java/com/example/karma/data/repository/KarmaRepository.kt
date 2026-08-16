@@ -254,21 +254,23 @@ class KarmaRepository(
         val dailyDeeds = settings.dailyMustDoDeeds
 
         repeat(daysToCatchUp) {
-            // --- 业力衰减扣分 ---
-            val rank = getDecayRank(currentScore, settings.rankThresholds)
-            val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
-            if (deduction > 0f) {
-                currentScore = roundToOneDecimal(currentScore - deduction)
-                totalDeducted += deduction
-                historyDao.insertEntry(
-                    HistoryEntryEntity(
-                        timestamp = uniformTimestamp,
-                        delta = -deduction,
-                        event = "业力衰减",
-                        type = "decay",
-                        totalAfter = currentScore,
+            // --- 业力衰减扣分（业力 ≤ 0 不衰减；不钳制：正数少于衰减量时允许扣成负数，之后因业力为负停止衰减） ---
+            if (currentScore > 0f) {
+                val rank = getDecayRank(currentScore, settings.rankThresholds)
+                val deduction = getDecayAmountForRank(rank, settings.rankDecayAmounts)
+                if (deduction > 0f) {
+                    currentScore = roundToOneDecimal(currentScore - deduction)
+                    totalDeducted += deduction
+                    historyDao.insertEntry(
+                        HistoryEntryEntity(
+                            timestamp = uniformTimestamp,
+                            delta = -deduction,
+                            event = "业力衰减",
+                            type = "decay",
+                            totalAfter = currentScore,
+                        )
                     )
-                )
+                }
             }
 
             // --- 每日必做扣分（step 2：每个 deed 有自己的 vis，vis=1 跳过，else 扣分） ---
@@ -339,13 +341,79 @@ class KarmaRepository(
     // ---- Rank ----
 
     fun getRank(score: Float, settings: KarmaSettingsEntity): Rank? {
-        if (score < 0) return null
+        if (score < 0f) {
+            // 负数阶位：阈值降序 ts=[-10,-20,-30,…,-80]（数量随设置页增删变化）
+            // (-10,0]→-1，(-20,-10]→-2，…，最后一个阈值以下→最深一级
+            val ts = settings.negativeRankThresholds
+            val names = settings.negativeRankNames
+            // 动态级数：score > ts[i] → 第 i+1 级；都不满足 → 最深一级
+            var level = names.size.coerceAtLeast(1)
+            for (i in ts.indices) {
+                if (score > ts[i]) {
+                    level = i + 1
+                    break
+                }
+            }
+            return Rank(
+                min = if (level == names.size) -Float.MAX_VALUE else ts.getOrElse(level - 1) { -10f },
+                max = if (level == 1) 0f else ts.getOrElse(level - 2) { -10f },
+                level = -level,
+                name = names.getOrElse(level - 1) { "?" },
+                colorHex = settings.negativeRankColors.getOrElse(level - 1) { 0xFF000000L },
+            )
+        }
         val ranks = Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors)
         return ranks.find { score >= it.min && score < it.max }
     }
 
     fun buildRanks(settings: KarmaSettingsEntity): List<Rank> {
         return Rank.listFrom(settings.rankThresholds, settings.rankNames, settings.rankColors)
+    }
+
+    /** 负数阶位色带列表（用于数轴负数区域与徽章，颜色随设置）。 */
+    fun buildNegativeRanks(settings: KarmaSettingsEntity): List<Rank> {
+        val ts = settings.negativeRankThresholds
+        val names = settings.negativeRankNames
+        val colors = settings.negativeRankColors
+        return names.indices.map { i ->
+            val level = i + 1
+            Rank(
+                min = if (level == names.size) -Float.MAX_VALUE else ts.getOrElse(level - 1) { -10f },
+                max = if (level == 1) 0f else ts.getOrElse(level - 2) { -10f },
+                level = -level,
+                name = names.getOrElse(i) { "?" },
+                colorHex = colors.getOrElse(i) { 0xFF000000L },
+            )
+        }
+    }
+
+    // ---- 占卜每日次数限制 ----
+
+    /** 当前阶位对应的每日占卜次数上限（每阶一个值；负阶查 negativeRankDivinationLimits，默认全 0）。 */
+    fun getDivinationLimit(settings: KarmaSettingsEntity): Int {
+        val level = getRank(settings.totalScore, settings)?.level ?: 1
+        return if (level > 0) {
+            settings.rankDivinationLimits.getOrElse(level - 1) { 2 }
+        } else {
+            settings.negativeRankDivinationLimits.getOrElse(-level - 1) { 0 }
+        }
+    }
+
+    /** 今日剩余可占卜次数（按 divinationDate 判断是否跨天重置）。气运测试不计入。 */
+    fun getDivinationRemaining(settings: KarmaSettingsEntity): Int {
+        val today = formatDate(System.currentTimeMillis())
+        val count = if (settings.divinationDate == today) settings.divinationCount else 0
+        return (getDivinationLimit(settings) - count).coerceAtLeast(0)
+    }
+
+    /** 记录一次占卜（进入占卜即计一次，扣分在占卜完成时另记）。 */
+    suspend fun recordDivination() {
+        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        val today = formatDate(System.currentTimeMillis())
+        settingsDao.upsertSettings(settings.copy(
+            divinationDate = today,
+            divinationCount = if (settings.divinationDate == today) settings.divinationCount + 1 else 1,
+        ))
     }
 
     // ---- Import / Export ----
@@ -356,6 +424,7 @@ class KarmaRepository(
         val history = historyDao.getAllEntriesList()
 
         val root = com.google.gson.JsonObject()
+        root.addProperty("version", 2)
         root.addProperty("totalScore", settings.totalScore.toDouble())
         root.add("settings", gson.toJsonTree(settings))
 
@@ -393,26 +462,25 @@ class KarmaRepository(
         // 使用 JsonParser 直接解析，保留数字原始类型（避免 Map 中间步骤把 Long/Int 变成 Double）
         val root = com.google.gson.JsonParser.parseString(raw).asJsonObject
 
-        // 新格式：settings 键存在 → 整体替换全部设置
-        val settingsElement = root.get("settings")
-        if (settingsElement != null) {
-            val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
-            // 导入后重置所有每日必做 vis=0（导入是全新开始，不应保留旧的 vis 状态）
-            val resetDeeds = importedSettings.dailyMustDoDeeds.map { it.copy(vis = 0) }
-            // bets 兜底：旧版本备份没有 bets 键 → gson 反序列化为 null，
-            // 写 NULL 到 NOT NULL 列会抛异常导致整个导入失败，这里补空列表。
-            // 注意：gson 用 unsafe 分配实例绕过构造函数（默认值不生效），
-            // 缺键时 bets 运行时确实为 null，尽管声明类型是非空的。
-            settingsDao.upsertSettings(importedSettings.copy(
-                dailyMustDoDeeds = resetDeeds,
-                bets = gsonNullable(importedSettings.bets) ?: emptyList(),
-            ))
-        } else {
-            // 旧格式：只更新 totalScore
-            val totalScore = root.get("totalScore")?.asDouble?.toFloat() ?: return false
-            val currentSettings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
-            settingsDao.upsertSettings(currentSettings.copy(totalScore = totalScore))
-        }
+        // v2 格式校验：无 version 或 version≠2 → 拒绝（不兼容旧版本）
+        if (root.get("version")?.asInt != 2) return false
+
+        // v2 格式：settings 键存在 → 整体替换全部设置
+        val settingsElement = root.get("settings") ?: return false
+        val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
+        // 导入后重置所有每日必做 vis=0（导入是全新开始，不应保留旧的 vis 状态）
+        val resetDeeds = gsonNullable(importedSettings.dailyMustDoDeeds)?.map { it.copy(vis = 0) } ?: emptyList()
+        // 列表字段兜底：gson 用 unsafe 分配实例绕过构造函数（默认值不生效），
+        // 缺键时列表运行时为 null，写 NULL 到 NOT NULL 列会抛异常导致整个导入失败，这里补空列表。
+        settingsDao.upsertSettings(importedSettings.copy(
+            dailyMustDoDeeds = resetDeeds,
+            bets = gsonNullable(importedSettings.bets) ?: emptyList(),
+            negativeRankNames = gsonNullable(importedSettings.negativeRankNames) ?: emptyList(),
+            negativeRankThresholds = gsonNullable(importedSettings.negativeRankThresholds) ?: emptyList(),
+            negativeRankColors = gsonNullable(importedSettings.negativeRankColors) ?: emptyList(),
+            negativeRankDivinationLimits = gsonNullable(importedSettings.negativeRankDivinationLimits) ?: emptyList(),
+            rankDivinationLimits = gsonNullable(importedSettings.rankDivinationLimits) ?: emptyList(),
+        ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false
         historyDao.deleteAll()
