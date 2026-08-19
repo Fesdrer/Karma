@@ -444,15 +444,24 @@ class KarmaRepository(
         return com.google.gson.GsonBuilder().setPrettyPrinting().create().toJson(root)
     }
 
-    suspend fun importData(raw: String, format: String): Boolean {
+    /**
+     * 导入数据。
+     * @return null 表示导入成功；非 null 为失败原因（直接展示给用户）。
+     */
+    suspend fun importData(raw: String, format: String): String? {
         return try {
-            if (format == "json") {
-                importJson(raw)
+            val ok = if (format == "json") importJson(raw) else importCsv(raw)
+            if (ok) {
+                null
+            } else if (format == "json") {
+                "JSON 格式不正确或版本不兼容（需要 version=2 的导出文件）"
             } else {
-                importCsv(raw)
+                "CSV 格式不正确"
             }
+        } catch (e: com.google.gson.JsonSyntaxException) {
+            "JSON 格式错误，文件可能损坏或被截断：${e.message?.trim()?.take(80) ?: ""}"
         } catch (e: Exception) {
-            false
+            "解析失败：${e.message?.trim()?.take(80) ?: "未知错误"}"
         }
     }
 

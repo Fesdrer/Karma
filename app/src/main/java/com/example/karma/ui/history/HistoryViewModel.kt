@@ -10,11 +10,13 @@ import androidx.lifecycle.viewModelScope
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.model.ViewMode
 import com.example.karma.data.repository.KarmaRepository
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.util.Calendar
 
 @Immutable
@@ -302,16 +304,30 @@ class HistoryViewModel(
 
     // ---- Export ----
 
+    /** 导出写盘进行中标志：防止并发导出互相覆盖/交错写坏文件 */
+    private var exportInProgress = false
+
     fun exportJson(uri: Uri) {
         viewModelScope.launch {
+            if (exportInProgress) {
+                _message.value = "导出进行中，请稍候"
+                return@launch
+            }
+            exportInProgress = true
             try {
                 val json = repository.exportJson()
-                application.contentResolver.openOutputStream(uri)?.use { stream ->
-                    stream.write(json.toByteArray(Charsets.UTF_8))
+                // NonCancellable：即使用户中途离开历史页（viewModelScope 被取消），
+                // 也保证写入完整执行，避免留下半截损坏的导出文件。
+                withContext(NonCancellable) {
+                    application.contentResolver.openOutputStream(uri)?.use { stream ->
+                        stream.write(json.toByteArray(Charsets.UTF_8))
+                    }
                 }
                 _message.value = "JSON 导出成功"
             } catch (e: Exception) {
                 _message.value = "导出失败: ${e.message}"
+            } finally {
+                exportInProgress = false
             }
         }
     }
@@ -322,8 +338,8 @@ class HistoryViewModel(
                 val text = application.contentResolver.openInputStream(uri)
                     ?.bufferedReader()?.readText() ?: return@launch
                 val format = if (uri.lastPathSegment?.endsWith(".json") == true) "json" else "csv"
-                val ok = repository.importData(text, format)
-                _message.value = if (ok) "导入成功" else "导入失败，文件格式不正确"
+                val error = repository.importData(text, format)
+                _message.value = if (error == null) "导入成功" else "导入失败：$error"
             } catch (e: Exception) {
                 _message.value = "导入失败: ${e.message}"
             }
