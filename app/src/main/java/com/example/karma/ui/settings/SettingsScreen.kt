@@ -1,7 +1,7 @@
 package com.example.karma.ui.settings
 
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -51,7 +51,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -64,7 +63,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -178,37 +176,23 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        // 分类切换动画：旧内容立即移除、新内容淡入——任意时刻只有一棵内容树在组合/绘制，
-        // 避免 Crossfade 同时持有两棵内容树（尤其阶位页这种重页面）导致的切换卡顿。
-        val contentAlpha = remember { Animatable(1f) }
-        var firstEntry by remember { mutableStateOf(true) }
-        LaunchedEffect(selectedCategory) {
-            if (firstEntry) {
-                firstEntry = false
-            } else {
-                contentAlpha.snapTo(0f)
-                contentAlpha.animateTo(
-                    targetValue = 1f,
-                    animationSpec = tween(250, easing = FastOutSlowInEasing),
-                )
-            }
-        }
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .graphicsLayer { alpha = contentAlpha.value },
-        ) {
-            key(selectedCategory?.name ?: "root") {
-                Column(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(padding)
-                        .verticalScroll(rememberScrollState())
-                        .padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp),
-                ) {
-                    val cat = selectedCategory
-                    if (cat == null) {
+        // Crossfade：分类间切换淡入淡出；切换时旧内容淡出、新内容淡入，
+        // 滚动位置与局部编辑状态随内容重建而重置（与其它页面过渡一致）
+        Crossfade(
+            targetState = selectedCategory,
+            animationSpec = tween(250, easing = FastOutSlowInEasing),
+            modifier = Modifier.fillMaxSize(),
+            label = "settingsCategory",
+        ) { cat ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (cat == null) {
                     // 分类入口页：只显示各分类的进入按钮
                     SettingsCategory.entries.forEach { c ->
                         CategoryEntryCard(category = c, onClick = { selectedCategory = c })
@@ -346,7 +330,6 @@ fun SettingsScreen(
             }
         }
     }
-}
 }
 
 // ============================================================
