@@ -1,6 +1,9 @@
 package com.example.karma.ui.settings
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -48,7 +51,6 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -174,9 +176,13 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        // 分类切换即时替换（不做动画）：设置页是重页面，切换动画会掉帧。
-        // key 保证切换分类/回到入口页时滚动位置与局部编辑状态重建重置。
-        key(selectedCategory?.name ?: "root") {
+        // 分类间切换淡入淡出（与页面过渡一致）；滚动位置与局部编辑状态随内容重建而重置
+        Crossfade(
+            targetState = selectedCategory,
+            animationSpec = tween(250, easing = FastOutSlowInEasing),
+            modifier = Modifier.fillMaxSize(),
+            label = "settingsCategory",
+        ) { cat ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
@@ -185,7 +191,6 @@ fun SettingsScreen(
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                val cat = selectedCategory
                 if (cat == null) {
                     // 分类入口页：只显示各分类的进入按钮
                     SettingsCategory.entries.forEach { c ->

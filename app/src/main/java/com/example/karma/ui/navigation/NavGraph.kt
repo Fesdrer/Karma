@@ -77,12 +77,12 @@ fun KarmaNavGraph(
         }
         composable(
             route = Screen.Settings.route,
-            // 设置页是全应用最重的页面（阶位设置含大量输入框），任何方向的淡入淡出
-            // 都会让主屏与设置页在过渡期间同时组合/绘制而掉帧——保持瞬间切换。
-            enterTransition = { fadeIn(tween(0)) },
-            exitTransition = { fadeOut(tween(0)) },
-            popEnterTransition = { fadeIn(tween(0)) },
-            popExitTransition = { fadeOut(tween(0)) },
+            // 设置页已拆分为轻量的分类入口页（根页只有 6 张卡片），
+            // 进入/退出淡入淡出与其他页面一致。
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             SettingsScreen(
                 appContainer = appContainer,
