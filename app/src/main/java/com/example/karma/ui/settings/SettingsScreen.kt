@@ -1,5 +1,9 @@
 package com.example.karma.ui.settings
 
+import androidx.activity.compose.BackHandler
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -80,6 +84,19 @@ import com.example.karma.ui.theme.TextMuted
 import com.example.karma.ui.theme.TextPrimary
 import com.example.karma.ui.theme.TextSecondary
 
+// ============================================================
+// 设置页分类定义（根页只显示分类入口，点进去看具体设置）
+// ============================================================
+
+private enum class SettingsCategory(val title: String, val subtitle: String) {
+    Appearance("外观与图表", "分数轴、刻度、历史图表、背景渐变"),
+    Ranks("阶位体系", "阶位的名称、颜色、上限、衰减与占卜次数"),
+    Events("事件管理", "善业、恶业、善果预设与每日必做"),
+    Mechanics("业力机制", "业力衰减与运气增幅"),
+    Splash("启动画面", "启动经文与停留时长"),
+    General("通用", "重置所有设置为默认"),
+}
+
 @Composable
 fun SettingsScreen(
     appContainer: AppContainer,
@@ -93,6 +110,16 @@ fun SettingsScreen(
     val original by viewModel.original.collectAsState()
     val deleteMode by viewModel.deleteMode.collectAsState()
     val addMode by viewModel.addMode.collectAsState()
+    val negativeAddMode by viewModel.negativeAddMode.collectAsState()
+    val negativeDeleteMode by viewModel.negativeDeleteMode.collectAsState()
+
+    // 当前打开的分类；null = 分类入口页
+    var selectedCategory by remember { mutableStateOf<SettingsCategory?>(null) }
+
+    // 分类子页面按系统返回键先回到分类入口页，再按一次才退出设置
+    BackHandler(enabled = selectedCategory != null) {
+        selectedCategory = null
+    }
 
     Scaffold(
         modifier = modifier,
@@ -105,12 +132,14 @@ fun SettingsScreen(
                     .padding(horizontal = 16.dp, vertical = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                TextButton(onClick = onBack) {
-                    Text("← 返回", color = Gold)
+                TextButton(onClick = {
+                    if (selectedCategory == null) onBack() else selectedCategory = null
+                }) {
+                    Text(if (selectedCategory == null) "← 返回" else "← 设置", color = Gold)
                 }
                 Spacer(Modifier.weight(1f))
                 Text(
-                    text = "设置",
+                    text = selectedCategory?.title ?: "设置",
                     fontSize = 20.sp,
                     fontWeight = FontWeight.Bold,
                     color = TextPrimary,
@@ -147,126 +176,195 @@ fun SettingsScreen(
             }
         },
     ) { padding ->
-        // 直接渲染全部卡片，保证滚动流畅（Column 一次性组合所有卡片）
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(padding)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            ScoreSettingsCard(
-                scoreAxisFontSize = draft.scoreAxisFontSize,
-                scoreAxisRangeMin = draft.scoreAxisRangeMin,
-                scoreAxisRangeMax = draft.scoreAxisRangeMax,
-                onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
-                onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
-                onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
+        // Crossfade：分类间切换淡入淡出；切换时旧内容淡出、新内容淡入，
+        // 滚动位置与局部编辑状态随内容重建而重置（与其它页面过渡一致）
+        Crossfade(
+            targetState = selectedCategory,
+            animationSpec = tween(250, easing = FastOutSlowInEasing),
+            modifier = Modifier.fillMaxSize(),
+            label = "settingsCategory",
+        ) { cat ->
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(padding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (cat == null) {
+                    // 分类入口页：只显示各分类的进入按钮
+                    SettingsCategory.entries.forEach { c ->
+                        CategoryEntryCard(category = c, onClick = { selectedCategory = c })
+                    }
+                } else {
+                    when (cat) {
+                        SettingsCategory.Appearance -> {
+                            ScoreSettingsCard(
+                                scoreAxisFontSize = draft.scoreAxisFontSize,
+                                scoreAxisRangeMin = draft.scoreAxisRangeMin,
+                                scoreAxisRangeMax = draft.scoreAxisRangeMax,
+                                onFontSizeChange = { viewModel.updateScoreAxisFontSize(it) },
+                                onRangeMinChange = { viewModel.updateScoreAxisRangeMin(it) },
+                                onRangeMaxChange = { viewModel.updateScoreAxisRangeMax(it) },
+                            )
+                            AxisSettingsCard(
+                                axisLabelColor = draft.axisLabelColor,
+                                axisTickThickness = draft.axisTickThickness,
+                                axisLabelFontSize = draft.axisLabelFontSize,
+                                axisDisplayRange = draft.axisDisplayRange,
+                                showNearbyTicks = draft.showNearbyTicks,
+                                nearbyTickRange = draft.nearbyTickRange,
+                                axisQuarterValue = draft.axisQuarterValue,
+                                dotColor = draft.dotColor,
+                                onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
+                                onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
+                                onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
+                                onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
+                                onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
+                                onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
+                                onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
+                                onDotColorChange = { viewModel.updateDotColor(it) },
+                            )
+                            HistorySettingsCard(
+                                historyLineThickness = draft.historyLineThickness,
+                                historyDotRadius = draft.historyDotRadius,
+                                onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
+                                onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
+                            )
+                            BackgroundGradientCard(
+                                themeGradientBaseColor = draft.themeGradientBaseColor,
+                                themeGradientAccentColor = draft.themeGradientAccentColor,
+                                onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
+                                onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
+                            )
+                        }
+                        SettingsCategory.Ranks -> {
+                            RankSettingsCard(
+                                rankNames = draft.rankNames,
+                                rankColors = draft.rankColors,
+                                rankThresholds = draft.rankThresholds,
+                                rankDecayAmounts = draft.rankDecayAmounts,
+                                rankDivinationLimits = draft.rankDivinationLimits,
+                                negativeRankNames = draft.negativeRankNames,
+                                negativeRankColors = draft.negativeRankColors,
+                                negativeRankThresholds = draft.negativeRankThresholds,
+                                negativeRankDivinationLimits = draft.negativeRankDivinationLimits,
+                                deleteMode = deleteMode,
+                                addMode = addMode,
+                                negativeAddMode = negativeAddMode,
+                                negativeDeleteMode = negativeDeleteMode,
+                                onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
+                                onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
+                                onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
+                                onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
+                                onRankDivinationLimitChange = { i, v -> viewModel.updateRankDivinationLimit(i, v) },
+                                onNegativeRankNameChange = { i, v -> viewModel.updateNegativeRankName(i, v) },
+                                onNegativeRankColorChange = { i, v -> viewModel.updateNegativeRankColor(i, v) },
+                                onNegativeRankThresholdChange = { i, v -> viewModel.updateNegativeRankThreshold(i, v) },
+                                onNegativeRankDivinationLimitChange = { i, v -> viewModel.updateNegativeRankDivinationLimit(i, v) },
+                                onAddRankAfter = { index -> viewModel.addRankAfter(index) },
+                                onDeleteRank = { viewModel.deleteRank(it) },
+                                onToggleAddMode = { viewModel.toggleAddMode() },
+                                onToggleDeleteMode = { viewModel.toggleDeleteMode() },
+                                onAddNegativeRankAfter = { index -> viewModel.addNegativeRankAfter(index) },
+                                onDeleteNegativeRank = { viewModel.deleteNegativeRank(it) },
+                                onToggleNegativeAddMode = { viewModel.toggleNegativeAddMode() },
+                                onToggleNegativeDeleteMode = { viewModel.toggleNegativeDeleteMode() },
+                            )
+                        }
+                        SettingsCategory.Events -> {
+                            EventSettingsCard(
+                                goodDeedPresets = draft.goodDeedPresets,
+                                badDeedPresets = draft.badDeedPresets,
+                                goodResultPresets = draft.goodResultPresets,
+                                onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
+                                onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
+                                onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
+                            )
+                            DailyMustDoCard(
+                                goodDeedPresets = draft.goodDeedPresets,
+                                dailyMustDoDeeds = draft.dailyMustDoDeeds,
+                                onToggle = { name, enabled -> viewModel.toggleDailyMustDo(name, enabled) },
+                                onPenaltyChange = { name, penalty -> viewModel.updateDailyMustDoPenalty(name, penalty) },
+                            )
+                        }
+                        SettingsCategory.Mechanics -> {
+                            DecaySettingsCard(
+                                decayEnabled = draft.decayEnabled,
+                                decayHour = draft.decayHour,
+                                decayMinute = draft.decayMinute,
+                                lastDecayDate = draft.lastDecayDate,
+                                rankDecayAmounts = draft.rankDecayAmounts,
+                                rankThresholds = draft.rankThresholds,
+                                rankNames = draft.rankNames,
+                                onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
+                                onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
+                            )
+                            LuckSettingsCard(
+                                luckEnabled = draft.luckEnabled,
+                                luckT = draft.luckT,
+                                luckB = draft.luckB,
+                                luckW = draft.luckW,
+                                onLuckEnabledChange = { viewModel.updateLuckEnabled(it) },
+                                onLuckTChange = { viewModel.updateLuckT(it) },
+                                onLuckBChange = { viewModel.updateLuckB(it) },
+                                onLuckWChange = { viewModel.updateLuckW(it) },
+                            )
+                        }
+                        SettingsCategory.Splash -> {
+                            SplashSettingsCard(
+                                splashScripture = draft.splashScripture,
+                                splashDurationSec = draft.splashDurationSec,
+                                onScriptureChange = { viewModel.updateSplashScripture(it) },
+                                onDurationChange = { viewModel.updateSplashDuration(it) },
+                            )
+                        }
+                        SettingsCategory.General -> {
+                            ResetCard(
+                                onReset = { viewModel.resetToDefaults() },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+// ============================================================
+// CategoryEntryCard — 分类入口卡片
+// ============================================================
+
+@Composable
+private fun CategoryEntryCard(
+    category: SettingsCategory,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = category.title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = TextPrimary,
             )
-            AxisSettingsCard(
-                axisLabelColor = draft.axisLabelColor,
-                axisTickThickness = draft.axisTickThickness,
-                axisLabelFontSize = draft.axisLabelFontSize,
-                axisDisplayRange = draft.axisDisplayRange,
-                showNearbyTicks = draft.showNearbyTicks,
-                nearbyTickRange = draft.nearbyTickRange,
-                axisQuarterValue = draft.axisQuarterValue,
-                dotColor = draft.dotColor,
-                onLabelColorChange = { viewModel.updateAxisLabelColor(it) },
-                onTickThicknessChange = { viewModel.updateAxisTickThickness(it) },
-                onLabelFontSizeChange = { viewModel.updateAxisLabelFontSize(it) },
-                onDisplayRangeChange = { viewModel.updateAxisDisplayRange(it) },
-                onShowNearbyChange = { viewModel.updateShowNearbyTicks(it) },
-                onNearbyRangeChange = { viewModel.updateNearbyTickRange(it) },
-                onQuarterValueChange = { viewModel.updateAxisQuarterValue(it) },
-                onDotColorChange = { viewModel.updateDotColor(it) },
-            )
-            RankSettingsCard(
-                rankNames = draft.rankNames,
-                rankColors = draft.rankColors,
-                rankThresholds = draft.rankThresholds,
-                rankDecayAmounts = draft.rankDecayAmounts,
-                rankDivinationLimits = draft.rankDivinationLimits,
-                negativeRankNames = draft.negativeRankNames,
-                negativeRankColors = draft.negativeRankColors,
-                negativeRankThresholds = draft.negativeRankThresholds,
-                negativeRankDivinationLimits = draft.negativeRankDivinationLimits,
-                deleteMode = deleteMode,
-                addMode = addMode,
-                onRankNameChange = { i, v -> viewModel.updateRankName(i, v) },
-                onRankColorChange = { i, v -> viewModel.updateRankColor(i, v) },
-                onRankThresholdChange = { i, v -> viewModel.updateRankThreshold(i, v) },
-                onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
-                onRankDivinationLimitChange = { i, v -> viewModel.updateRankDivinationLimit(i, v) },
-                onNegativeRankNameChange = { i, v -> viewModel.updateNegativeRankName(i, v) },
-                onNegativeRankColorChange = { i, v -> viewModel.updateNegativeRankColor(i, v) },
-                onNegativeRankThresholdChange = { i, v -> viewModel.updateNegativeRankThreshold(i, v) },
-                onNegativeRankDivinationLimitChange = { i, v -> viewModel.updateNegativeRankDivinationLimit(i, v) },
-                onAddRankAfter = { index -> viewModel.addRankAfter(index) },
-                onDeleteRank = { viewModel.deleteRank(it) },
-                onToggleAddMode = { viewModel.toggleAddMode() },
-                onToggleDeleteMode = { viewModel.toggleDeleteMode() },
-                onAddNegativeRankAfter = { index -> viewModel.addNegativeRankAfter(index) },
-                onDeleteNegativeRank = { viewModel.deleteNegativeRank(it) },
-            )
-            EventSettingsCard(
-                goodDeedPresets = draft.goodDeedPresets,
-                badDeedPresets = draft.badDeedPresets,
-                goodResultPresets = draft.goodResultPresets,
-                onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
-                onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
-                onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
-            )
-            DailyMustDoCard(
-                goodDeedPresets = draft.goodDeedPresets,
-                dailyMustDoDeeds = draft.dailyMustDoDeeds,
-                onToggle = { name, enabled -> viewModel.toggleDailyMustDo(name, enabled) },
-                onPenaltyChange = { name, penalty -> viewModel.updateDailyMustDoPenalty(name, penalty) },
-            )
-            HistorySettingsCard(
-                historyLineThickness = draft.historyLineThickness,
-                historyDotRadius = draft.historyDotRadius,
-                onLineThicknessChange = { viewModel.updateHistoryLineThickness(it) },
-                onDotRadiusChange = { viewModel.updateHistoryDotRadius(it) },
-            )
-            DecaySettingsCard(
-                decayEnabled = draft.decayEnabled,
-                decayHour = draft.decayHour,
-                decayMinute = draft.decayMinute,
-                lastDecayDate = draft.lastDecayDate,
-                rankDecayAmounts = draft.rankDecayAmounts,
-                rankThresholds = draft.rankThresholds,
-                rankNames = draft.rankNames,
-                onDecayEnabledChange = { viewModel.updateDecayEnabled(it) },
-                onDecayTimeChange = { h, m -> viewModel.updateDecayTime(h, m) },
-            )
-            LuckSettingsCard(
-                luckEnabled = draft.luckEnabled,
-                luckT = draft.luckT,
-                luckB = draft.luckB,
-                luckW = draft.luckW,
-                onLuckEnabledChange = { viewModel.updateLuckEnabled(it) },
-                onLuckTChange = { viewModel.updateLuckT(it) },
-                onLuckBChange = { viewModel.updateLuckB(it) },
-                onLuckWChange = { viewModel.updateLuckW(it) },
-            )
-            BackgroundGradientCard(
-                themeGradientBaseColor = draft.themeGradientBaseColor,
-                themeGradientAccentColor = draft.themeGradientAccentColor,
-                onBaseColorChange = { viewModel.updateThemeGradientBaseColor(it) },
-                onAccentColorChange = { viewModel.updateThemeGradientAccentColor(it) },
-            )
-            SplashSettingsCard(
-                splashScripture = draft.splashScripture,
-                splashDurationSec = draft.splashDurationSec,
-                onScriptureChange = { viewModel.updateSplashScripture(it) },
-                onDurationChange = { viewModel.updateSplashDuration(it) },
-            )
-            ResetCard(
-                onReset = { viewModel.resetToDefaults() },
+            Spacer(Modifier.height(2.dp))
+            Text(
+                text = category.subtitle,
+                fontSize = 12.sp,
+                color = TextMuted,
             )
         }
+        Text("›", fontSize = 22.sp, color = Gold)
     }
 }
 
@@ -1016,6 +1114,8 @@ private fun RankSettingsCard(
     negativeRankDivinationLimits: List<Int>,
     deleteMode: Boolean,
     addMode: Boolean,
+    negativeAddMode: Boolean,
+    negativeDeleteMode: Boolean,
     onRankNameChange: (Int, String) -> Unit,
     onRankColorChange: (Int, Long) -> Unit,
     onRankThresholdChange: (Int, Float) -> Unit,
@@ -1031,13 +1131,12 @@ private fun RankSettingsCard(
     onToggleDeleteMode: () -> Unit,
     onAddNegativeRankAfter: (Int) -> Unit,
     onDeleteNegativeRank: (Int) -> Unit,
+    onToggleNegativeAddMode: () -> Unit,
+    onToggleNegativeDeleteMode: () -> Unit,
 ) {
     var showColorPicker by remember { mutableStateOf(false) }
     var colorPickerTarget by remember { mutableStateOf(0) }
     var colorPickerForNegative by remember { mutableStateOf(false) }
-    // 负阶增删模式（独立于正阶）
-    var negativeAddMode by remember { mutableStateOf(false) }
-    var negativeDeleteMode by remember { mutableStateOf(false) }
 
     SettingsCard("阶位设置") {
         val count = rankNames.size
@@ -1427,10 +1526,7 @@ private fun RankSettingsCard(
                                 if (negativeAddMode) Color(0xFF22aa44) else Color(0xFF334444),
                                 RoundedCornerShape(6.dp),
                             )
-                            .clickable {
-                                negativeAddMode = !negativeAddMode
-                                if (negativeAddMode) negativeDeleteMode = false
-                            }
+                            .clickable { onToggleNegativeAddMode() }
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text("+", fontSize = 16.sp, color = if (negativeAddMode) Color.White else Gold)
@@ -1447,10 +1543,7 @@ private fun RankSettingsCard(
                                 if (negativeDeleteMode) Color(0xFFb8860b) else Color(0xFF334444),
                                 RoundedCornerShape(6.dp),
                             )
-                            .clickable {
-                                negativeDeleteMode = !negativeDeleteMode
-                                if (negativeDeleteMode) negativeAddMode = false
-                            }
+                            .clickable { onToggleNegativeDeleteMode() }
                             .padding(horizontal = 12.dp, vertical = 4.dp),
                     ) {
                         Text("−", fontSize = 16.sp, color = when {

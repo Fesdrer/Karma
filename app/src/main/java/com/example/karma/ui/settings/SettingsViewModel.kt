@@ -7,11 +7,13 @@ import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.repository.KarmaRepository
 import java.util.Calendar
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 设置页 ViewModel。
@@ -32,6 +34,12 @@ class SettingsViewModel(
 
     private val _addMode = MutableStateFlow(false)
     val addMode: StateFlow<Boolean> = _addMode.asStateFlow()
+
+    // 负阶增删模式（独立于正阶；放 ViewModel 以便切换分类页后保持状态）
+    private val _negativeAddMode = MutableStateFlow(false)
+    val negativeAddMode: StateFlow<Boolean> = _negativeAddMode.asStateFlow()
+    private val _negativeDeleteMode = MutableStateFlow(false)
+    val negativeDeleteMode: StateFlow<Boolean> = _negativeDeleteMode.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -294,12 +302,16 @@ class SettingsViewModel(
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {
-            repository.updateAllSettings(_draft.value)
-            // step 1：如果每日必做 deeds 有变动 → 所有 vis 重置为 0（未做）
-            if (_draft.value.dailyMustDoDeeds != _original.value.dailyMustDoDeeds) {
-                repository.resetDailyMustDoVis()
+            // 保存后屏幕会立即 popBackStack → viewModelScope 被取消；
+            // 用 NonCancellable 保证写库完整执行，避免写一半被取消导致设置丢失。
+            withContext(NonCancellable) {
+                repository.updateAllSettings(_draft.value)
+                // step 1：如果每日必做 deeds 有变动 → 所有 vis 重置为 0（未做）
+                if (_draft.value.dailyMustDoDeeds != _original.value.dailyMustDoDeeds) {
+                    repository.resetDailyMustDoVis()
+                }
+                _original.value = _draft.value  // 同步 original，hasChanges 恢复正常
             }
-            _original.value = _draft.value  // 同步 original，hasChanges 恢复正常
         }
     }
 
@@ -465,6 +477,18 @@ class SettingsViewModel(
         } else {
             _deleteMode.value = false
         }
+    }
+
+    /** 负阶 + 模式切换（与正阶 addMode 同构，互斥于负阶删除模式）。 */
+    fun toggleNegativeAddMode() {
+        _negativeAddMode.value = !_negativeAddMode.value
+        if (_negativeAddMode.value) _negativeDeleteMode.value = false
+    }
+
+    /** 负阶 − 模式切换（与正阶 deleteMode 同构，互斥于负阶添加模式）。 */
+    fun toggleNegativeDeleteMode() {
+        _negativeDeleteMode.value = !_negativeDeleteMode.value
+        if (_negativeDeleteMode.value) _negativeAddMode.value = false
     }
 
     fun hasChanges(): Boolean = _draft.value != _original.value
