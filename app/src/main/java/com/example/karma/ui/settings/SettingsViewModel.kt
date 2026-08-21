@@ -151,9 +151,11 @@ class SettingsViewModel(
             // 日期A = 今天（每次打开开关都从今天开始）
             val today = KarmaRepository.formatDate(System.currentTimeMillis())
             setDraft(_draft.value.copy(decayEnabled = true, lastDecayDate = today))
-            // 函数 F：打开衰减开关时也执行衰减检查
+            // 函数 F：打开衰减开关时也执行衰减检查。
+            // 只持久化衰减字段（updateDecayFields），不写整个草稿——
+            // 否则未点「保存设置」的阶位增删/事件编辑等修改会被意外写入 DB。
             viewModelScope.launch {
-                repository.updateAllSettings(_draft.value)
+                repository.updateDecayFields(decayEnabled = true, lastDecayDate = today)
                 val deducted = repository.applyDecay()
                 val updated = repository.settings.first()
                 _draft.value = _draft.value.copy(

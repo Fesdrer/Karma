@@ -90,6 +90,19 @@ class KarmaRepository(
         settingsDao.upsertSettings(settings)
     }
 
+    /**
+     * 只更新衰减开关与上次扣除日期，不触碰其他设置列。
+     * 供设置页打开衰减开关时使用：仅持久化衰减字段，
+     * 避免把「未点保存」的设置草稿（阶位增删/事件编辑等）整个写入 DB。
+     */
+    suspend fun updateDecayFields(decayEnabled: Boolean, lastDecayDate: String) {
+        val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        settingsDao.upsertSettings(settings.copy(
+            decayEnabled = decayEnabled,
+            lastDecayDate = lastDecayDate,
+        ))
+    }
+
     // ---- Daily Must-Do ----
 
     /** 将指定 deed 的 vis 标记为 1（已做），同时记录 lastDate=今天。 */
