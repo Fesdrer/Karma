@@ -351,7 +351,8 @@ class SettingsViewModel(
 
     fun deleteRank(index: Int) {
         val d = _draft.value
-        if (d.rankNames.size <= 1) return
+        // index 越界（快速连点时 UI 索引尚未重组、可能已过期）直接忽略，防止 removeAt 越界闪退
+        if (d.rankNames.size <= 1 || index !in d.rankNames.indices) return
         val newNames = d.rankNames.toMutableList().apply { removeAt(index) }
         val newColors = d.rankColors.toMutableList().apply { removeAt(index) }
         val newDecays = d.rankDecayAmounts.toMutableList().apply { removeAt(index) }
@@ -394,9 +395,11 @@ class SettingsViewModel(
             val next = d.rankThresholds[insertPos]
             newThresholds.add(insertPos, (prev + next) / 2f)
         } else {
-            // 在最后一个阈值之后追加
+            // 在最后一个阈值之后追加：新边界永远在列表末尾（追加）。
+            // 不能用 add(insertPos, ...)：在最后一个阶位下方插入时 insertPos = 阶位数，
+            // 而阈值列表只有 阶位数-1 个元素，add(阶位数, ...) 会 IndexOutOfBoundsException（闪退）。
             val prev = d.rankThresholds.lastOrNull() ?: 50f
-            newThresholds.add(insertPos, prev + 50f)
+            newThresholds.add(prev + 50f)
         }
         setDraft(d.copy(
             rankNames = newNames,
@@ -437,9 +440,11 @@ class SettingsViewModel(
             val next = d.negativeRankThresholds[insertPos]
             newThresholds.add(insertPos, (prev + next) / 2f)
         } else {
-            // 在最后一个阈值之后追加（比最深更负 10 分）
+            // 在最后一个阈值之后追加（比最深更负 10 分）。
+            // 不能用 add(insertPos, ...)：在最后一个负阶下方插入时 insertPos = 负阶数，
+            // 而阈值列表只有 负阶数-1 个元素，add(负阶数, ...) 会 IndexOutOfBoundsException（闪退）。
             val prev = d.negativeRankThresholds.lastOrNull() ?: -10f
-            newThresholds.add(insertPos, prev - 10f)
+            newThresholds.add(prev - 10f)
         }
         setDraft(d.copy(
             negativeRankNames = newNames,
@@ -451,7 +456,8 @@ class SettingsViewModel(
 
     fun deleteNegativeRank(index: Int) {
         val d = _draft.value
-        if (d.negativeRankNames.size <= 1) return
+        // index 越界（快速连点时 UI 索引尚未重组、可能已过期）直接忽略，防止 removeAt 越界闪退
+        if (d.negativeRankNames.size <= 1 || index !in d.negativeRankNames.indices) return
         val newNames = d.negativeRankNames.toMutableList().apply { removeAt(index) }
         val newColors = d.negativeRankColors.toMutableList().apply { removeAt(index) }
         val newLimits = d.negativeRankDivinationLimits.toMutableList().apply { removeAt(index) }
