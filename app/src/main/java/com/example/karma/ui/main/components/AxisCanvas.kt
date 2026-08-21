@@ -22,6 +22,30 @@ import kotlin.math.sign
 
 private const val ANIM_DURATION = 400
 
+/**
+ * 阶位色带横向渐变采样点（位置, alpha），与具体颜色无关，跨帧复用。
+ * 左段 0→0.3 与右段 0.7→1 各用 RAMP_STOPS 个 smoothstep 采样点；
+ * 中间 0.3→0.7 不采样——相邻 stop (0.3,1) 与 (0.7,1) 之间线性插值恒为 1（实色）。
+ *
+ * 为什么要 smoothstep：线性渐变的 alpha 曲线在 30%/70% 拐点处斜率突变，
+ * 人眼侧抑制会把突变处放大成隐约的"微亮"带（马赫带错觉）。
+ * smoothstep 在端点处斜率（导数）为 0，与中间实色段的斜率 0 平滑衔接，
+ * 整条 alpha 曲线导数连续，拐点不再产生亮带。
+ */
+private const val RAMP_STOPS = 8
+private val BAND_RAMP: List<Pair<Float, Float>> = buildList {
+    for (i in 0..RAMP_STOPS) {
+        val t = i.toFloat() / RAMP_STOPS
+        val a = t * t * (3f - 2f * t)  // smoothstep(t)：0→1，两端导数 0
+        add(0.3f * t to a)
+    }
+    for (i in 0..RAMP_STOPS) {
+        val t = i.toFloat() / RAMP_STOPS
+        val a = 1f - t * t * (3f - 2f * t)  // 1 - smoothstep(t)：1→0，两端导数 0
+        add(0.7f + 0.3f * t to a)
+    }
+}
+
 @Composable
 fun AxisCanvas(
     totalScore: Float,
@@ -91,15 +115,15 @@ fun AxisCanvas(
 
             // 单条 rect 横跨全宽：
             // 0%→30%: 渐变透明→不透明 | 30%→70%: 实色 | 70%→100%: 渐变不透明→透明
-            // 用 rankColor.copy(alpha=0f) 替代 Color.Transparent，保持 RGB 不变、仅变 alpha
+            // 渐变段用 BAND_RAMP（smoothstep 采样）替代线性 4 点渐变，
+            // 消除 30%/70% 拐点处的马赫带"微亮"错觉。
+            // 用 rankColor.copy(alpha=...) 替代 Color.Transparent，保持 RGB 不变、仅变 alpha
             drawRect(
                 brush = Brush.horizontalGradient(
-                    colorStops = arrayOf(
-                        0f to rankColor.copy(alpha = 0f),  // 左边缘，RGB=rankColor，alpha=0
-                        0.3f to rankColor,                   // 30%处完全不透明
-                        0.7f to rankColor,                   // 70%处仍不透明
-                        1f to rankColor.copy(alpha = 0f),   // 右边缘，RGB=rankColor，alpha=0
-                    ),
+                    // 展开为 vararg Pair<Float, Color>（该 Compose 版本无 List<Pair> 重载）
+                    *BAND_RAMP.map { (pos, alpha) ->
+                        pos to rankColor.copy(alpha = alpha)
+                    }.toTypedArray(),
                 ),
                 topLeft = Offset(0f, y0),
                 size = androidx.compose.ui.geometry.Size(w, bandH),
