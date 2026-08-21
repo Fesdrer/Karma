@@ -319,7 +319,11 @@ class HistoryViewModel(
                 // NonCancellable：即使用户中途离开历史页（viewModelScope 被取消），
                 // 也保证写入完整执行，避免留下半截损坏的导出文件。
                 withContext(NonCancellable) {
-                    application.contentResolver.openOutputStream(uri)?.use { stream ->
+                    // 必须用 "rwt"（显式截断），不能用单参 openOutputStream(uri)：
+                    // 单参版本模式为 "w"，部分厂商（如华为）的 ContentProvider 对 "w" 不执行截断，
+                    // 覆盖已有文件时新 JSON 从文件头写入后，旧文件超出新 JSON 长度的尾部会残留，
+                    // 导致文件 = [本次完整导出] + [旧内容残尾]，JSON 损坏。
+                    application.contentResolver.openOutputStream(uri, "rwt")?.use { stream ->
                         stream.write(json.toByteArray(Charsets.UTF_8))
                     }
                 }
