@@ -68,11 +68,11 @@ private val VERTICAL_FADE_STOPS: Array<Pair<Float, Color>> = buildList {
         val a = u * u * (3f - 2f * u)
         add(VERTICAL_FADE_FRACTION * u to Color.White.copy(alpha = a))
     }
-    // 底部：位置 0.85→1，alpha 1→0（从下边缘 u=0 起算的 smoothstep）
+    // 底部：位置 0.85→1（升序！），alpha 1→0（从 0.85 处的 1 平滑降到下边缘 0）
     for (i in 0..VERTICAL_FADE_STEPS) {
         val u = i.toFloat() / VERTICAL_FADE_STEPS
-        val a = u * u * (3f - 2f * u)
-        add(1f - VERTICAL_FADE_FRACTION * u to Color.White.copy(alpha = a))
+        val a = 1f - u * u * (3f - 2f * u)
+        add(0.85f + VERTICAL_FADE_FRACTION * u to Color.White.copy(alpha = a))
     }
 }.toTypedArray()
 
