@@ -201,8 +201,9 @@ private fun ScoreAxisView(
         val usableH = h - paddingTop - paddingBottom
         val baseSize = axisFontSize * densityFactor
 
-        // Axis X position — left-aligned so labels fit on the right
-        val axisX = w * 0.35f
+        // Axis X position — 居中（50%），与上方居中的「当前加减分」数字垂直对齐。
+        // 整数标签在右、半格标签在左，两侧各留半宽，默认范围 ±6 时标签宽度足够。
+        val axisX = w * 0.5f
 
         // ---- Axis vertical line ----
         drawLine(
