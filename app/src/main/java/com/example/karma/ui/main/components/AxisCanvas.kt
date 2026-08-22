@@ -10,8 +10,12 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import com.example.karma.data.model.Rank
@@ -45,6 +49,32 @@ private val BAND_RAMP: List<Pair<Float, Float>> = buildList {
         add(0.7f + 0.3f * t to a)
     }
 }
+
+/**
+ * 垂直蒙版采样点（位置 0→1，白色 + alpha），与具体内容无关，跨帧复用。
+ * 顶部 0→0.15 与底部 0.85→1 用 smoothstep 从透明升到不透明（再对称降回），
+ * 中间 0.15→0.85 不采样——相邻 stop (0.15,1) 与 (0.85,1) 线性插值恒为 1。
+ *
+ * 配合 BlendMode.DstIn 使用：DstIn 只取蒙版的 alpha 通道，
+ * 把整个数轴长条（色块/刻度/标签/轴线）的上下两端虚化，中间保持清晰；
+ * 与水平渐变一样用 smoothstep，避免 15%/85% 交界处出现马赫带。
+ */
+private const val VERTICAL_FADE_FRACTION = 0.15f  // 顶部/底部各虚化画布高度的 15%
+private const val VERTICAL_FADE_STEPS = 8
+private val VERTICAL_FADE_STOPS: Array<Pair<Float, Color>> = buildList {
+    // 顶部：位置 0→0.15，alpha 0→1（smoothstep）
+    for (i in 0..VERTICAL_FADE_STEPS) {
+        val u = i.toFloat() / VERTICAL_FADE_STEPS
+        val a = u * u * (3f - 2f * u)
+        add(VERTICAL_FADE_FRACTION * u to Color.White.copy(alpha = a))
+    }
+    // 底部：位置 0.85→1，alpha 1→0（从下边缘 u=0 起算的 smoothstep）
+    for (i in 0..VERTICAL_FADE_STEPS) {
+        val u = i.toFloat() / VERTICAL_FADE_STEPS
+        val a = u * u * (3f - 2f * u)
+        add(1f - VERTICAL_FADE_FRACTION * u to Color.White.copy(alpha = a))
+    }
+}.toTypedArray()
 
 @Composable
 fun AxisCanvas(
@@ -90,6 +120,16 @@ fun AxisCanvas(
         val centerScore = animatedScore
 
         if (w <= 0 || h <= 0) return@Canvas
+
+        // ---- 上下 15% 虚化：先把整个数轴（色块/刻度/标签/轴线/光点）画进独立图层，
+        // 末尾用垂直 DstIn 蒙版统一淡出上下两端；蒙版是整条长条的公共效果，
+        // 无需逐元素计算，且只影响本图层，不影响页面背景。 ----
+        drawIntoCanvas { canvas ->
+            canvas.saveLayer(
+                bounds = Rect(0f, 0f, size.width, size.height),
+                paint = Paint(),
+            )
+        }
 
         val labelColorValue = Color(labelColor)
         val labelAlpha = labelColorValue.alpha
@@ -263,6 +303,15 @@ fun AxisCanvas(
         }
         drawContext.canvas.nativeCanvas.drawText(topLabel, axisX - tickMajorLen - 3f, 10f, rangePaint)
         drawContext.canvas.nativeCanvas.drawText(botLabel, axisX - tickMajorLen - 3f, h - 8f, rangePaint)
+
+        // ---- 垂直 DstIn 蒙版：上下各 15% 虚化（smoothstep），中间保持不透明 ----
+        drawRect(
+            brush = Brush.verticalGradient(*VERTICAL_FADE_STOPS),
+            blendMode = BlendMode.DstIn,
+        )
+
+        // 恢复图层：蒙版结果合成回画布
+        drawContext.canvas.restore()
     }
 }
 
