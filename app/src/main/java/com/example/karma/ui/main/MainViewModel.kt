@@ -69,6 +69,15 @@ class MainViewModel(
     /** 缓存当前每日必做 deeds 列表（每个 deed 有自己的 name/penalty/vis），用于 onConfirm 判断 */
     private var _currentDailyMustDoDeeds: List<DailyMustDoDeed> = emptyList()
 
+    // ===== 事件默认分数缓存（v3.13）：选择预设事件时左侧分数栏联动移动 =====
+    private var _currentGoodDeedPresets: List<String> = emptyList()
+    private var _currentGoodDeedDefaultScores: List<Float> = emptyList()
+    private var _currentBadDeedPresets: List<String> = emptyList()
+    private var _currentBadDeedDefaultScores: List<Float> = emptyList()
+    private var _currentGoodResultDefaultScores: List<Float> = emptyList()
+    private var _currentScoreAxisRangeMin: Float = -6f
+    private var _currentScoreAxisRangeMax: Float = 6f
+
     /** 独立的选择状态流：ScorePanel/EventPanel 直接读此流，绕过 combine 链。
      *  拖动滑条时不会触发 MainScreen 整体重组。 */
     private val _effectiveScoreState = MutableStateFlow<Float?>(null)
@@ -106,6 +115,14 @@ class MainViewModel(
             ) { (settings, history, luckValue), (msg, timerEnabled) ->
                 _currentGoodResultPresets = settings.goodResultPresets
                 _currentDailyMustDoDeeds = settings.dailyMustDoDeeds
+                // 事件默认分数缓存（v3.13）
+                _currentGoodDeedPresets = settings.goodDeedPresets
+                _currentGoodDeedDefaultScores = settings.goodDeedDefaultScores
+                _currentBadDeedPresets = settings.badDeedPresets
+                _currentBadDeedDefaultScores = settings.badDeedDefaultScores
+                _currentGoodResultDefaultScores = settings.goodResultDefaultScores
+                _currentScoreAxisRangeMin = settings.scoreAxisRangeMin
+                _currentScoreAxisRangeMax = settings.scoreAxisRangeMax
                 val rankKey = listOf(settings.rankThresholds, settings.rankNames, settings.rankColors)
                 if (rankKey != _cachedRankSettings) {
                     _cachedRankSettings = rankKey
@@ -168,7 +185,26 @@ class MainViewModel(
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
         _effectiveEventState.value = event
+        // v3.13：预设事件自动带默认分数 → 左侧分数栏同步移动（之后仍可滑动调整）；
+        // 自定义输入（不在预设列表）不联动
+        defaultScoreFor(event)?.let { score ->
+            val clamped = score.coerceIn(_currentScoreAxisRangeMin, _currentScoreAxisRangeMax)
+            _customScore.value = null
+            _selectedScore.value = clamped
+            _effectiveScoreState.value = clamped
+        }
         updateTimerEnabled()
+    }
+
+    /** 查找预设事件的默认分数（带符号：善业正、恶业/善果负）；未找到返回 null。 */
+    private fun defaultScoreFor(event: String): Float? {
+        val goodIdx = _currentGoodDeedPresets.indexOf(event)
+        if (goodIdx >= 0) return _currentGoodDeedDefaultScores.getOrElse(goodIdx) { 1f }
+        val badIdx = _currentBadDeedPresets.indexOf(event)
+        if (badIdx >= 0) return _currentBadDeedDefaultScores.getOrElse(badIdx) { -1f }
+        val resultIdx = _currentGoodResultPresets.indexOf(event)
+        if (resultIdx >= 0) return _currentGoodResultDefaultScores.getOrElse(resultIdx) { -1f }
+        return null
     }
 
     fun onCustomScoreChanged(text: String) {

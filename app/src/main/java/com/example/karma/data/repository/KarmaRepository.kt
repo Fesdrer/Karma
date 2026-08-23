@@ -63,7 +63,8 @@ class KarmaRepository(
     // ---- Settings ----
 
     val settings: Flow<KarmaSettingsEntity> = settingsDao.getSettings().map {
-        it ?: KarmaSettingsEntity()
+        // 事件默认分数与名称列表长度对齐（旧库/导入数据缺列时补 ±1 默认值）
+        (it ?: KarmaSettingsEntity()).withNormalizedEventScores()
     }
 
     suspend fun getTotalScoreOnce(): Float {
@@ -502,6 +503,10 @@ class KarmaRepository(
             negativeRankColors = gsonNullable(importedSettings.negativeRankColors) ?: emptyList(),
             negativeRankDivinationLimits = gsonNullable(importedSettings.negativeRankDivinationLimits) ?: emptyList(),
             rankDivinationLimits = gsonNullable(importedSettings.rankDivinationLimits) ?: emptyList(),
+            // 事件默认分数（v3.13）：旧导出缺键时补空列表，读取时再经 withNormalizedEventScores 对齐
+            goodDeedDefaultScores = gsonNullable(importedSettings.goodDeedDefaultScores) ?: emptyList(),
+            badDeedDefaultScores = gsonNullable(importedSettings.badDeedDefaultScores) ?: emptyList(),
+            goodResultDefaultScores = gsonNullable(importedSettings.goodResultDefaultScores) ?: emptyList(),
         ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false

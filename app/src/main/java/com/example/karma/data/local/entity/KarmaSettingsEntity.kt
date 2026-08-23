@@ -20,6 +20,12 @@ data class KarmaSettingsEntity(
     ),
     val goodResultPresets: List<String> = emptyList(),
 
+    // ===== 事件默认分数（与三个预设列表同下标一一对应，v3.13 新增） =====
+    // 存带符号的实际分数：善业为正，恶业/善果为负（设置页输入正数，保存时按分类取负）
+    val goodDeedDefaultScores: List<Float> = emptyList(),
+    val badDeedDefaultScores: List<Float> = emptyList(),
+    val goodResultDefaultScores: List<Float> = emptyList(),
+
     // ===== 左：分数区域 =====
     val scoreAxisFontSize: Float = 18f,
     val scoreAxisRangeMin: Float = -6f,
@@ -114,4 +120,21 @@ data class KarmaSettingsEntity(
         0xFF1E1E1EL, 0xFF141414L, 0xFF0A0A0AL, 0xFF000000L,
     ),
     val negativeRankDivinationLimits: List<Int> = List(9) { 0 },    // 负阶占卜次数全部默认 0
-)
+) {
+    // ===== 事件默认分数归一化（v3.13） =====
+
+    /**
+     * 将三个事件默认分数列表与对应名称列表长度对齐：
+     * 缺失的按分类补默认值（善业 +1，恶业/善果 −1），多余的裁剪。
+     * 防止旧数据 / 导入数据缺列导致列表不同步（同下标访问越界）。
+     */
+    fun withNormalizedEventScores(): KarmaSettingsEntity {
+        fun align(names: List<String>, scores: List<Float>, fallback: Float): List<Float> =
+            names.indices.map { i -> scores.getOrElse(i) { fallback } }
+        return copy(
+            goodDeedDefaultScores = align(goodDeedPresets, goodDeedDefaultScores, 1f),
+            badDeedDefaultScores = align(badDeedPresets, badDeedDefaultScores, -1f),
+            goodResultDefaultScores = align(goodResultPresets, goodResultDefaultScores, -1f),
+        )
+    }
+}

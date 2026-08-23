@@ -7,6 +7,7 @@ import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.repository.KarmaRepository
 import java.util.Calendar
+import kotlin.math.abs
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -40,6 +41,22 @@ class SettingsViewModel(
     val negativeAddMode: StateFlow<Boolean> = _negativeAddMode.asStateFlow()
     private val _negativeDeleteMode = MutableStateFlow(false)
     val negativeDeleteMode: StateFlow<Boolean> = _negativeDeleteMode.asStateFlow()
+
+    // 事件（善业/恶业/善果）增删与排序模式（各分类独立，切换分类页后保持）
+    private val _goodDeedAddMode = MutableStateFlow(false)
+    val goodDeedAddMode: StateFlow<Boolean> = _goodDeedAddMode.asStateFlow()
+    private val _goodDeedDeleteMode = MutableStateFlow(false)
+    val goodDeedDeleteMode: StateFlow<Boolean> = _goodDeedDeleteMode.asStateFlow()
+
+    private val _badDeedAddMode = MutableStateFlow(false)
+    val badDeedAddMode: StateFlow<Boolean> = _badDeedAddMode.asStateFlow()
+    private val _badDeedDeleteMode = MutableStateFlow(false)
+    val badDeedDeleteMode: StateFlow<Boolean> = _badDeedDeleteMode.asStateFlow()
+
+    private val _goodResultAddMode = MutableStateFlow(false)
+    val goodResultAddMode: StateFlow<Boolean> = _goodResultAddMode.asStateFlow()
+    private val _goodResultDeleteMode = MutableStateFlow(false)
+    val goodResultDeleteMode: StateFlow<Boolean> = _goodResultDeleteMode.asStateFlow()
 
     init {
         viewModelScope.launch {
@@ -110,26 +127,210 @@ class SettingsViewModel(
         }
     }
 
-    // ★ 事件列表（来自多行文本框）
-    fun updateGoodDeedPresets(lines: String) {
-        val events = lines.lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-        setDraft(_draft.value.copy(goodDeedPresets = events))
+    // ★ 事件列表（v3.13 起：逐条编辑，替代原多行文本框）
+    // 名称修改；善业改名时同步每日必做条目（dailyMustDoDeeds 按名称匹配）
+    fun updateGoodDeedName(index: Int, name: String) {
+        val names = _draft.value.goodDeedPresets.toMutableList()
+        if (index !in names.indices) return
+        val oldName = names[index]
+        names[index] = name
+        val deeds = _draft.value.dailyMustDoDeeds.map {
+            if (it.name == oldName) it.copy(name = name) else it
+        }
+        setDraft(_draft.value.copy(goodDeedPresets = names, dailyMustDoDeeds = deeds))
     }
 
-    fun updateBadDeedPresets(lines: String) {
-        val events = lines.lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-        setDraft(_draft.value.copy(badDeedPresets = events))
+    fun updateBadDeedName(index: Int, name: String) {
+        val names = _draft.value.badDeedPresets.toMutableList()
+        if (index !in names.indices) return
+        names[index] = name
+        setDraft(_draft.value.copy(badDeedPresets = names))
     }
 
-    fun updateGoodResultPresets(lines: String) {
-        val events = lines.lines()
-            .map { it.trim() }
-            .filter { it.isNotEmpty() }
-        setDraft(_draft.value.copy(goodResultPresets = events))
+    fun updateGoodResultName(index: Int, name: String) {
+        val names = _draft.value.goodResultPresets.toMutableList()
+        if (index !in names.indices) return
+        names[index] = name
+        setDraft(_draft.value.copy(goodResultPresets = names))
+    }
+
+    // 默认分数：设置页输入正数，善业存正分，恶业/善果存负分（实际扣/加分）
+    fun updateGoodDeedDefaultScore(index: Int, value: Float) {
+        val scores = _draft.value.goodDeedDefaultScores.toMutableList()
+        if (index in scores.indices) {
+            scores[index] = abs(value)
+            setDraft(_draft.value.copy(goodDeedDefaultScores = scores))
+        }
+    }
+
+    fun updateBadDeedDefaultScore(index: Int, value: Float) {
+        val scores = _draft.value.badDeedDefaultScores.toMutableList()
+        if (index in scores.indices) {
+            scores[index] = -abs(value)
+            setDraft(_draft.value.copy(badDeedDefaultScores = scores))
+        }
+    }
+
+    fun updateGoodResultDefaultScore(index: Int, value: Float) {
+        val scores = _draft.value.goodResultDefaultScores.toMutableList()
+        if (index in scores.indices) {
+            scores[index] = -abs(value)
+            setDraft(_draft.value.copy(goodResultDefaultScores = scores))
+        }
+    }
+
+    // ===== 事件增删（同阶位：+ 模式每行出现 +，− 模式每行出现 ×） =====
+
+    private fun addEventAfter(
+        names: List<String>,
+        scores: List<Float>,
+        name: String,
+        score: Float,
+        index: Int,
+    ): Pair<List<String>, List<Float>> {
+        val newNames = names.toMutableList().apply { add(index + 1, name) }
+        val newScores = scores.toMutableList().apply { add(index + 1, score) }
+        return newNames to newScores
+    }
+
+    fun addGoodDeedAfter(index: Int) {
+        val d = _draft.value
+        val (names, scores) = addEventAfter(d.goodDeedPresets, d.goodDeedDefaultScores, "新事件", 1f, index)
+        setDraft(d.copy(goodDeedPresets = names, goodDeedDefaultScores = scores))
+    }
+
+    fun addBadDeedAfter(index: Int) {
+        val d = _draft.value
+        val (names, scores) = addEventAfter(d.badDeedPresets, d.badDeedDefaultScores, "新事件", -1f, index)
+        setDraft(d.copy(badDeedPresets = names, badDeedDefaultScores = scores))
+    }
+
+    fun addGoodResultAfter(index: Int) {
+        val d = _draft.value
+        val (names, scores) = addEventAfter(d.goodResultPresets, d.goodResultDefaultScores, "新事件", -1f, index)
+        setDraft(d.copy(goodResultPresets = names, goodResultDefaultScores = scores))
+    }
+
+    /** 表头（+）在列表最上面插入一个事件（解决"不能加在最上面/删光后无法添加"）。 */
+    fun addGoodDeedAtTop() {
+        val d = _draft.value
+        setDraft(d.copy(
+            goodDeedPresets = listOf("新事件") + d.goodDeedPresets,
+            goodDeedDefaultScores = listOf(1f) + d.goodDeedDefaultScores,
+        ))
+    }
+
+    fun addBadDeedAtTop() {
+        val d = _draft.value
+        setDraft(d.copy(
+            badDeedPresets = listOf("新事件") + d.badDeedPresets,
+            badDeedDefaultScores = listOf(-1f) + d.badDeedDefaultScores,
+        ))
+    }
+
+    fun addGoodResultAtTop() {
+        val d = _draft.value
+        setDraft(d.copy(
+            goodResultPresets = listOf("新事件") + d.goodResultPresets,
+            goodResultDefaultScores = listOf(-1f) + d.goodResultDefaultScores,
+        ))
+    }
+
+    /** 删除善业事件；同步删除同名每日必做条目（applyDecay 直接遍历 dailyMustDoDeeds，不校验事件是否存在）。 */
+    fun deleteGoodDeed(index: Int) {
+        val d = _draft.value
+        if (index !in d.goodDeedPresets.indices) return
+        val name = d.goodDeedPresets[index]
+        val newNames = d.goodDeedPresets.toMutableList().apply { removeAt(index) }
+        val newScores = d.goodDeedDefaultScores.toMutableList().apply { removeAt(index) }
+        setDraft(d.copy(
+            goodDeedPresets = newNames,
+            goodDeedDefaultScores = newScores,
+            dailyMustDoDeeds = d.dailyMustDoDeeds.filterNot { it.name == name },
+        ))
+        if (newNames.isEmpty()) _goodDeedDeleteMode.value = false
+    }
+
+    fun deleteBadDeed(index: Int) {
+        val d = _draft.value
+        if (index !in d.badDeedPresets.indices) return
+        val newNames = d.badDeedPresets.toMutableList().apply { removeAt(index) }
+        val newScores = d.badDeedDefaultScores.toMutableList().apply { removeAt(index) }
+        setDraft(d.copy(badDeedPresets = newNames, badDeedDefaultScores = newScores))
+        if (newNames.isEmpty()) _badDeedDeleteMode.value = false
+    }
+
+    fun deleteGoodResult(index: Int) {
+        val d = _draft.value
+        if (index !in d.goodResultPresets.indices) return
+        val newNames = d.goodResultPresets.toMutableList().apply { removeAt(index) }
+        val newScores = d.goodResultDefaultScores.toMutableList().apply { removeAt(index) }
+        setDraft(d.copy(goodResultPresets = newNames, goodResultDefaultScores = newScores))
+        if (newNames.isEmpty()) _goodResultDeleteMode.value = false
+    }
+
+    // ===== 事件拖拽排序（名称与默认分数成对移动） =====
+
+    private fun moveEvent(
+        names: List<String>,
+        scores: List<Float>,
+        from: Int,
+        to: Int,
+    ): Pair<List<String>, List<Float>> {
+        if (from !in names.indices || to !in names.indices || from == to) return names to scores
+        val newNames = names.toMutableList().apply { add(to, removeAt(from)) }
+        val newScores = scores.toMutableList().apply { add(to, removeAt(from)) }
+        return newNames to newScores
+    }
+
+    fun moveGoodDeed(from: Int, to: Int) {
+        val d = _draft.value
+        val (names, scores) = moveEvent(d.goodDeedPresets, d.goodDeedDefaultScores, from, to)
+        setDraft(d.copy(goodDeedPresets = names, goodDeedDefaultScores = scores))
+    }
+
+    fun moveBadDeed(from: Int, to: Int) {
+        val d = _draft.value
+        val (names, scores) = moveEvent(d.badDeedPresets, d.badDeedDefaultScores, from, to)
+        setDraft(d.copy(badDeedPresets = names, badDeedDefaultScores = scores))
+    }
+
+    fun moveGoodResult(from: Int, to: Int) {
+        val d = _draft.value
+        val (names, scores) = moveEvent(d.goodResultPresets, d.goodResultDefaultScores, from, to)
+        setDraft(d.copy(goodResultPresets = names, goodResultDefaultScores = scores))
+    }
+
+    // ===== 事件加/减模式切换（同阶位：互斥） =====
+
+    fun toggleGoodDeedAddMode() {
+        _goodDeedAddMode.value = !_goodDeedAddMode.value
+        if (_goodDeedAddMode.value) _goodDeedDeleteMode.value = false
+    }
+
+    fun toggleGoodDeedDeleteMode() {
+        _goodDeedDeleteMode.value = !_goodDeedDeleteMode.value
+        if (_goodDeedDeleteMode.value) _goodDeedAddMode.value = false
+    }
+
+    fun toggleBadDeedAddMode() {
+        _badDeedAddMode.value = !_badDeedAddMode.value
+        if (_badDeedAddMode.value) _badDeedDeleteMode.value = false
+    }
+
+    fun toggleBadDeedDeleteMode() {
+        _badDeedDeleteMode.value = !_badDeedDeleteMode.value
+        if (_badDeedDeleteMode.value) _badDeedAddMode.value = false
+    }
+
+    fun toggleGoodResultAddMode() {
+        _goodResultAddMode.value = !_goodResultAddMode.value
+        if (_goodResultAddMode.value) _goodResultDeleteMode.value = false
+    }
+
+    fun toggleGoodResultDeleteMode() {
+        _goodResultDeleteMode.value = !_goodResultDeleteMode.value
+        if (_goodResultDeleteMode.value) _goodResultAddMode.value = false
     }
 
     // ★ 中间光点
@@ -323,10 +524,13 @@ class SettingsViewModel(
         setDraft(KarmaSettingsEntity().copy(
             totalScore = current.totalScore,
             lastDecayDate = current.lastDecayDate,
-            // 保留三个事件列表，不被默认值覆盖
+            // 保留三个事件列表及其默认分数，不被默认值覆盖
             goodDeedPresets = current.goodDeedPresets,
             badDeedPresets = current.badDeedPresets,
             goodResultPresets = current.goodResultPresets,
+            goodDeedDefaultScores = current.goodDeedDefaultScores,
+            badDeedDefaultScores = current.badDeedDefaultScores,
+            goodResultDefaultScores = current.goodResultDefaultScores,
             // 保留每日必做设置
             dailyMustDoDeeds = current.dailyMustDoDeeds,
         ))

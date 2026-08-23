@@ -7,6 +7,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -63,6 +64,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -70,12 +74,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.di.AppContainer
 import com.example.karma.util.LuckAmplifier
 import com.example.karma.ui.theme.BorderSubtle
 import kotlin.math.abs
+import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import com.example.karma.ui.theme.Gold
@@ -113,6 +119,13 @@ fun SettingsScreen(
     val addMode by viewModel.addMode.collectAsState()
     val negativeAddMode by viewModel.negativeAddMode.collectAsState()
     val negativeDeleteMode by viewModel.negativeDeleteMode.collectAsState()
+    // 事件增删/排序模式（v3.13）
+    val goodDeedAddMode by viewModel.goodDeedAddMode.collectAsState()
+    val goodDeedDeleteMode by viewModel.goodDeedDeleteMode.collectAsState()
+    val badDeedAddMode by viewModel.badDeedAddMode.collectAsState()
+    val badDeedDeleteMode by viewModel.badDeedDeleteMode.collectAsState()
+    val goodResultAddMode by viewModel.goodResultAddMode.collectAsState()
+    val goodResultDeleteMode by viewModel.goodResultDeleteMode.collectAsState()
 
     // 当前打开的分类；null = 分类入口页
     var selectedCategory by remember { mutableStateOf<SettingsCategory?>(null) }
@@ -279,12 +292,51 @@ fun SettingsScreen(
                         }
                         SettingsCategory.Events -> {
                             EventSettingsCard(
-                                goodDeedPresets = draft.goodDeedPresets,
-                                badDeedPresets = draft.badDeedPresets,
-                                goodResultPresets = draft.goodResultPresets,
-                                onGoodDeedChange = { viewModel.updateGoodDeedPresets(it) },
-                                onBadDeedChange = { viewModel.updateBadDeedPresets(it) },
-                                onGoodResultChange = { viewModel.updateGoodResultPresets(it) },
+                                goodDeed = EventListUi(
+                                    title = "善业", titleColor = Color(0xFF69f0ae),
+                                    presets = draft.goodDeedPresets,
+                                    defaultScores = draft.goodDeedDefaultScores,
+                                    addMode = goodDeedAddMode,
+                                    deleteMode = goodDeedDeleteMode,
+                                    onNameChange = { i, v -> viewModel.updateGoodDeedName(i, v) },
+                                    onScoreChange = { i, v -> viewModel.updateGoodDeedDefaultScore(i, v) },
+                                    onAddAfter = { viewModel.addGoodDeedAfter(it) },
+                                    onAddAtTop = { viewModel.addGoodDeedAtTop() },
+                                    onDelete = { viewModel.deleteGoodDeed(it) },
+                                    onMove = { from, to -> viewModel.moveGoodDeed(from, to) },
+                                    onToggleAddMode = { viewModel.toggleGoodDeedAddMode() },
+                                    onToggleDeleteMode = { viewModel.toggleGoodDeedDeleteMode() },
+                                ),
+                                badDeed = EventListUi(
+                                    title = "恶业", titleColor = Color(0xFFff5252),
+                                    presets = draft.badDeedPresets,
+                                    defaultScores = draft.badDeedDefaultScores,
+                                    addMode = badDeedAddMode,
+                                    deleteMode = badDeedDeleteMode,
+                                    onNameChange = { i, v -> viewModel.updateBadDeedName(i, v) },
+                                    onScoreChange = { i, v -> viewModel.updateBadDeedDefaultScore(i, v) },
+                                    onAddAfter = { viewModel.addBadDeedAfter(it) },
+                                    onAddAtTop = { viewModel.addBadDeedAtTop() },
+                                    onDelete = { viewModel.deleteBadDeed(it) },
+                                    onMove = { from, to -> viewModel.moveBadDeed(from, to) },
+                                    onToggleAddMode = { viewModel.toggleBadDeedAddMode() },
+                                    onToggleDeleteMode = { viewModel.toggleBadDeedDeleteMode() },
+                                ),
+                                goodResult = EventListUi(
+                                    title = "善果", titleColor = Color(0xFFffd700),
+                                    presets = draft.goodResultPresets,
+                                    defaultScores = draft.goodResultDefaultScores,
+                                    addMode = goodResultAddMode,
+                                    deleteMode = goodResultDeleteMode,
+                                    onNameChange = { i, v -> viewModel.updateGoodResultName(i, v) },
+                                    onScoreChange = { i, v -> viewModel.updateGoodResultDefaultScore(i, v) },
+                                    onAddAfter = { viewModel.addGoodResultAfter(it) },
+                                    onAddAtTop = { viewModel.addGoodResultAtTop() },
+                                    onDelete = { viewModel.deleteGoodResult(it) },
+                                    onMove = { from, to -> viewModel.moveGoodResult(from, to) },
+                                    onToggleAddMode = { viewModel.toggleGoodResultAddMode() },
+                                    onToggleDeleteMode = { viewModel.toggleGoodResultDeleteMode() },
+                                ),
                             )
                             DailyMustDoCard(
                                 goodDeedPresets = draft.goodDeedPresets,
@@ -544,96 +596,268 @@ private fun AxisSettingsCard(
 }
 
 // ============================================================
-// EventSettingsCard — 右边事件列表
+// EventSettingsCard — 事件管理（v3.13 起：每条事件独立编辑默认分数 + 拖拽排序）
 // ============================================================
+
+/** 事件分类区块的编辑状态与回调（善业/恶业/善果三个同构区块复用）。 */
+private class EventListUi(
+    val title: String,
+    val titleColor: Color,
+    val presets: List<String>,
+    val defaultScores: List<Float>,
+    val addMode: Boolean,
+    val deleteMode: Boolean,
+    val onNameChange: (Int, String) -> Unit,
+    val onScoreChange: (Int, Float) -> Unit,
+    val onAddAfter: (Int) -> Unit,
+    val onAddAtTop: () -> Unit,
+    val onDelete: (Int) -> Unit,
+    val onMove: (Int, Int) -> Unit,
+    val onToggleAddMode: () -> Unit,
+    val onToggleDeleteMode: () -> Unit,
+)
 
 @Composable
 private fun EventSettingsCard(
-    goodDeedPresets: List<String>,
-    badDeedPresets: List<String>,
-    goodResultPresets: List<String>,
-    onGoodDeedChange: (String) -> Unit,
-    onBadDeedChange: (String) -> Unit,
-    onGoodResultChange: (String) -> Unit,
+    goodDeed: EventListUi,
+    badDeed: EventListUi,
+    goodResult: EventListUi,
 ) {
-    SettingsCard("右边事件列表") {
+    SettingsCard("事件管理") {
         Text(
-            "每行一个事件，直接编辑即可增删",
+            "每个事件可设置默认分数：主页面点选事件时，左侧分数栏会自动移到该分数（之后仍可滑动调整）。" +
+                "善业为正分，恶业/善果为负分（输入 1 即扣 1 分）。",
             fontSize = 12.sp,
             color = TextSecondary,
         )
         Spacer(Modifier.height(12.dp))
 
-        // — 善业 —
-        EventSection(
-            title = "善业",
-            titleColor = Color(0xFF69f0ae),
-            events = goodDeedPresets,
-            onUpdate = onGoodDeedChange,
-        )
+        EventListBlock(goodDeed)
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // — 恶业 —
-        EventSection(
-            title = "恶业",
-            titleColor = Color(0xFFff5252),
-            events = badDeedPresets,
-            onUpdate = onBadDeedChange,
-        )
+        EventListBlock(badDeed)
 
-        Spacer(Modifier.height(12.dp))
+        Spacer(Modifier.height(16.dp))
 
-        // — 善果 —
-        EventSection(
-            title = "善果",
-            titleColor = Color(0xFFffd700),
-            events = goodResultPresets,
-            onUpdate = onGoodResultChange,
-        )
+        EventListBlock(goodResult)
     }
 }
 
+/**
+ * 一个事件分类区块（善业/恶业/善果同构）：
+ * - 表头：标题 +（加模式下显示）+ 钮（在列表最上面插入，解决"删光后无法添加/不能加在最上面"）
+ * - 行：事件名称输入 ｜ 默认分数输入（正数）｜（加模式绿色＋ / 减模式红色×）｜ ≡ 拖拽柄
+ * - 底部：+ − 模式切换（同阶位：互斥）
+ */
 @Composable
-private fun EventSection(
-    title: String,
-    titleColor: Color,
-    events: List<String>,
-    onUpdate: (String) -> Unit,
-) {
-    var text by remember(events) {
-        mutableStateOf(events.joinToString("\n"))
-    }
+private fun EventListBlock(ui: EventListUi) {
+    val count = ui.presets.size
 
-    Column {
+    // 拖拽排序状态：长按 ≡ 后拖动，松手按位移量计算目标位置
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var dragDy by remember { mutableFloatStateOf(0f) }
+    var rowHeightPx by remember { mutableFloatStateOf(0f) }
+
+    // 表头
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
         Text(
-            text = "■ $title",
+            text = "■ ${ui.title}",
             fontSize = 14.sp,
             fontWeight = FontWeight.Bold,
-            color = titleColor,
+            color = ui.titleColor,
+            modifier = Modifier.weight(1f),
         )
-        Spacer(Modifier.height(4.dp))
-        OutlinedTextField(
-            value = text,
-            onValueChange = { newText ->
-                text = newText
-                onUpdate(newText)
-            },
+        if (ui.addMode) {
+            // 表头 +：仅在加模式下显示，点击在列表最上面插入新事件
+            Box(
+                modifier = Modifier
+                    .size(22.dp)
+                    .clip(CircleShape)
+                    .background(Color(0xFF22aa44))
+                    .clickable { ui.onAddAtTop() },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            }
+        }
+    }
+
+    Spacer(Modifier.height(4.dp))
+
+    if (count == 0) {
+        Text(
+            "（暂无事件：按下方 + 进入添加模式，表头会出现 + 可在此分类最上面新增）",
+            fontSize = 12.sp,
+            color = TextMuted,
+        )
+    }
+
+    for (i in 0 until count) {
+        val isDragging = draggingIndex == i
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(min = 80.dp),
-            singleLine = false,
-            minLines = 3,
-            textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
-            placeholder = { Text("输入${title}事件...") },
-            colors = OutlinedTextFieldDefaults.colors(
-                focusedBorderColor = titleColor,
-                unfocusedBorderColor = BorderSubtle,
-                focusedTextColor = TextPrimary,
-                unfocusedTextColor = TextPrimary,
-                cursorColor = titleColor,
-            ),
-        )
+                .padding(vertical = 2.dp)
+                .graphicsLayer {
+                    translationY = if (isDragging) dragDy else 0f
+                }
+                .zIndex(if (isDragging) 1f else 0f)
+                .onSizeChanged { rowHeightPx = it.height.toFloat() },
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            // 事件名称（受控输入，值直接来自草稿）
+            OutlinedTextField(
+                value = ui.presets.getOrElse(i) { "" },
+                onValueChange = { ui.onNameChange(i, it) },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall.copy(color = TextPrimary),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ui.titleColor,
+                    unfocusedBorderColor = BorderSubtle,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = ui.titleColor,
+                ),
+                modifier = Modifier.weight(1f),
+            )
+
+            Spacer(Modifier.width(6.dp))
+
+            // 默认分数（显示正数；存储时按分类取符号）
+            val score = ui.defaultScores.getOrElse(i) { if (ui.title == "善业") 1f else -1f }
+            var scoreText by remember(i, score) { mutableStateOf(formatFloat(abs(score))) }
+            OutlinedTextField(
+                value = scoreText,
+                onValueChange = { v ->
+                    scoreText = v
+                    v.toFloatOrNull()?.let { ui.onScoreChange(i, it) }
+                },
+                singleLine = true,
+                textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedBorderColor = ui.titleColor,
+                    unfocusedBorderColor = BorderSubtle,
+                    focusedTextColor = TextPrimary,
+                    unfocusedTextColor = TextPrimary,
+                    cursorColor = ui.titleColor,
+                ),
+                modifier = Modifier.widthIn(min = 52.dp),
+            )
+
+            // 加/减模式行内按钮（同阶位：+ 绿色 / × 红色）
+            if (ui.addMode) {
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF22aa44))
+                        .clickable { ui.onAddAfter(i) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+            if (ui.deleteMode) {
+                Spacer(Modifier.width(6.dp))
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFFcc0000))
+                        .clickable { ui.onDelete(i) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("×", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+
+            Spacer(Modifier.width(4.dp))
+
+            // ≡ 拖拽柄：三根等长横线，长按后上下拖动排序
+            Column(
+                modifier = Modifier
+                    .width(22.dp)
+                    .height(32.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .pointerInput(i) {
+                        detectDragGesturesAfterLongPress(
+                            onDragStart = {
+                                draggingIndex = i
+                                dragDy = 0f
+                            },
+                            onDrag = { change, amount ->
+                                change.consume()
+                                dragDy += amount.y
+                            },
+                            onDragEnd = {
+                                if (rowHeightPx > 0f) {
+                                    val target = (i + (dragDy / rowHeightPx).roundToInt())
+                                        .coerceIn(0, count - 1)
+                                    if (target != i) ui.onMove(i, target)
+                                }
+                                draggingIndex = null
+                                dragDy = 0f
+                            },
+                            onDragCancel = {
+                                draggingIndex = null
+                                dragDy = 0f
+                            },
+                        )
+                    },
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center,
+            ) {
+                repeat(3) {
+                    Box(
+                        modifier = Modifier
+                            .width(14.dp)
+                            .height(1.5.dp)
+                            .padding(vertical = 0.dp)
+                            .background(TextSecondary.copy(alpha = 0.8f)),
+                    )
+                    if (it < 2) Spacer(Modifier.height(3.dp))
+                }
+            }
+        }
+    }
+
+    // 底部 +/− 模式切换（同阶位：+ 进入添加模式，− 进入删除模式）
+    Spacer(Modifier.height(6.dp))
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.End,
+    ) {
+        val addActive = ui.addMode
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (addActive) Color(0xFF22aa44) else Color(0xFF1A1A1A))
+                .border(1.dp, if (addActive) Color(0xFF22aa44) else Color(0xFF334444), RoundedCornerShape(6.dp))
+                .clickable { ui.onToggleAddMode() }
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            Text("+", fontSize = 16.sp, color = if (addActive) Color.White else Gold)
+        }
+
+        Spacer(Modifier.width(8.dp))
+
+        val delActive = ui.deleteMode
+        Box(
+            modifier = Modifier
+                .clip(RoundedCornerShape(6.dp))
+                .background(if (delActive) Color(0xFFb8860b) else Color(0xFF1A1A1A))
+                .border(1.dp, if (delActive) Color(0xFFb8860b) else Color(0xFF334444), RoundedCornerShape(6.dp))
+                .clickable { ui.onToggleDeleteMode() }
+                .padding(horizontal = 12.dp, vertical = 4.dp),
+        ) {
+            Text("−", fontSize = 16.sp, color = if (delActive) Color.White else Gold)
+        }
     }
 }
 
