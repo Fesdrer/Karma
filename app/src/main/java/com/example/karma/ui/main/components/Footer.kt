@@ -46,12 +46,12 @@ fun Footer(
             .clip(RoundedCornerShape(10.dp)),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // 确认
+        // 誓约（v3.13 起与确认交换位置，位于第一个；紫色）
         FooterSegment(
-            text = "确认",
-            enabled = confirmEnabled,
-            activeColor = Color(0xFF4a90d9),
-            onClick = onConfirm,
+            text = "誓约",
+            enabled = true,
+            activeColor = Color(0xFF7b68ee),   // 区别于祈福(金)、占卜(青) 的紫色系
+            onClick = onBet,
             modifier = Modifier.weight(1f),
         )
 
@@ -68,12 +68,12 @@ fun Footer(
 
         FooterDivider()
 
-        // 誓约
+        // 确认（v3.13 起与誓约交换位置，位于第三个；蓝色）
         FooterSegment(
-            text = "誓约",
-            enabled = true,
-            activeColor = Color(0xFF7b68ee),   // 区别于祈福(金)、占卜(灰) 的紫色系
-            onClick = onBet,
+            text = "确认",
+            enabled = confirmEnabled,
+            activeColor = Color(0xFF4a90d9),
+            onClick = onConfirm,
             modifier = Modifier.weight(1f),
         )
 
