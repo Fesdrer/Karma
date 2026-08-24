@@ -654,9 +654,10 @@ private fun EventSettingsCard(
 private fun EventListBlock(ui: EventListUi) {
     val count = ui.presets.size
 
-    // 拖拽排序状态：长按 ≡ 后拖动，松手按位移量计算目标位置
-    var draggingIndex by remember { mutableStateOf<Int?>(null) }
-    var dragDy by remember { mutableFloatStateOf(0f) }
+    // 拖拽排序状态：长按 ≡ 后拖动；拖动中实时计算目标位，其他行视觉让位
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }  // 被拖行原始下标
+    var dragDy by remember { mutableFloatStateOf(0f) }             // 被拖行累计位移
+    var currentTarget by remember { mutableStateOf(0) }            // 实时目标位（让位依据）
     var rowHeightPx by remember { mutableFloatStateOf(0f) }
 
     // 表头
@@ -698,12 +699,22 @@ private fun EventListBlock(ui: EventListUi) {
 
     for (i in 0 until count) {
         val isDragging = draggingIndex == i
+        val fromIdx = draggingIndex
+        // 实时让位：被拖行下方（向下拖）的行上移一行、上方（向上拖）的行下移一行，
+        // 视觉上其他事件自动补位，松手后数据重排固定
+        val shiftUp = !isDragging && fromIdx != null && i > fromIdx && i <= currentTarget
+        val shiftDown = !isDragging && fromIdx != null && i < fromIdx && i >= currentTarget
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
                 .graphicsLayer {
-                    translationY = if (isDragging) dragDy else 0f
+                    translationY = when {
+                        isDragging -> dragDy
+                        shiftUp -> -rowHeightPx
+                        shiftDown -> rowHeightPx
+                        else -> 0f
+                    }
                 }
                 .zIndex(if (isDragging) 1f else 0f)
                 .onSizeChanged { rowHeightPx = it.height.toFloat() },
@@ -779,28 +790,34 @@ private fun EventListBlock(ui: EventListUi) {
 
             Spacer(Modifier.width(4.dp))
 
-            // ≡ 拖拽柄：三根等长横线，长按后上下拖动排序
+            // ≡ 拖拽柄：三根等长横线，长按后变金色提示可拖动，上下拖动实时让位排序
             Column(
                 modifier = Modifier
                     .width(22.dp)
                     .height(32.dp)
                     .clip(RoundedCornerShape(4.dp))
+                    .background(
+                        if (isDragging) Gold.copy(alpha = 0.25f)
+                        else Color.Transparent
+                    )
                     .pointerInput(i) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
                                 draggingIndex = i
+                                currentTarget = i
                                 dragDy = 0f
                             },
                             onDrag = { change, amount ->
                                 change.consume()
                                 dragDy += amount.y
+                                // 实时更新目标位：越过半行高度即让位
+                                if (rowHeightPx > 0f) {
+                                    currentTarget = (i + (dragDy / rowHeightPx).roundToInt())
+                                        .coerceIn(0, count - 1)
+                                }
                             },
                             onDragEnd = {
-                                if (rowHeightPx > 0f) {
-                                    val target = (i + (dragDy / rowHeightPx).roundToInt())
-                                        .coerceIn(0, count - 1)
-                                    if (target != i) ui.onMove(i, target)
-                                }
+                                if (currentTarget != i) ui.onMove(i, currentTarget)
                                 draggingIndex = null
                                 dragDy = 0f
                             },
@@ -819,7 +836,9 @@ private fun EventListBlock(ui: EventListUi) {
                             .width(14.dp)
                             .height(1.5.dp)
                             .padding(vertical = 0.dp)
-                            .background(TextSecondary.copy(alpha = 0.8f)),
+                            .background(
+                                if (isDragging) Gold else TextSecondary.copy(alpha = 0.8f)
+                            ),
                     )
                     if (it < 2) Spacer(Modifier.height(3.dp))
                 }
