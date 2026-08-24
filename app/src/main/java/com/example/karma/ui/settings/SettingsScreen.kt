@@ -3,6 +3,7 @@ package com.example.karma.ui.settings
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -65,8 +66,10 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
@@ -653,8 +656,10 @@ private fun EventSettingsCard(
 @Composable
 private fun EventListBlock(ui: EventListUi) {
     val count = ui.presets.size
+    // 长按进入拖动时震动提示（系统长按触感）
+    val haptic = LocalHapticFeedback.current
 
-    // 拖拽排序状态：长按 ≡ 后拖动；拖动中实时计算目标位，其他行视觉让位
+    // 拖拽排序状态：长按 ≡ 后拖动；拖动中实时计算目标位，其他行动画让位
     var draggingIndex by remember { mutableStateOf<Int?>(null) }  // 被拖行原始下标
     var dragDy by remember { mutableFloatStateOf(0f) }             // 被拖行累计位移
     var currentTarget by remember { mutableStateOf(0) }            // 实时目标位（让位依据）
@@ -704,17 +709,22 @@ private fun EventListBlock(ui: EventListUi) {
         // 视觉上其他事件自动补位，松手后数据重排固定
         val shiftUp = !isDragging && fromIdx != null && i > fromIdx && i <= currentTarget
         val shiftDown = !isDragging && fromIdx != null && i < fromIdx && i >= currentTarget
+        // 让位位移用动画平滑移动（不突变）；被拖行则实时跟随手指（无动画）
+        val settleOffset by animateFloatAsState(
+            targetValue = when {
+                shiftUp -> -rowHeightPx
+                shiftDown -> rowHeightPx
+                else -> 0f
+            },
+            animationSpec = tween(200, easing = FastOutSlowInEasing),
+            label = "eventSettle",
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 2.dp)
                 .graphicsLayer {
-                    translationY = when {
-                        isDragging -> dragDy
-                        shiftUp -> -rowHeightPx
-                        shiftDown -> rowHeightPx
-                        else -> 0f
-                    }
+                    translationY = if (isDragging) dragDy else settleOffset
                 }
                 .zIndex(if (isDragging) 1f else 0f)
                 .onSizeChanged { rowHeightPx = it.height.toFloat() },
@@ -803,6 +813,8 @@ private fun EventListBlock(ui: EventListUi) {
                     .pointerInput(i) {
                         detectDragGesturesAfterLongPress(
                             onDragStart = {
+                                // 长按成功：震动提示 + 手柄变金，进入可拖动状态
+                                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                                 draggingIndex = i
                                 currentTarget = i
                                 dragDy = 0f
