@@ -107,6 +107,10 @@ fun DivinationScreen(
     val divinationRemaining = settings?.let { s ->
         appContainer.repository.getDivinationRemaining(s)
     } ?: 0
+    // 当前阶位的占卜上限（上限为 0 表示该阶位无法占卜，与「次数用完」页面区分开）
+    val divinationLimit = settings?.let { s ->
+        appContainer.repository.getDivinationLimit(s)
+    } ?: 0
 
     val tabs = listOf("气运测试", "大衍筮法", "小六壬")
 
@@ -189,8 +193,8 @@ fun DivinationScreen(
                 if (settings == null) {
                     // 数据未就绪：不渲染，避免剩余次数 0 导致锁定画面首帧闪现
                 } else if (!yarrowReady && divinationRemaining <= 0) {
-                    // 大衍筮法：今日次数用完
-                    DivinationLockedOverlay(title = "大衍筮法")
+                    // 大衍筮法：今日次数用完（上限为 0 时显示「该阶位无法占卜」）
+                    DivinationLockedOverlay(title = "大衍筮法", noQuota = divinationLimit <= 0)
                 } else if (!yarrowReady) {
                     // 大衍筮法：先输入占卜事情和扣除分数
                     DivinationInputOverlay(
@@ -279,8 +283,8 @@ fun DivinationScreen(
                 if (settings == null) {
                     // 数据未就绪：不渲染，避免剩余次数 0 导致锁定画面首帧闪现
                 } else if (!xlrReady && divinationRemaining <= 0) {
-                    // 小六壬：今日次数用完
-                    DivinationLockedOverlay(title = "小六壬")
+                    // 小六壬：今日次数用完（上限为 0 时显示「该阶位无法占卜」）
+                    DivinationLockedOverlay(title = "小六壬", noQuota = divinationLimit <= 0)
                 } else if (!xlrReady) {
                     // 小六壬：先输入占卜事情和扣除分数
                     DivinationInputOverlay(
@@ -475,10 +479,12 @@ private fun DivinationInputOverlay(
 }
 
 /**
- * 占卜锁定画面：今日占卜次数用完（原 3 阶解锁画面改造）
+ * 占卜锁定画面：
+ * - noQuota=true（当前阶位占卜上限为 0）→ 显示「该阶位无法占卜」
+ * - noQuota=false（上限 > 0 但今日次数用完）→ 显示「今日占卜次数已用完」
  */
 @Composable
-private fun DivinationLockedOverlay(title: String) {
+private fun DivinationLockedOverlay(title: String, noQuota: Boolean = false) {
     Box(
         modifier = Modifier.fillMaxSize().background(Color(0xFF0a0a0f)),
         contentAlignment = Alignment.Center,
@@ -487,7 +493,11 @@ private fun DivinationLockedOverlay(title: String) {
             Text("🔒", fontSize = 48.sp)
             Spacer(Modifier.height(16.dp))
             Text(
-                text = "「$title」今日占卜次数已用完",
+                text = if (noQuota) {
+                    "「$title」该阶位无法占卜"
+                } else {
+                    "「$title」今日占卜次数已用完"
+                },
                 fontSize = 18.sp,
                 fontFamily = FontFamily.Serif,
                 fontWeight = FontWeight.Bold,
@@ -495,7 +505,11 @@ private fun DivinationLockedOverlay(title: String) {
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = "请明天再来",
+                text = if (noQuota) {
+                    "当前阶位的占卜上限为 0"
+                } else {
+                    "请明天再来"
+                },
                 fontFamily = FontFamily.Serif,
                 fontSize = 14.sp,
                 color = Color(0xFF888888),

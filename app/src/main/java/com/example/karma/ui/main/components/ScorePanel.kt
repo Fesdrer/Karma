@@ -167,19 +167,21 @@ private fun ScoreAxisView(
                 }
             }
             .pointerInput(axisRangeMin, axisRangeMax) {
-                // Apple 直接操纵原则：拖动中 1:1 跟随手指（不 snap），释放时吸附到最近半格。
-                // 避免拖动中数值在 .5 刻度间跳动、与手指脱节。
+                // 拖动中实时吸附到最近的整数或 .5 刻度（只在刻度位置停留），
+                // 松手/取消时再吸附一次，确保最终落在刻度上。
                 var lastRawScore = selectedScore
                 detectVerticalDragGestures(
                     onDragStart = { offset ->
-                        lastRawScore = yToScore(offset.y, size.height.toFloat(), axisRangeMin, axisRangeMax)
-                            .coerceIn(axisRangeMin, axisRangeMax)
+                        lastRawScore = snapToHalf(
+                            yToScore(offset.y, size.height.toFloat(), axisRangeMin, axisRangeMax)
+                                .coerceIn(axisRangeMin, axisRangeMax)
+                        )
                     },
                     onVerticalDrag = { change, _ ->
                         val score = yToScore(change.position.y, size.height.toFloat(), axisRangeMin, axisRangeMax)
                             .coerceIn(axisRangeMin, axisRangeMax)
                         lastRawScore = score
-                        onScoreSelected(score)
+                        onScoreSelected(snapToHalf(score).coerceIn(axisRangeMin, axisRangeMax))
                         change.consume()
                     },
                     onDragEnd = {
