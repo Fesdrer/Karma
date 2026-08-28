@@ -101,7 +101,8 @@ private enum class SettingsCategory(val title: String, val subtitle: String) {
     Appearance("外观与图表", "分数轴、刻度、历史图表、背景渐变"),
     PositiveRanks("正阶位体系", "正阶的名称、颜色、上限、衰减与占卜次数"),
     NegativeRanks("负阶位体系", "负阶的名称、颜色、下限与占卜次数"),
-    Events("事件管理", "善业、恶业、善果预设与每日必做"),
+    Events("事件管理", "善业、恶业、善果预设"),
+    DailyMustDo("每日必做", "善业每日必做与未完成扣分"),
     Mechanics("业力机制", "业力衰减与运气增幅"),
     Splash("启动画面", "启动经文与停留时长"),
     General("通用", "重置所有设置为默认"),
@@ -341,6 +342,8 @@ fun SettingsScreen(
                                     onToggleDeleteMode = { viewModel.toggleGoodResultDeleteMode() },
                                 ),
                             )
+                        }
+                        SettingsCategory.DailyMustDo -> {
                             DailyMustDoCard(
                                 goodDeedPresets = draft.goodDeedPresets,
                                 dailyMustDoDeeds = draft.dailyMustDoDeeds,
