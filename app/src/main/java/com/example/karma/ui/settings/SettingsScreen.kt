@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -37,6 +38,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -130,6 +133,8 @@ fun SettingsScreen(
     val badDeedDeleteMode by viewModel.badDeedDeleteMode.collectAsState()
     val goodResultAddMode by viewModel.goodResultAddMode.collectAsState()
     val goodResultDeleteMode by viewModel.goodResultDeleteMode.collectAsState()
+    // 选择性重置：勾选「历史记录」后保存按钮也要可点（历史不在草稿里，draft 可能没变化）
+    val pendingClearHistory by viewModel.pendingClearHistory.collectAsState()
 
     // 当前打开的分类；null = 分类入口页
     var selectedCategory by remember { mutableStateOf<SettingsCategory?>(null) }
@@ -180,7 +185,7 @@ fun SettingsScreen(
                         viewModel.save()
                         onBack()
                     },
-                    enabled = draft != original,
+                    enabled = draft != original || pendingClearHistory,
                     modifier = Modifier.fillMaxWidth(),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = Gold,
@@ -383,8 +388,8 @@ fun SettingsScreen(
                             )
                         }
                         SettingsCategory.General -> {
-                            ResetCard(
-                                onReset = { viewModel.resetToDefaults() },
+                            SelectiveResetCard(
+                                onReset = { groups -> viewModel.resetGroups(groups) },
                             )
                         }
                     }
@@ -1240,22 +1245,122 @@ private fun SplashSettingsCard(
 }
 
 // ============================================================
-// ResetCard — 重置默认
+// SelectiveResetCard — 选择性重置（勾选要重置的分组，确认后写入草稿，保存才生效）
 // ============================================================
 
 @Composable
-private fun ResetCard(onReset: () -> Unit) {
+private fun SelectiveResetCard(onReset: (Set<ResetGroup>) -> Unit) {
+    // 默认全选：想「重置除了哪些」直接去掉不想重置的勾选；
+    // 想「只重置哪些」先全不选再勾选目标分组
+    var selected by remember { mutableStateOf(ResetGroup.entries.toSet()) }
     var showResetDialog by remember { mutableStateOf(false) }
+
+    SettingsCard("选择性重置") {
+        Text(
+            "勾选要重置的分组，点「开始重置」后仍需按「保存设置」才生效",
+            fontSize = 12.sp,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        // 全选 / 全不选
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(
+                onClick = { selected = ResetGroup.entries.toSet() },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(vertical = 6.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = Gold),
+            ) {
+                Text("全选", fontSize = 13.sp)
+            }
+            OutlinedButton(
+                onClick = { selected = emptySet() },
+                modifier = Modifier.weight(1f),
+                contentPadding = PaddingValues(vertical = 6.dp),
+                colors = ButtonDefaults.outlinedButtonColors(contentColor = TextSecondary),
+            ) {
+                Text("全不选", fontSize = 13.sp)
+            }
+        }
+
+        Spacer(Modifier.height(8.dp))
+
+        // 分组勾选列表
+        ResetGroup.entries.forEach { group ->
+            val checked = group in selected
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable {
+                        selected = if (checked) selected - group else selected + group
+                    }
+                    .padding(vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Checkbox(
+                    checked = checked,
+                    onCheckedChange = { isChecked ->
+                        selected = if (isChecked) selected + group else selected - group
+                    },
+                    colors = CheckboxDefaults.colors(
+                        checkedColor = Gold,
+                        uncheckedColor = BorderSubtle,
+                        checkmarkColor = Color.Black,
+                    ),
+                )
+                Text(
+                    text = group.label,
+                    fontSize = 14.sp,
+                    color = if (checked) TextPrimary else TextMuted,
+                    fontWeight = if (checked) FontWeight.Medium else FontWeight.Normal,
+                )
+            }
+            if (group != ResetGroup.entries.last()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(1.dp)
+                        .background(BorderSubtle.copy(alpha = 0.15f)),
+                )
+            }
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        OutlinedButton(
+            onClick = { showResetDialog = true },
+            enabled = selected.isNotEmpty(),
+            modifier = Modifier.fillMaxWidth(),
+            colors = ButtonDefaults.outlinedButtonColors(
+                contentColor = Color(0xFFff5252),
+                disabledContentColor = Color(0xFF666666),
+            ),
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                Text("开始重置（已选 ${selected.size} 项）", fontFamily = FontFamily.Serif, fontSize = 14.sp)
+            }
+        }
+    }
 
     if (showResetDialog) {
         AlertDialog(
             onDismissRequest = { showResetDialog = false },
             title = { Text("确认重置", color = Gold) },
-            text = { Text("所有设置将恢复为默认值，此操作不可撤销。", color = TextPrimary) },
+            text = {
+                Column {
+                    Text("以下分组将恢复默认，此操作不可撤销：", color = TextPrimary)
+                    Spacer(Modifier.height(8.dp))
+                    Text(
+                        text = selected.joinToString("、") { it.label },
+                        color = Color(0xFFff5252),
+                        fontSize = 13.sp,
+                    )
+                }
+            },
             confirmButton = {
                 Button(
                     onClick = {
-                        onReset()
+                        onReset(selected)
                         showResetDialog = false
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFff5252)),
@@ -1268,21 +1373,6 @@ private fun ResetCard(onReset: () -> Unit) {
             },
             containerColor = Color(0xFF1A1A1A),
         )
-    }
-
-    Box(modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(
-            onClick = { showResetDialog = true },
-            modifier = Modifier.fillMaxWidth(),
-            colors = ButtonDefaults.outlinedButtonColors(
-                contentColor = Color(0xFFff5252),
-            ),
-        ) {
-            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                Text("重置所有设置为默认", fontFamily = FontFamily.Serif, fontSize = 14.sp)
-                Text("（事件除外）", fontFamily = FontFamily.Serif, fontSize = 11.sp, color = Color(0xFFff5252).copy(alpha = 0.7f))
-            }
-        }
     }
 }
 

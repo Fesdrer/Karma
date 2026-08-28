@@ -430,6 +430,11 @@ class KarmaRepository(
         ))
     }
 
+    /** 清空全部历史记录（选择性重置：勾选「历史记录」分组时在保存时调用）。 */
+    suspend fun clearAllHistory() {
+        historyDao.deleteAll()
+    }
+
     // ---- Import / Export ----
 
     suspend fun exportJson(): String {

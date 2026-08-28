@@ -16,6 +16,22 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+/** 选择性重置的分组：设置页各分类 + 独立数据项（历史记录在保存时清空，不属于设置草稿）。 */
+enum class ResetGroup(val label: String) {
+    APPEARANCE("外观与图表"),
+    POSITIVE_RANKS("正阶位体系"),
+    NEGATIVE_RANKS("负阶位体系"),
+    EVENTS("事件管理"),
+    DAILY_MUST_DO("每日必做"),
+    MECHANICS("业力机制"),
+    SPLASH("启动画面"),
+    BETS("誓约"),
+    TOTAL_SCORE("业力总分"),
+    HISTORY("历史记录"),
+    TIMER("计时状态"),
+    DIVINATION("今日占卜次数"),
+}
+
 /**
  * 设置页 ViewModel。
  * 读取当前设置 → 在内存中编辑 → 用户点击「保存」时统一写 Room。
@@ -32,6 +48,10 @@ class SettingsViewModel(
     val draft: StateFlow<KarmaSettingsEntity> = _draft.asStateFlow()
     val original: StateFlow<KarmaSettingsEntity> = _original.asStateFlow()
     val deleteMode: StateFlow<Boolean> = _deleteMode.asStateFlow()
+
+    // 选择性重置：勾选了「历史记录」分组时置 true，保存时清空历史表（历史不在设置草稿里）
+    private val _pendingClearHistory = MutableStateFlow(false)
+    val pendingClearHistory: StateFlow<Boolean> = _pendingClearHistory.asStateFlow()
 
     private val _addMode = MutableStateFlow(false)
     val addMode: StateFlow<Boolean> = _addMode.asStateFlow()
@@ -513,27 +533,104 @@ class SettingsViewModel(
                 if (_draft.value.dailyMustDoDeeds != _original.value.dailyMustDoDeeds) {
                     repository.resetDailyMustDoVis()
                 }
+                // step 2：选择性重置勾选了「历史记录」→ 保存时清空历史表
+                if (_pendingClearHistory.value) {
+                    repository.clearAllHistory()
+                    _pendingClearHistory.value = false
+                }
                 _original.value = _draft.value  // 同步 original，hasChanges 恢复正常
             }
         }
     }
 
-    fun resetToDefaults() {
-        // 保留 totalScore 和 lastDecayDate 不清零，其余恢复默认
+    /**
+     * 选择性重置：只把选中的分组恢复默认（仍走草稿机制，点「保存设置」才写库）。
+     * 历史记录不在设置草稿里，勾选后置 _pendingClearHistory，保存时由 save() 清空。
+     */
+    fun resetGroups(groups: Set<ResetGroup>) {
+        if (groups.isEmpty()) return
         val current = _draft.value
-        setDraft(KarmaSettingsEntity().copy(
-            totalScore = current.totalScore,
-            lastDecayDate = current.lastDecayDate,
-            // 保留三个事件列表及其默认分数，不被默认值覆盖
-            goodDeedPresets = current.goodDeedPresets,
-            badDeedPresets = current.badDeedPresets,
-            goodResultPresets = current.goodResultPresets,
-            goodDeedDefaultScores = current.goodDeedDefaultScores,
-            badDeedDefaultScores = current.badDeedDefaultScores,
-            goodResultDefaultScores = current.goodResultDefaultScores,
-            // 保留每日必做设置
-            dailyMustDoDeeds = current.dailyMustDoDeeds,
-        ))
+        val defaults = KarmaSettingsEntity()
+        var next = current
+        if (ResetGroup.APPEARANCE in groups) next = next.copy(
+            scoreAxisFontSize = defaults.scoreAxisFontSize,
+            scoreAxisRangeMin = defaults.scoreAxisRangeMin,
+            scoreAxisRangeMax = defaults.scoreAxisRangeMax,
+            axisLabelColor = defaults.axisLabelColor,
+            axisTickThickness = defaults.axisTickThickness,
+            axisLabelFontSize = defaults.axisLabelFontSize,
+            axisDisplayRange = defaults.axisDisplayRange,
+            showNearbyTicks = defaults.showNearbyTicks,
+            nearbyTickRange = defaults.nearbyTickRange,
+            axisQuarterValue = defaults.axisQuarterValue,
+            guideLineWidth = defaults.guideLineWidth,
+            dotColor = defaults.dotColor,
+            historyLineThickness = defaults.historyLineThickness,
+            historyDotRadius = defaults.historyDotRadius,
+            themeGradientBaseColor = defaults.themeGradientBaseColor,
+            themeGradientAccentColor = defaults.themeGradientAccentColor,
+            scorePresets = defaults.scorePresets,
+        )
+        if (ResetGroup.POSITIVE_RANKS in groups) next = next.copy(
+            rankColors = defaults.rankColors,
+            rankThresholds = defaults.rankThresholds,
+            rankNames = defaults.rankNames,
+            rankDecayAmounts = defaults.rankDecayAmounts,
+            rankDivinationLimits = defaults.rankDivinationLimits,
+        )
+        if (ResetGroup.NEGATIVE_RANKS in groups) next = next.copy(
+            negativeRankNames = defaults.negativeRankNames,
+            negativeRankThresholds = defaults.negativeRankThresholds,
+            negativeRankColors = defaults.negativeRankColors,
+            negativeRankDivinationLimits = defaults.negativeRankDivinationLimits,
+        )
+        if (ResetGroup.EVENTS in groups) next = next.copy(
+            goodDeedPresets = defaults.goodDeedPresets,
+            badDeedPresets = defaults.badDeedPresets,
+            goodResultPresets = defaults.goodResultPresets,
+            goodDeedDefaultScores = defaults.goodDeedDefaultScores,
+            badDeedDefaultScores = defaults.badDeedDefaultScores,
+            goodResultDefaultScores = defaults.goodResultDefaultScores,
+        )
+        if (ResetGroup.DAILY_MUST_DO in groups) next = next.copy(
+            dailyMustDoDeedNames = defaults.dailyMustDoDeedNames,
+            dailyMustDoDeedPenalties = defaults.dailyMustDoDeedPenalties,
+            dailyMustDoLastDate = defaults.dailyMustDoLastDate,
+            dailyMustDoDoneSet = defaults.dailyMustDoDoneSet,
+            dailyMustDoDeeds = defaults.dailyMustDoDeeds,
+        )
+        if (ResetGroup.MECHANICS in groups) next = next.copy(
+            decayEnabled = defaults.decayEnabled,
+            decayHour = defaults.decayHour,
+            decayMinute = defaults.decayMinute,
+            lastDecayDate = defaults.lastDecayDate,
+            luckEnabled = defaults.luckEnabled,
+            luckT = defaults.luckT,
+            luckB = defaults.luckB,
+            luckW = defaults.luckW,
+        )
+        if (ResetGroup.SPLASH in groups) next = next.copy(
+            splashScripture = defaults.splashScripture,
+            splashDurationSec = defaults.splashDurationSec,
+        )
+        if (ResetGroup.BETS in groups) next = next.copy(bets = defaults.bets)
+        if (ResetGroup.TOTAL_SCORE in groups) next = next.copy(totalScore = defaults.totalScore)
+        if (ResetGroup.TIMER in groups) next = next.copy(
+            timerStatus = defaults.timerStatus,
+            timerStartElapsed = defaults.timerStartElapsed,
+            timerResumeElapsed = defaults.timerResumeElapsed,
+            timerAccumulatedMs = defaults.timerAccumulatedMs,
+            timerSelectedScore = defaults.timerSelectedScore,
+            timerSelectedEvent = defaults.timerSelectedEvent,
+        )
+        if (ResetGroup.DIVINATION in groups) next = next.copy(
+            divinationDate = defaults.divinationDate,
+            divinationCount = defaults.divinationCount,
+        )
+        setDraft(next)
+        if (ResetGroup.HISTORY in groups) {
+            _pendingClearHistory.value = true
+        }
     }
 
     // ===== 阶位增删 =====
