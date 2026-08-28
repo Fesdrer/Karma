@@ -374,8 +374,9 @@ fun HistoryScreen(
 
             Spacer(Modifier.height(12.dp))
 
-            // Chart viewport state — 每个 viewMode 独立实例
-            val viewport = remember(state.viewMode, state.focusDate) { ChartViewport() }
+            // Chart viewport state — 每个 viewMode 独立实例；数据变化（如导入）时重建，
+            // 让自动适配重新计算 X 时间范围与 Y 轴（纵坐标）显示范围
+            val viewport = remember(state.viewMode, state.focusDate, state.aggregatedPoints) { ChartViewport() }
 
             // Chart（clip 只作用于图表画布，tooltip 不裁剪：
             // 详情框优先移到不超出的位置，实在必须超出时可以超出）
