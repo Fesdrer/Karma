@@ -1,11 +1,6 @@
 package com.example.karma.ui.alarm
 
-import android.app.Activity
-import android.content.Intent
 import android.media.RingtoneManager
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -94,16 +89,7 @@ fun AlarmEditScreen(
     var showEventDialog by remember { mutableStateOf(false) }
     var showSnoozeDialog by remember { mutableStateOf(false) }
     var showDeleteDialog by remember { mutableStateOf(false) }
-
-    // 系统铃声选择器
-    val ringtoneLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.StartActivityForResult()
-    ) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val uri = result.data?.getParcelableExtra<Uri>(RingtoneManager.EXTRA_RINGTONE_PICKED_URI)
-            uri?.let { viewModel.setRingtone(it.toString()) }
-        }
-    }
+    var showRingtoneDialog by remember { mutableStateOf(false) }
 
     val d = draft ?: return   // 数据未就绪不渲染（避免空草稿闪帧）
 
@@ -164,39 +150,10 @@ fun AlarmEditScreen(
             }
             SettingRow(
                 title = "铃声",
-                value = if (d.ringtoneUri.isEmpty()) "默认闹钟铃声" else "自选铃声",
+                value = ringtoneLabel(d.ringtoneUri),
             ) {
-                val intent = Intent(RingtoneManager.ACTION_RINGTONE_PICKER).apply {
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_TYPE, RingtoneManager.TYPE_ALARM)
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_TITLE, "选择闹钟铃声")
-                    putExtra(
-                        RingtoneManager.EXTRA_RINGTONE_EXISTING_URI,
-                        d.ringtoneUri.ifEmpty {
-                            RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)?.toString()
-                        },
-                    )
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
-                    putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
-                }
-                // 华为等部分 ROM 没有系统铃声选择器：先检查是否存在，避免启动瞬间
-                // ActivityNotFoundException 闪退；再 try-catch 兜底
-                if (intent.resolveActivity(context.packageManager) != null) {
-                    try {
-                        ringtoneLauncher.launch(intent)
-                    } catch (_: Exception) {
-                        android.widget.Toast.makeText(
-                            context,
-                            "无法打开铃声选择器，将使用系统默认闹钟铃声",
-                            android.widget.Toast.LENGTH_SHORT,
-                        ).show()
-                    }
-                } else {
-                    android.widget.Toast.makeText(
-                        context,
-                        "此设备不支持自选铃声，将使用系统默认闹钟铃声",
-                        android.widget.Toast.LENGTH_SHORT,
-                    ).show()
-                }
+                // 应用内选择铃声：不启动系统选择器（华为旧鸿蒙打开系统页面会切后台被杀）
+                showRingtoneDialog = true
             }
             SwitchRow(title = "震动", checked = d.vibrate) { viewModel.setVibrate(it) }
             SettingRow(
@@ -296,6 +253,16 @@ fun AlarmEditScreen(
                 showSnoozeDialog = false
             },
             onDismiss = { showSnoozeDialog = false },
+        )
+    }
+    if (showRingtoneDialog) {
+        RingtoneDialog(
+            currentUri = d.ringtoneUri,
+            onConfirm = { uri ->
+                viewModel.setRingtone(uri)
+                showRingtoneDialog = false
+            },
+            onDismiss = { showRingtoneDialog = false },
         )
     }
     if (showDeleteDialog) {
@@ -646,6 +613,76 @@ private fun SnoozeDialog(
             }
         },
         confirmButton = {
+            TextButton(onClick = onDismiss) { Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary) }
+        },
+        containerColor = Color(0xFF1A1A1A),
+    )
+}
+
+// ===== 铃声选择对话框（应用内单选，不启动系统页面，避免华为切后台被杀） =====
+
+/** 铃声存储值 → 显示文本：空=默认闹钟，silent=静音，其余=通知铃声 uri。 */
+private fun ringtoneLabel(uri: String): String = when {
+    uri.isEmpty() -> "默认闹钟铃声"
+    uri == "silent" -> "静音"
+    else -> "默认通知铃声"
+}
+
+@Composable
+private fun RingtoneDialog(
+    currentUri: String,
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val defaultAlarm = ""   // 空 = 系统默认闹钟铃声
+    val defaultNotif = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)?.toString() ?: ""
+    val silent = "silent"
+
+    val options = listOf(
+        Triple("默认闹钟铃声", "响亮，适合提醒做事", defaultAlarm),
+        Triple("默认通知铃声", "较柔和的提示音", defaultNotif),
+        Triple("静音", "只震动不响铃", silent),
+    )
+    var selected by remember { mutableStateOf(currentUri) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("铃声", fontFamily = FontFamily.Serif, color = Gold) },
+        text = {
+            Column {
+                options.forEach { (label, desc, uri) ->
+                    val isSelected = selected == uri
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { selected = uri }
+                            .padding(vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = if (isSelected) "● " else "○ ",
+                            fontSize = 16.sp,
+                            color = if (isSelected) Gold else TextMuted,
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                label,
+                                fontFamily = FontFamily.Serif,
+                                fontSize = 15.sp,
+                                color = if (isSelected) Gold else TextPrimary,
+                            )
+                            Text(desc, fontSize = 11.sp, color = TextMuted)
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = { onConfirm(selected) }) {
+                Text("确定", fontFamily = FontFamily.Serif, color = Gold)
+            }
+        },
+        dismissButton = {
             TextButton(onClick = onDismiss) { Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary) }
         },
         containerColor = Color(0xFF1A1A1A),

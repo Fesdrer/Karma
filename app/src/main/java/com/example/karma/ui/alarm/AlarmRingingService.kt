@@ -61,12 +61,20 @@ class AlarmRingingService : Service() {
             AlarmNotifications.buildRingingNotification(this, alarm),
         )
 
-        // 铃声：用户自选 URI，空则系统默认闹钟铃声（无则退化为通知音）
-        val uri = alarm.ringtoneUri.ifEmpty {
-            (RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
-                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)).toString()
+        // 铃声：空=系统默认闹钟；"silent"=静音（只震动）；否则播放指定 URI
+        val ringtoneUri: Uri? = when {
+            alarm.ringtoneUri == "silent" -> null
+            alarm.ringtoneUri.isEmpty() -> RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+                ?: RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+            else -> try {
+                Uri.parse(alarm.ringtoneUri)
+            } catch (_: Exception) {
+                null
+            }
         }
-        ringtone = RingtoneManager.getRingtone(this, Uri.parse(uri))?.apply { play() }
+        if (ringtoneUri != null) {
+            ringtone = RingtoneManager.getRingtone(this, ringtoneUri)?.apply { play() }
+        }
 
         // 震动：无限循环（每 1s 震 0.8s）
         if (alarm.vibrate) {
