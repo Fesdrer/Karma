@@ -6,10 +6,14 @@ import java.util.Calendar
 /**
  * 阶位自证核心逻辑（纯函数，无 UI 依赖）。
  *
- * 主动自证：起始阶位=当前，目标=下一正阶位，降级守卫=起始阶位。
- *   成功=时长内达到目标（或更高）立即结束；失败=超时未达 或 中途降到守卫以下立即失败。
- * 被动自证：加分跨入正阶位时触发，起始阶位(徽章)=加分前阶位，目标=已达阶位，守卫=已达阶位。
- *   成功=保持(>=目标)到时长结束；失败=中途降到守卫以下立即失败。
+ * 设起点阶位 x：
+ *   主动自证：x = 自证开始时的阶位
+ *   被动自证：x = 加分前的阶位
+ * 规则：
+ *   1. 整个时长内，任何时刻阶位低于 x → 立即失败（有保持的能力才算配）
+ *   2. 时长结束时，检测当前阶位 y：y > x → 成功（恭喜登上 y）；否则失败
+ * 成功不要求时长中提前达到某阶位——必须撑到时长结束，
+ * 因此时长必须覆盖业力衰减时刻（衰减可能把分数减下去）。
  */
 object ProofEngine {
 
@@ -68,11 +72,11 @@ object ProofEngine {
         return (next.timeInMillis - startTime).coerceAtLeast(0L)
     }
 
-    /** 判定成功：分数所在阶位 >= 目标阶位。 */
-    fun isSuccess(score: Float, settings: KarmaSettingsEntity, targetLevel: Int): Boolean =
-        rankLevelOf(score, settings) >= targetLevel
+    /** 判定中途降级（立即失败）：当前阶位 < 起点阶位 x。 */
+    fun isDowngraded(score: Float, settings: KarmaSettingsEntity, startRankLevel: Int): Boolean =
+        rankLevelOf(score, settings) < startRankLevel
 
-    /** 判定降级（中途立即失败）：分数所在阶位 < 守卫阶位。 */
-    fun isDowngraded(score: Float, settings: KarmaSettingsEntity, guardLevel: Int): Boolean =
-        rankLevelOf(score, settings) < guardLevel
+    /** 判定时长结束成功：当前阶位 y > 起点阶位 x。 */
+    fun isEndSuccess(score: Float, settings: KarmaSettingsEntity, startRankLevel: Int): Boolean =
+        rankLevelOf(score, settings) > startRankLevel
 }

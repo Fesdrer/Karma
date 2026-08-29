@@ -63,7 +63,8 @@ fun PassiveProofPromptDialog(
                 )
                 Spacer(Modifier.height(8.dp))
                 Text(
-                    "「设置自证」：从当前阶位开始，保持不降级直到时长结束即成功；\n" +
+                    "「设置自证」：以加分前的阶位为起点，整个时长内保持不降级，" +
+                        "时长结束时阶位高于起点即成功；\n" +
                         "「逃避自证」：扣分退回上一阶位。",
                     fontFamily = FontFamily.Serif,
                     fontSize = 12.sp,
@@ -110,9 +111,11 @@ fun ProofSetupDialog(
             Column {
                 Text(
                     if (setup.mode == ProofMode.ACTIVE) {
-                        "目标：在时长内达到目标阶位（或更高）即成功"
+                        "规则：以当前阶位为起点，整个时长内保持不降级；" +
+                            "时长结束时阶位高于起点即成功（恭喜登上结束时的阶位）"
                     } else {
-                        "目标：保持当前阶位不降级直到时长结束即成功"
+                        "规则：以加分前的阶位为起点，整个时长内保持不降级；" +
+                            "时长结束时阶位高于起点即成功（恭喜登上结束时的阶位）"
                     },
                     fontFamily = FontFamily.Serif,
                     fontSize = 12.sp,
@@ -248,13 +251,13 @@ fun ProofResultDialog(
     failColor: Long,
     onDismiss: () -> Unit,
 ) {
-    val targetName = ranks.find { it.level == result.targetRank }?.name ?: "新阶位"
+    val endName = ranks.find { it.level == result.targetRank }?.name ?: "新阶位"
     val mainColor = if (result.success) Color(successColor) else Color(failColor)
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = if (result.success) "恭喜登临 ${targetName}！" else "自证失败",
+                text = if (result.success) "恭喜登临 ${endName}！" else "自证失败",
                 fontFamily = FontFamily.Serif,
                 color = mainColor,
             )
@@ -263,7 +266,7 @@ fun ProofResultDialog(
             Column {
                 Text(
                     text = if (result.success) {
-                        "你在时限内证明了自己，成功获得 $targetName 阶位" +
+                        "你全程保持住了阶位，成功登临 $endName" +
                             if (result.reward > 0f) "，奖励 ${result.reward} 分" else ""
                     } else {
                         "未能通过自证" +

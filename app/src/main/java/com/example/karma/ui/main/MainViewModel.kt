@@ -70,8 +70,8 @@ data class MainUiState(
 
 /** 被动自证弹窗数据：加分跨入正阶位瞬间。 */
 data class PassiveProofPrompt(
-    val oldLevel: Int,   // 加分前阶位（徽章停留用）
-    val newLevel: Int,   // 已达阶位（自证目标）
+    val oldLevel: Int,   // 加分前阶位（起点 x，徽章停留）
+    val newLevel: Int,   // 已达阶位（仅展示）
 )
 
 /** 自证模式。 */
@@ -80,16 +80,16 @@ enum class ProofMode { ACTIVE, PASSIVE }
 /** 自证设置请求（弹窗确认后 startProof 用）。 */
 data class ProofSetup(
     val mode: ProofMode,
-    val startRank: Int,
-    val target: Int,
-    val guard: Int,
+    val startRank: Int,   // 起点阶位 x（主动=当前阶位；被动=加分前阶位）
+    val target: Int,      // 展示用目标阶位（主动=下一正阶位；被动=已达阶位）
+    val guard: Int,       // 降级守卫 = x（= startRank）
 )
 
-/** 自证结果（成功/失败弹窗用）。 */
+/** 自证结果（成功/失败弹窗用）。成功时 targetRank=结束时的实际阶位 y。 */
 data class ProofResult(
     val success: Boolean,
     val startRank: Int,
-    val targetRank: Int,
+    val targetRank: Int,   // 结束实际阶位 y（成功时恭喜登上 y）
     val reward: Float,
     val penalty: Float,
 )
@@ -271,7 +271,8 @@ class MainViewModel(
                 kotlinx.coroutines.delay(1000)
                 val s = repository.settings.first()
                 if (s.proofActive && System.currentTimeMillis() >= s.proofStartTime + s.proofDurationMs) {
-                    finishProof(s, ProofEngine.isSuccess(s.totalScore, s, s.proofTargetLevel))
+                    // 时长结束：当前阶位 y > 起点阶位 x 才成功
+                    finishProof(s, ProofEngine.isEndSuccess(s.totalScore, s, s.proofStartRankLevel))
                 }
             }
         }
@@ -470,15 +471,15 @@ class MainViewModel(
         )
     }
 
-    /** 被动弹窗选「设置自证」：先关闭询问窗，再转设置窗（目标=已达阶位，徽章=加分前阶位）。 */
+    /** 被动弹窗选「设置自证」：先关闭询问窗，再转设置窗（起点 x=加分前阶位）。 */
     fun onPassiveProofSetup() {
         val p = _pendingPassiveProof.value ?: return
         _pendingPassiveProof.value = null
         _proofSetup.value = ProofSetup(
             mode = ProofMode.PASSIVE,
-            startRank = p.oldLevel,
-            target = p.newLevel,
-            guard = p.newLevel,
+            startRank = p.oldLevel,   // x = 加分前阶位
+            target = p.newLevel,      // 已达阶位（仅展示）
+            guard = p.oldLevel,       // 降级守卫 = x = 加分前阶位
         )
     }
 
@@ -528,12 +529,13 @@ class MainViewModel(
 
     /**
      * 自证判定（每次 settings 变化时调用）：
-     * - 自证中：开关关闭 → 强制失败；降级（低于守卫阶位）→ 立即失败；主动达标 → 立即成功
+     * - 自证中：开关关闭 → 强制失败；阶位低于起点 x → 立即失败。
+     *   成功只发生在时长结束（超时协程判定 y > x），时长中不提前判成功。
      * - 非自证中：仅当用户普通记录加分（_userScoredFlag）时检测跨入正阶位 → 弹被动窗
      */
     private fun checkProof(s: KarmaSettingsEntity) {
         if (s.proofActive) {
-            // 自证中：用户加分标记作废——加分行为由自证判定处理（达标/降级），
+            // 自证中：用户加分标记作废——加分行为由自证判定处理（降级/时长结束），
             // 不再触发被动弹窗；否则 finishProof 重置 proofActive 后残留的 flag
             // 会让下一次 settings 发射误走非自证分支弹被动窗。
             _userScoredFlag = false
@@ -541,16 +543,13 @@ class MainViewModel(
                 finishProof(s, success = false)
                 return
             }
-            if (ProofEngine.isDowngraded(s.totalScore, s, s.proofGuardLevel)) {
+            // 整个时长内，任何时刻阶位低于起点 x → 立即失败
+            if (ProofEngine.isDowngraded(s.totalScore, s, s.proofStartRankLevel)) {
                 finishProof(s, success = false)
                 return
             }
-            if (s.proofGuardLevel == s.proofStartRankLevel &&
-                ProofEngine.isSuccess(s.totalScore, s, s.proofTargetLevel)
-            ) {
-                finishProof(s, success = true)
-                return
-            }
+            // 注意：不在此处判成功——达标必须撑到时长结束（超时协程判定），
+            // 否则"登上了就成功"会绕过保持能力的考验。
         } else if (_userScoredFlag) {
             _userScoredFlag = false
             val newLevel = ProofEngine.rankLevelOf(s.totalScore, s)
@@ -562,7 +561,8 @@ class MainViewModel(
         _lastLevel = ProofEngine.rankLevelOf(s.totalScore, s)
     }
 
-    /** 结束自证（成功/失败）：重置状态 + 加/扣分 + 弹结果窗（防重入）。 */
+    /** 结束自证（成功/失败）：重置状态 + 加/扣分 + 弹结果窗（防重入）。
+     *  成功时 endRank=结束时的实际阶位 y（恭喜登上 y）；失败时无意义。 */
     private fun finishProof(s: KarmaSettingsEntity, success: Boolean) {
         if (_proofFinishing) return
         _proofFinishing = true
@@ -570,7 +570,8 @@ class MainViewModel(
         // 若自证以达标/降级/超时结束，而最后一次加分的 flag 尚未被消费，
         // 重置 proofActive 后 settings 再发射会走非自证分支误弹被动窗。
         _userScoredFlag = false
-        _proofResult.value = ProofResult(success, s.proofStartRankLevel, s.proofTargetLevel, s.proofReward, s.proofPenalty)
+        val endRank = ProofEngine.rankLevelOf(s.totalScore, s)
+        _proofResult.value = ProofResult(success, s.proofStartRankLevel, endRank, s.proofReward, s.proofPenalty)
         viewModelScope.launch {
             try {
                 repository.updateAllSettings(s.copy(
