@@ -193,7 +193,26 @@ fun AlarmEditScreen(
 
         // ===== 保存 / 删除 =====
         Button(
-            onClick = { viewModel.save(onDone = onBack) },
+            onClick = {
+                // 仅一次闹钟：所选时间已过则提示，不允许保存（华为闹钟同样拦截）
+                if (d.repeatDays.isEmpty()) {
+                    val cal = java.util.Calendar.getInstance().apply {
+                        set(java.util.Calendar.HOUR_OF_DAY, d.hour)
+                        set(java.util.Calendar.MINUTE, d.minute)
+                        set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    if (cal.timeInMillis <= System.currentTimeMillis()) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "所选时间已过，请调整时间",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                        return@Button
+                    }
+                }
+                viewModel.save(onDone = onBack)
+            },
             modifier = Modifier.fillMaxWidth().height(48.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = Gold,

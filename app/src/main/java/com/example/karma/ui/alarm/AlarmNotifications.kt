@@ -45,7 +45,7 @@ object AlarmNotifications {
             activityIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
-        return NotificationCompat.Builder(context, CHANNEL_ID)
+        val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentTitle("闹钟")
             .setContentText(alarm.eventName.ifEmpty { "该做事了" })
@@ -56,7 +56,11 @@ object AlarmNotifications {
             .setOngoing(true)
             .setFullScreenIntent(activityPi, true)
             .setContentIntent(activityPi)
-            .addAction(0, "贪睡", actionPendingIntent(context, AlarmReceiver.ACTION_SNOOZE, alarmId))
+        // 贪睡关闭（snoozeMinutes <= 0）时不显示贪睡按钮，避免点击立即再响
+        if (alarm.snoozeMinutes > 0) {
+            builder.addAction(0, "贪睡", actionPendingIntent(context, AlarmReceiver.ACTION_SNOOZE, alarmId))
+        }
+        return builder
             .addAction(0, "关闭", actionPendingIntent(context, AlarmReceiver.ACTION_DISMISS, alarmId))
             .build()
     }

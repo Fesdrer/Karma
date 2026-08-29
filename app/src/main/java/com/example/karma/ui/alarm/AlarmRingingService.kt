@@ -48,7 +48,12 @@ class AlarmRingingService : Service() {
         stopRinging()   // 若已在响其他闹钟，先停
         val alarm = runBlocking {
             (application as? KarmaApplication)?.container?.repository?.getAlarmById(alarmId)
-        } ?: return
+        }
+        if (alarm == null) {
+            // 闹钟已被删除：不响铃，直接结束（startForegroundService 后允许以 stopSelf 终止）
+            stopSelf()
+            return
+        }
 
         // 前台通知（全屏 intent → 响铃页，带贪睡/关闭）
         startForeground(

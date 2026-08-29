@@ -132,10 +132,15 @@ private fun AlarmRingingScreen(
                 fontFamily = FontFamily.Serif,
             )
             Spacer(Modifier.height(40.dp))
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                RingButton(text = "贪睡", color = Color(0xFF4a90d9), onClick = onSnooze)
+            val snoozeEnabled = (alarm?.snoozeMinutes ?: 0) > 0
+            if (snoozeEnabled) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    RingButton(text = "贪睡", color = Color(0xFF4a90d9), onClick = onSnooze)
+                    RingButton(text = "关闭", color = Color(0xFFff5252), onClick = onDismiss)
+                }
+            } else {
                 RingButton(text = "关闭", color = Color(0xFFff5252), onClick = onDismiss)
             }
         }
