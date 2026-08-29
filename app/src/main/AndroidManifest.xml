@@ -5,6 +5,9 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:name=".KarmaApplication"
@@ -30,10 +33,38 @@
             </intent-filter>
         </activity>
 
+        <!-- 闹钟响铃全屏页：锁屏亮屏显示，贪睡/关闭 -->
+        <activity
+            android:name=".ui.alarm.AlarmRingingActivity"
+            android:exported="false"
+            android:launchMode="singleTop"
+            android:showWhenLocked="true"
+            android:turnScreenOn="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.Karma"
+            tools:targetApi="27" />
+
         <service
             android:name=".ui.timer.TimerService"
             android:foregroundServiceType="specialUse"
             android:exported="false" />
+
+        <service
+            android:name=".ui.alarm.AlarmRingingService"
+            android:foregroundServiceType="specialUse"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ui.alarm.AlarmReceiver"
+            android:exported="false" />
+
+        <receiver
+            android:name=".ui.alarm.BootReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+            </intent-filter>
+        </receiver>
     </application>
 
 </manifest>
