@@ -235,6 +235,13 @@ fun MainScreen(
                     // 正阶 + 负阶色带（数轴负数区域显示负阶颜色）
                     ranks = s.ranks + s.negativeRanks,
                     dotColor = s.dotColor,
+                    // 阶位自证特效
+                    proofActive = s.proofActive,
+                    proofLineColor = s.proofLineColor,
+                    proofGlowColor = s.proofGlowColor,
+                    proofCountdownBg = s.proofCountdownBg,
+                    proofCountdownText = s.proofCountdownText,
+                    proofEndTime = s.proofEndTime,
                     modifier = Modifier
                         .width(75.dp)
                         .fillMaxHeight(),

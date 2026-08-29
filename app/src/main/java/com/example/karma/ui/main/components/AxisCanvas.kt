@@ -1,13 +1,19 @@
 package com.example.karma.ui.main.components
 
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -23,6 +29,15 @@ import kotlin.math.abs
 import kotlin.math.ln
 import kotlin.math.pow
 import kotlin.math.sign
+
+/** 自证倒计时格式：HH:MM:SS（小时可超 24，如 47:59:59）。 */
+private fun formatProofRemaining(ms: Long): String {
+    val totalSec = ms / 1000
+    val h = totalSec / 3600
+    val m = (totalSec % 3600) / 60
+    val s = totalSec % 60
+    return String.format("%02d:%02d:%02d", h, m, s)
+}
 
 private const val ANIM_DURATION = 400
 
@@ -88,6 +103,13 @@ fun AxisCanvas(
     quarterValue: Float = 30f,
     ranks: List<com.example.karma.data.model.Rank> = emptyList(),
     dotColor: Long = 0xFFFF0000L,
+    // 阶位自证特效（v4.0）
+    proofActive: Boolean = false,
+    proofLineColor: Long = 0xFFFFD700L,
+    proofGlowColor: Long = 0xFFFFFFFFL,
+    proofCountdownBg: Long = 0xFF8B0000L,
+    proofCountdownText: Long = 0xFFFFFFFFL,
+    proofEndTime: Long = 0L,
     modifier: Modifier = Modifier,
 ) {
     // Animate the score value
@@ -100,6 +122,27 @@ fun AxisCanvas(
         label = "scoreAnim",
     )
 
+    // 自证特效：光晕粒子循环动画（进度 0→1 无限重复）
+    val glowTransition = rememberInfiniteTransition(label = "proofGlow")
+    val glowProgress by glowTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 2600, easing = androidx.compose.animation.core.LinearEasing),
+        ),
+        label = "proofGlowProgress",
+    )
+    // 倒计时剩余毫秒（每秒更新，触发重绘）
+    var remainingMs by remember { mutableLongStateOf(0L) }
+    LaunchedEffect(proofActive, proofEndTime) {
+        if (proofActive) {
+            while (true) {
+                remainingMs = (proofEndTime - System.currentTimeMillis()).coerceAtLeast(0L)
+                kotlinx.coroutines.delay(1000)
+            }
+        }
+    }
+
     // Pre-allocate Paint objects (created once, mutated per-frame inside Canvas)
     val labelPaint = remember {
         android.graphics.Paint().apply {
@@ -110,6 +153,13 @@ fun AxisCanvas(
     val rangePaint = remember {
         android.graphics.Paint().apply {
             textAlign = android.graphics.Paint.Align.RIGHT
+            typeface = android.graphics.Typeface.SERIF
+        }
+    }
+    val countdownPaint = remember {
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.CENTER
+            isAntiAlias = true
             typeface = android.graphics.Typeface.SERIF
         }
     }
@@ -280,22 +330,78 @@ fun AxisCanvas(
         }
 
         // ---- 5. Axis line ----
-        drawLine(
-            color = labelColorValue,
-            start = Offset(axisX, 0f),
-            end = Offset(axisX, h),
-            strokeWidth = tickThickness,
-        )
+        if (proofActive) {
+            // 自证：金色粗线（覆盖普通轴线）
+            drawLine(
+                color = Color(proofLineColor),
+                start = Offset(axisX, 0f),
+                end = Offset(axisX, h),
+                strokeWidth = 4f * density,
+            )
+        } else {
+            drawLine(
+                color = labelColorValue,
+                start = Offset(axisX, 0f),
+                end = Offset(axisX, h),
+                strokeWidth = tickThickness,
+            )
+        }
 
-        // ---- 6. Pointer — glowing dot at center ----
+        // ---- 6. Pointer — glowing dot at center（自证时替换为倒计时矩形） ----
         val ptrY = h / 2f
+        if (proofActive) {
+            // 光晕粒子：沿金线从下往上循环移动（多个粒子错开相位）
+            val glowColor = Color(proofGlowColor)
+            val baseRadius = 6f * density
+            repeat(6) { i ->
+                val p = (glowProgress + i * 0.16f) % 1f
+                val y = p * h
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.30f),
+                    radius = baseRadius,
+                    center = Offset(axisX, y),
+                )
+                // 拖尾小点
+                drawCircle(
+                    color = glowColor.copy(alpha = 0.16f),
+                    radius = baseRadius * 0.6f,
+                    center = Offset(axisX, (y - 14f * density).coerceAtLeast(0f)),
+                )
+            }
 
-        // Glowing dot at axis intersection
-        val dotCenter = Offset(axisX, ptrY)
-        val dotColorValue = Color(dotColor)
-        drawCircle(color = dotColorValue.copy(alpha = 0.12f), radius = 44f, center = dotCenter)
-        drawCircle(color = dotColorValue.copy(alpha = 0.3f), radius = 24f, center = dotCenter)
-        drawCircle(color = dotColorValue, radius = 8f, center = dotCenter)
+            // 倒计时圆边矩形（替换红点）
+            val rectW = 62f * density
+            val rectH = 24f * density
+            drawRoundRect(
+                color = Color(proofCountdownBg),
+                topLeft = Offset(axisX - rectW / 2f, ptrY - rectH / 2f),
+                size = androidx.compose.ui.geometry.Size(rectW, rectH),
+                cornerRadius = androidx.compose.ui.geometry.CornerRadius(rectH / 2f, rectH / 2f),
+            )
+            countdownPaint.apply {
+                color = android.graphics.Color.argb(
+                    255,
+                    (Color(proofCountdownText).red * 255).toInt(),
+                    (Color(proofCountdownText).green * 255).toInt(),
+                    (Color(proofCountdownText).blue * 255).toInt(),
+                )
+                textSize = 14f * density
+                isFakeBoldText = true
+            }
+            drawContext.canvas.nativeCanvas.drawText(
+                formatProofRemaining(remainingMs),
+                axisX,
+                ptrY + 14f * density * 0.35f,
+                countdownPaint,
+            )
+        } else {
+            // Glowing dot at axis intersection
+            val dotCenter = Offset(axisX, ptrY)
+            val dotColorValue = Color(dotColor)
+            drawCircle(color = dotColorValue.copy(alpha = 0.12f), radius = 44f, center = dotCenter)
+            drawCircle(color = dotColorValue.copy(alpha = 0.3f), radius = 24f, center = dotCenter)
+            drawCircle(color = dotColorValue, radius = 8f, center = dotCenter)
+        }
 
         // ---- 7. Range labels ----
         val topScore = centerScore + displayRange
