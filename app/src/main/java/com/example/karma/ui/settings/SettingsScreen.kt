@@ -2691,6 +2691,13 @@ private fun MultiplierSettingsCard(
 
         Spacer(Modifier.height(4.dp))
 
+        Text(
+            "输入小数或分数，如 1.5 或 1/7",
+            fontSize = 11.sp,
+            color = TextMuted.copy(alpha = 0.7f),
+        )
+        Spacer(Modifier.height(4.dp))
+
         if (count == 0) {
             Text(
                 "（暂无乘法按钮：按下方 + 进入添加模式，表头会出现 + 可在此分类最上面新增）",
@@ -2725,18 +2732,18 @@ private fun MultiplierSettingsCard(
                     .onSizeChanged { rowHeightPx = it.height.toFloat() },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 乘法数值输入（受控输入，值直接来自草稿）
+                // 乘法数值输入（受控输入，值直接来自草稿；支持小数与分数 1/7）
                 val value = multipliers.getOrElse(i) { 1f }
                 var valueText by remember(i, value) { mutableStateOf(formatMultiplierValue(value)) }
                 OutlinedTextField(
                     value = valueText,
                     onValueChange = { v ->
                         valueText = v
-                        v.toFloatOrNull()?.let { onValueChange(i, it) }
+                        parseMultiplierInput(v)?.let { onValueChange(i, it) }
                     },
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
-                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Text),
                     colors = OutlinedTextFieldDefaults.colors(
                         focusedBorderColor = Gold,
                         unfocusedBorderColor = BorderSubtle,
@@ -2899,6 +2906,23 @@ private fun formatMultiplierValue(v: Float): String {
     if (frac != null) return frac
     return if (v % 1f == 0f) v.toInt().toString()
     else String.format("%.2f", v).trimEnd('0').trimEnd('.')
+}
+
+/**
+ * 解析乘数输入：支持小数（1.5、0.33）与分数（1/7、2/3）。
+ * 解析失败（空、分母为 0、格式不对）返回 null，此时不写入草稿。
+ */
+private fun parseMultiplierInput(text: String): Float? {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return null
+    val slash = trimmed.indexOf('/')
+    if (slash > 0) {
+        val num = trimmed.substring(0, slash).toFloatOrNull() ?: return null
+        val den = trimmed.substring(slash + 1).toFloatOrNull() ?: return null
+        if (den == 0f) return null
+        return num / den
+    }
+    return trimmed.toFloatOrNull()
 }
 
 // ============================================================
