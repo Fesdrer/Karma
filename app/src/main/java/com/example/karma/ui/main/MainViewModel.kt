@@ -533,6 +533,10 @@ class MainViewModel(
      */
     private fun checkProof(s: KarmaSettingsEntity) {
         if (s.proofActive) {
+            // 自证中：用户加分标记作废——加分行为由自证判定处理（达标/降级），
+            // 不再触发被动弹窗；否则 finishProof 重置 proofActive 后残留的 flag
+            // 会让下一次 settings 发射误走非自证分支弹被动窗。
+            _userScoredFlag = false
             if (!s.proofEnabled) {
                 finishProof(s, success = false)
                 return
@@ -562,6 +566,10 @@ class MainViewModel(
     private fun finishProof(s: KarmaSettingsEntity, success: Boolean) {
         if (_proofFinishing) return
         _proofFinishing = true
+        // 结束自证时清除残留的用户加分标记：
+        // 若自证以达标/降级/超时结束，而最后一次加分的 flag 尚未被消费，
+        // 重置 proofActive 后 settings 再发射会走非自证分支误弹被动窗。
+        _userScoredFlag = false
         _proofResult.value = ProofResult(success, s.proofStartRankLevel, s.proofTargetLevel, s.proofReward, s.proofPenalty)
         viewModelScope.launch {
             try {
