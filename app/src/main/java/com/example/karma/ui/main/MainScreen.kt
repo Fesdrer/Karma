@@ -46,6 +46,7 @@ import com.example.karma.ui.main.components.AxisCanvas
 import com.example.karma.ui.main.components.EventPanel
 import com.example.karma.ui.main.components.Footer
 import com.example.karma.ui.main.components.Header
+import com.example.karma.ui.main.components.MultiplierPanel
 import com.example.karma.ui.main.components.ScorePanel
 import com.example.karma.ui.timer.TimerService
 import kotlin.math.round
@@ -185,18 +186,34 @@ fun MainScreen(
                     .weight(1f)
                     .fillMaxSize(),
             ) {
-                // Left panel: Scores
-                ScorePanel(
-                    scoreFlow = viewModel.effectiveScoreState,
-                    onScoreSelected = { viewModel.selectScore(it) },
-                    onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
-                    axisFontSize = s.scoreAxisFontSize,
-                    axisRangeMin = s.scoreAxisRangeMin,
-                    axisRangeMax = s.scoreAxisRangeMax,
+                // Left area: 分数选择(2/3) + 乘法(1/3)
+                Row(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxHeight(),
-                )
+                ) {
+                    ScorePanel(
+                        scoreFlow = viewModel.effectiveScoreState,
+                        onScoreSelected = { viewModel.selectScore(it) },
+                        onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
+                        axisFontSize = s.scoreAxisFontSize,
+                        axisRangeMin = s.scoreAxisRangeMin,
+                        axisRangeMax = s.scoreAxisRangeMax,
+                        modifier = Modifier
+                            .weight(2f)
+                            .fillMaxHeight(),
+                    )
+
+                    Spacer(Modifier.width(6.dp))
+
+                    MultiplierPanel(
+                        multipliers = s.multiplierPresets,
+                        onMultiply = { viewModel.multiplyScore(it) },
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxHeight(),
+                    )
+                }
 
                 Spacer(Modifier.width(6.dp))
 

@@ -512,6 +512,8 @@ class KarmaRepository(
             goodDeedDefaultScores = gsonNullable(importedSettings.goodDeedDefaultScores) ?: emptyList(),
             badDeedDefaultScores = gsonNullable(importedSettings.badDeedDefaultScores) ?: emptyList(),
             goodResultDefaultScores = gsonNullable(importedSettings.goodResultDefaultScores) ?: emptyList(),
+            // 乘法按钮（v4.0）：旧导出缺键时补空列表（主页面不显示乘法按钮）
+            multiplierPresets = gsonNullable(importedSettings.multiplierPresets) ?: emptyList(),
         ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false

@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 19,
+    version = 20,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -215,6 +215,15 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v20：乘法功能（主页面左栏乘法按钮）。默认 1/3、2/3、1/4、1/2、3/4、1.5、2、2.5、3。
+         */
+        private val MIGRATION_19_20 = object : Migration(19, 20) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN multiplierPresets TEXT NOT NULL DEFAULT '[0.33333334,0.6666667,0.25,0.5,0.75,1.5,2.0,2.5,3.0]'")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -222,7 +231,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

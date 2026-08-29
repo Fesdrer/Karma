@@ -23,6 +23,7 @@ enum class ResetGroup(val label: String) {
     NEGATIVE_RANKS("负阶位体系"),
     EVENTS("事件管理"),
     DAILY_MUST_DO("每日必做"),
+    MULTIPLIERS("乘法功能"),
     MECHANICS("业力机制"),
     SPLASH("启动画面"),
     BETS("誓约"),
@@ -614,6 +615,7 @@ class SettingsViewModel(
             splashDurationSec = defaults.splashDurationSec,
         )
         if (ResetGroup.BETS in groups) next = next.copy(bets = defaults.bets)
+        if (ResetGroup.MULTIPLIERS in groups) next = next.copy(multiplierPresets = defaults.multiplierPresets)
         if (ResetGroup.TOTAL_SCORE in groups) next = next.copy(totalScore = defaults.totalScore)
         if (ResetGroup.TIMER in groups) next = next.copy(
             timerStatus = defaults.timerStatus,
@@ -713,6 +715,21 @@ class SettingsViewModel(
         ))
     }
 
+    /** 表头（+）在最上面插入新正阶：新阈值 = 原第一阈值的一半（空时兜底 10）。 */
+    fun addRankAtTop() {
+        val d = _draft.value
+        val newThresholds = d.rankThresholds.toMutableList()
+        val first = d.rankThresholds.firstOrNull() ?: 10f
+        newThresholds.add(0, first / 2f)
+        setDraft(d.copy(
+            rankNames = listOf("新阶位") + d.rankNames,
+            rankColors = listOf(d.rankColors.firstOrNull() ?: 0xFFFFFFFFL) + d.rankColors,
+            rankDecayAmounts = listOf(d.rankDecayAmounts.firstOrNull() ?: 2f) + d.rankDecayAmounts,
+            rankDivinationLimits = listOf(d.rankDivinationLimits.firstOrNull() ?: 2) + d.rankDivinationLimits,
+            rankThresholds = newThresholds,
+        ))
+    }
+
     // ===== 负数阶位增删（与正阶同构：阈值 ts[i] 为 -(i+1) 级下限，降序） =====
 
     /** 在最深一层下方追加新负阶。 */
@@ -753,6 +770,20 @@ class SettingsViewModel(
             negativeRankNames = newNames,
             negativeRankColors = newColors,
             negativeRankDivinationLimits = newLimits,
+            negativeRankThresholds = newThresholds,
+        ))
+    }
+
+    /** 表头（+）在最上面插入新负阶：新阈值 = 原第一阈值的一半（空时兜底 -10）。 */
+    fun addNegativeRankAtTop() {
+        val d = _draft.value
+        val newThresholds = d.negativeRankThresholds.toMutableList()
+        val first = d.negativeRankThresholds.firstOrNull() ?: -10f
+        newThresholds.add(0, first / 2f)
+        setDraft(d.copy(
+            negativeRankNames = listOf("新负阶") + d.negativeRankNames,
+            negativeRankColors = listOf(d.negativeRankColors.firstOrNull() ?: 0xFF000000L) + d.negativeRankColors,
+            negativeRankDivinationLimits = listOf(0) + d.negativeRankDivinationLimits,
             negativeRankThresholds = newThresholds,
         ))
     }
@@ -798,6 +829,60 @@ class SettingsViewModel(
     fun toggleNegativeDeleteMode() {
         _negativeDeleteMode.value = !_negativeDeleteMode.value
         if (_negativeDeleteMode.value) _negativeAddMode.value = false
+    }
+
+    // ===== 乘法按钮增删（同事件列表：增删、拖拽排序、表头 + 最上面添加） =====
+
+    private val _multiplierAddMode = MutableStateFlow(false)
+    val multiplierAddMode: StateFlow<Boolean> = _multiplierAddMode.asStateFlow()
+    private val _multiplierDeleteMode = MutableStateFlow(false)
+    val multiplierDeleteMode: StateFlow<Boolean> = _multiplierDeleteMode.asStateFlow()
+
+    fun updateMultiplier(index: Int, value: Float) {
+        val d = _draft.value
+        if (index !in d.multiplierPresets.indices) return
+        val newList = d.multiplierPresets.toMutableList().apply { this[index] = value }
+        setDraft(d.copy(multiplierPresets = newList))
+    }
+
+    /** 在 index 乘法按钮下方插入新按钮（默认 ×2）。 */
+    fun addMultiplierAfter(index: Int) {
+        val d = _draft.value
+        val newList = d.multiplierPresets.toMutableList().apply { add(index + 1, 2f) }
+        setDraft(d.copy(multiplierPresets = newList))
+    }
+
+    /** 表头（+）在最上面插入新乘法按钮。 */
+    fun addMultiplierAtTop() {
+        val d = _draft.value
+        setDraft(d.copy(multiplierPresets = listOf(2f) + d.multiplierPresets))
+    }
+
+    fun deleteMultiplier(index: Int) {
+        val d = _draft.value
+        if (index !in d.multiplierPresets.indices) return
+        val newList = d.multiplierPresets.toMutableList().apply { removeAt(index) }
+        setDraft(d.copy(multiplierPresets = newList))
+        if (newList.isEmpty()) _multiplierDeleteMode.value = false
+    }
+
+    fun moveMultiplier(from: Int, to: Int) {
+        val d = _draft.value
+        if (from !in d.multiplierPresets.indices || to !in d.multiplierPresets.indices) return
+        val list = d.multiplierPresets.toMutableList()
+        val item = list.removeAt(from)
+        list.add(to, item)
+        setDraft(d.copy(multiplierPresets = list))
+    }
+
+    fun toggleMultiplierAddMode() {
+        _multiplierAddMode.value = !_multiplierAddMode.value
+        if (_multiplierAddMode.value) _multiplierDeleteMode.value = false
+    }
+
+    fun toggleMultiplierDeleteMode() {
+        _multiplierDeleteMode.value = !_multiplierDeleteMode.value
+        if (_multiplierDeleteMode.value) _multiplierAddMode.value = false
     }
 
     fun hasChanges(): Boolean = _draft.value != _original.value

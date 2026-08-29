@@ -67,7 +67,7 @@ fun EventPanel(
     modifier: Modifier = Modifier,
     // 计时控制
     timerEnabled: Boolean = false,
-    selectedScore: Float? = null,
+    selectedScore: Float = 0f,
     dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
     onStopTimer: (elapsedMs: Long) -> Unit = {},
 ) {
@@ -136,9 +136,7 @@ fun EventPanel(
         Spacer(Modifier.height(6.dp))
         val timerState by TimerService.timerState.collectAsState()
         val context = LocalContext.current
-        val scoreText = selectedScore?.let {
-            if (it >= 0) "+${it}" else "${it}"
-        } ?: ""
+        val scoreText = if (selectedScore >= 0) "+$selectedScore" else "$selectedScore"
         var displayMs by remember { mutableStateOf(timerState.currentElapsedMs()) }
         LaunchedEffect(timerState.status) {
             displayMs = timerState.currentElapsedMs()
@@ -166,7 +164,7 @@ fun EventPanel(
                             indication = null,
                             enabled = timerEnabled,
                         ) {
-                            TimerService.start(context, selectedScore ?: 0f, selectedEvent ?: "")
+                            TimerService.start(context, selectedScore, selectedEvent ?: "")
                         },
                     contentAlignment = Alignment.Center,
                 ) {

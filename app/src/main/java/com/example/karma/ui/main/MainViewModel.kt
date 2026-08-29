@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 data class MainUiState(
     val totalScore: Float = 0f,
@@ -19,8 +20,9 @@ data class MainUiState(
     val goodDeedPresets: List<String> = emptyList(),
     val badDeedPresets: List<String> = emptyList(),
     val goodResultPresets: List<String> = emptyList(),
-    val selectedScore: Float? = null,
-    val effectiveScore: Float? = null,
+    val multiplierPresets: List<Float> = emptyList(),
+    val selectedScore: Float = 0f,
+    val effectiveScore: Float = 0f,
     val selectedEvent: String? = null,
     // ===== 以下为 settings 透传字段 =====
     val scoreAxisFontSize: Float = 22f,
@@ -53,7 +55,7 @@ class MainViewModel(
     private val repository: KarmaRepository,
 ) : ViewModel() {
 
-    private val _selectedScore = MutableStateFlow<Float?>(null)
+    private val _selectedScore = MutableStateFlow<Float>(0f)   // 初始 0：分数始终有值（无 null 状态）
     private val _selectedEvent = MutableStateFlow<String?>(null)
     private val _customScore = MutableStateFlow<Float?>(null)
     private val _customGoodDeedEvent = MutableStateFlow<String?>(null)
@@ -80,8 +82,8 @@ class MainViewModel(
 
     /** 独立的选择状态流：ScorePanel/EventPanel 直接读此流，绕过 combine 链。
      *  拖动滑条时不会触发 MainScreen 整体重组。 */
-    private val _effectiveScoreState = MutableStateFlow<Float?>(null)
-    val effectiveScoreState: StateFlow<Float?> = _effectiveScoreState
+    private val _effectiveScoreState = MutableStateFlow<Float>(0f)
+    val effectiveScoreState: StateFlow<Float> = _effectiveScoreState
     private val _effectiveEventState = MutableStateFlow<String?>(null)
     val effectiveEventState: StateFlow<String?> = _effectiveEventState
 
@@ -142,9 +144,10 @@ class MainViewModel(
                     goodDeedPresets = settings.goodDeedPresets,
                     badDeedPresets = settings.badDeedPresets,
                     goodResultPresets = settings.goodResultPresets,
+                    multiplierPresets = settings.multiplierPresets,
                     // 选择状态由 ScorePanel/EventPanel 直接从 ViewModel 读取，这里不需要
-                    selectedScore = null,
-                    effectiveScore = null,
+                    selectedScore = 0f,
+                    effectiveScore = 0f,
                     selectedEvent = null,
                     scoreAxisFontSize = settings.scoreAxisFontSize,
                     scoreAxisRangeMin = settings.scoreAxisRangeMin,
@@ -185,11 +188,10 @@ class MainViewModel(
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
         _effectiveEventState.value = event
-        // 事件默认分数联动：仅当当前分数为 0（或未选择，显示为 0）时，
-        // 才把左侧分数设为该事件的默认分数；否则保持用户已选的分数不变。
-        // 自定义输入（不在预设列表）不联动。
+        // 事件默认分数联动：仅当当前分数为 0 时，才把左侧分数设为该事件的默认分数；
+        // 否则保持用户已选的分数不变。自定义输入（不在预设列表）不联动。
         val currentScore = _customScore.value ?: _selectedScore.value
-        if (currentScore == null || currentScore == 0f) {
+        if (currentScore == 0f) {
             defaultScoreFor(event)?.let { score ->
                 val clamped = score.coerceIn(_currentScoreAxisRangeMin, _currentScoreAxisRangeMax)
                 _customScore.value = null
@@ -197,6 +199,16 @@ class MainViewModel(
                 _effectiveScoreState.value = clamped
             }
         }
+        updateTimerEnabled()
+    }
+
+    /** 乘法功能：当前分数 × multiplier，结果向 0.5 四舍五入（×2 → 取整 → ÷2），不限幅。 */
+    fun multiplyScore(multiplier: Float) {
+        val base = _customScore.value ?: _selectedScore.value
+        val result = (base * multiplier * 2f).roundToInt() / 2f
+        _customScore.value = null
+        _selectedScore.value = result
+        _effectiveScoreState.value = result
         updateTimerEnabled()
     }
 
@@ -215,7 +227,7 @@ class MainViewModel(
         val v = text.toFloatOrNull()
         if (v != null) {
             _customScore.value = v
-            _selectedScore.value = null
+            _selectedScore.value = 0f
             _effectiveScoreState.value = v
         } else {
             _customScore.value = null
@@ -270,7 +282,7 @@ class MainViewModel(
     }
 
     fun onConfirm() {
-        val score = _customScore.value ?: _selectedScore.value ?: return
+        val score = _customScore.value ?: _selectedScore.value
         val rawEvent = _customGoodDeedEvent.value
             ?: _customBadDeedEvent.value
             ?: _customGoodResultEvent.value
@@ -283,13 +295,13 @@ class MainViewModel(
         val event = if (isGoodResult) "善果：$rawEvent" else rawEvent
 
         // 同步清除所有选择（即时禁用按钮，不等 launch）
-        _selectedScore.value = null
+        _selectedScore.value = 0f
         _selectedEvent.value = null
         _customScore.value = null
         _customGoodDeedEvent.value = null
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
-        _effectiveScoreState.value = null
+        _effectiveScoreState.value = 0f
         _effectiveEventState.value = null
         updateTimerEnabled()
 
@@ -306,19 +318,18 @@ class MainViewModel(
         }
     }
 
-    /** 同步更新 _timerEnabled，每次修改选择后调用。值未变时跳过发射。 */
+    /** 同步更新 _timerEnabled，每次修改选择后调用。值未变时跳过发射。
+     *  分数始终有值（初始 0，选中事件时 0 分会自动填默认分），所以只需事件即可开始计时/确认。 */
     private fun updateTimerEnabled() {
-        val hasScore = _customScore.value != null || _selectedScore.value != null
         val hasEvent = _customGoodDeedEvent.value != null || _customBadDeedEvent.value != null ||
                 _customGoodResultEvent.value != null || _selectedEvent.value != null
-        val newValue = hasScore && hasEvent
-        if (newValue != _timerEnabled.value) {
-            _timerEnabled.value = newValue
+        if (hasEvent != _timerEnabled.value) {
+            _timerEnabled.value = hasEvent
         }
     }
 
     /** 直接读源 StateFlow，获取当前选中分数 */
-    fun getSelectedScore(): Float? = _customScore.value ?: _selectedScore.value
+    fun getSelectedScore(): Float = _customScore.value ?: _selectedScore.value
 
     /** 直接读源 StateFlow，获取当前选中事件 */
     fun getSelectedEvent(): String? =

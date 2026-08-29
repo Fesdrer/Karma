@@ -120,6 +120,11 @@ data class KarmaSettingsEntity(
         0xFF1E1E1EL, 0xFF141414L, 0xFF0A0A0AL, 0xFF000000L,
     ),
     val negativeRankDivinationLimits: List<Int> = List(9) { 0 },    // 负阶占卜次数全部默认 0
+
+    // ===== 乘法功能（主页面左栏乘法按钮，可增删改排序） =====
+    val multiplierPresets: List<Float> = listOf(
+        1f / 3f, 2f / 3f, 1f / 4f, 1f / 2f, 3f / 4f, 1.5f, 2f, 2.5f, 3f
+    ),
 ) {
     // ===== 事件默认分数归一化（v3.13） =====
 

@@ -47,7 +47,7 @@ private const val PADDING_FRACTION = 0.10f
 
 @Composable
 fun ScorePanel(
-    scoreFlow: StateFlow<Float?>,
+    scoreFlow: StateFlow<Float>,
     onScoreSelected: (Float) -> Unit,
     onCustomScoreChanged: (String) -> Unit,
     axisFontSize: Float = 22f,
@@ -74,7 +74,7 @@ fun ScorePanel(
         Spacer(Modifier.height(4.dp))
 
         // ===== 当前选中分数显示（始终占位） =====
-        val displayScore = selectedScore ?: 0f
+        val displayScore = selectedScore
         val displayText = if (displayScore % 1f == 0f) {
             (if (displayScore > 0) "+" else "") + displayScore.toInt().toString()
         } else {
@@ -104,7 +104,7 @@ fun ScorePanel(
             contentAlignment = Alignment.Center,
         ) {
             ScoreAxisView(
-                selectedScore = selectedScore ?: 0f,
+                selectedScore = selectedScore,
                 onScoreSelected = onScoreSelected,
                 axisFontSize = axisFontSize,
                 axisRangeMin = axisRangeMin,

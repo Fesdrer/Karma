@@ -106,6 +106,7 @@ private enum class SettingsCategory(val title: String, val subtitle: String) {
     NegativeRanks("负阶位体系", "负阶的名称、颜色、下限与占卜次数"),
     Events("事件管理", "善业、恶业、善果预设"),
     DailyMustDo("每日必做", "善业每日必做与未完成扣分"),
+    Multipliers("乘法功能", "可用的乘法按钮及其数值"),
     Mechanics("业力机制", "业力衰减与运气增幅"),
     Splash("启动画面", "启动经文与停留时长"),
     General("重置", "选择性重置设置与数据"),
@@ -133,6 +134,9 @@ fun SettingsScreen(
     val badDeedDeleteMode by viewModel.badDeedDeleteMode.collectAsState()
     val goodResultAddMode by viewModel.goodResultAddMode.collectAsState()
     val goodResultDeleteMode by viewModel.goodResultDeleteMode.collectAsState()
+    // 乘法按钮增删/排序模式（v4.0）
+    val multiplierAddMode by viewModel.multiplierAddMode.collectAsState()
+    val multiplierDeleteMode by viewModel.multiplierDeleteMode.collectAsState()
     // 选择性重置：勾选「历史记录」后保存按钮也要可点（历史不在草稿里，draft 可能没变化）
     val pendingClearHistory by viewModel.pendingClearHistory.collectAsState()
 
@@ -276,6 +280,7 @@ fun SettingsScreen(
                                 onRankDecayChange = { i, v -> viewModel.updateRankDecayAmount(i, v) },
                                 onRankDivinationLimitChange = { i, v -> viewModel.updateRankDivinationLimit(i, v) },
                                 onAddRankAfter = { index -> viewModel.addRankAfter(index) },
+                                onAddRankAtTop = { viewModel.addRankAtTop() },
                                 onDeleteRank = { viewModel.deleteRank(it) },
                                 onToggleAddMode = { viewModel.toggleAddMode() },
                                 onToggleDeleteMode = { viewModel.toggleDeleteMode() },
@@ -294,6 +299,7 @@ fun SettingsScreen(
                                 onNegativeRankThresholdChange = { i, v -> viewModel.updateNegativeRankThreshold(i, v) },
                                 onNegativeRankDivinationLimitChange = { i, v -> viewModel.updateNegativeRankDivinationLimit(i, v) },
                                 onAddNegativeRankAfter = { index -> viewModel.addNegativeRankAfter(index) },
+                                onAddNegativeRankAtTop = { viewModel.addNegativeRankAtTop() },
                                 onDeleteNegativeRank = { viewModel.deleteNegativeRank(it) },
                                 onToggleNegativeAddMode = { viewModel.toggleNegativeAddMode() },
                                 onToggleNegativeDeleteMode = { viewModel.toggleNegativeDeleteMode() },
@@ -354,6 +360,20 @@ fun SettingsScreen(
                                 dailyMustDoDeeds = draft.dailyMustDoDeeds,
                                 onToggle = { name, enabled -> viewModel.toggleDailyMustDo(name, enabled) },
                                 onPenaltyChange = { name, penalty -> viewModel.updateDailyMustDoPenalty(name, penalty) },
+                            )
+                        }
+                        SettingsCategory.Multipliers -> {
+                            MultiplierSettingsCard(
+                                multipliers = draft.multiplierPresets,
+                                addMode = multiplierAddMode,
+                                deleteMode = multiplierDeleteMode,
+                                onValueChange = { i, v -> viewModel.updateMultiplier(i, v) },
+                                onAddAfter = { viewModel.addMultiplierAfter(it) },
+                                onAddAtTop = { viewModel.addMultiplierAtTop() },
+                                onDelete = { viewModel.deleteMultiplier(it) },
+                                onMove = { from, to -> viewModel.moveMultiplier(from, to) },
+                                onToggleAddMode = { viewModel.toggleMultiplierAddMode() },
+                                onToggleDeleteMode = { viewModel.toggleMultiplierDeleteMode() },
                             )
                         }
                         SettingsCategory.Mechanics -> {
@@ -1381,7 +1401,11 @@ private fun SelectiveResetCard(onReset: (Set<ResetGroup>) -> Unit) {
 // ============================================================
 
 @Composable
-private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> Unit) {
+private fun SettingsCard(
+    title: String,
+    headerTrailing: (@Composable () -> Unit)? = null,
+    content: @Composable ColumnScope.() -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxWidth()
@@ -1389,12 +1413,19 @@ private fun SettingsCard(title: String, content: @Composable ColumnScope.() -> U
             .clip(RoundedCornerShape(12.dp))
             .padding(16.dp),
     ) {
-        Text(
-            text = title,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Bold,
-            color = Gold,
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                color = Gold,
+                modifier = Modifier.weight(1f),
+            )
+            if (headerTrailing != null) headerTrailing()
+        }
         Spacer(Modifier.height(12.dp))
         content()
     }
@@ -1468,6 +1499,7 @@ private fun PositiveRankSettingsCard(
     onRankDecayChange: (Int, Float) -> Unit,
     onRankDivinationLimitChange: (Int, Int) -> Unit,
     onAddRankAfter: (Int) -> Unit,
+    onAddRankAtTop: () -> Unit,
     onDeleteRank: (Int) -> Unit,
     onToggleAddMode: () -> Unit,
     onToggleDeleteMode: () -> Unit,
@@ -1475,7 +1507,24 @@ private fun PositiveRankSettingsCard(
     var showColorPicker by remember { mutableStateOf(false) }
     var colorPickerTarget by remember { mutableStateOf(0) }
 
-    SettingsCard("正阶位体系") {
+    SettingsCard(
+        title = "正阶位体系",
+        headerTrailing = if (addMode) {
+            {
+                // 表头 +：仅加模式下显示，点击在最上面插入新阶位（同事件管理）
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF22aa44))
+                        .clickable { onAddRankAtTop() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        } else null,
+    ) {
         val count = rankNames.size
 
         for (i in 0 until count) {
@@ -1732,6 +1781,7 @@ private fun NegativeRankSettingsCard(
     onNegativeRankThresholdChange: (Int, Float) -> Unit,
     onNegativeRankDivinationLimitChange: (Int, Int) -> Unit,
     onAddNegativeRankAfter: (Int) -> Unit,
+    onAddNegativeRankAtTop: () -> Unit,
     onDeleteNegativeRank: (Int) -> Unit,
     onToggleNegativeAddMode: () -> Unit,
     onToggleNegativeDeleteMode: () -> Unit,
@@ -1739,7 +1789,24 @@ private fun NegativeRankSettingsCard(
     var showColorPicker by remember { mutableStateOf(false) }
     var colorPickerTarget by remember { mutableStateOf(0) }
 
-    SettingsCard("负阶位体系") {
+    SettingsCard(
+        title = "负阶位体系",
+        headerTrailing = if (negativeAddMode) {
+            {
+                // 表头 +：仅加模式下显示，点击在最上面插入新负阶（同事件管理）
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF22aa44))
+                        .clickable { onAddNegativeRankAtTop() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        } else null,
+    ) {
         Text(
             "下限即本级的业力下限（最深一级无下限）；颜色显示在首页徽章；占卜次数同正阶设置",
             fontSize = 12.sp,
@@ -2559,6 +2626,279 @@ private fun DailyMustDoCard(
 
 private fun formatDailyPenalty(v: Float): String {
     return if (v % 1f == 0f) v.toInt().toString() else String.format("%.1f", v)
+}
+
+// ============================================================
+// MultiplierSettingsCard — 乘法功能（事件管理式列表：表头+、数值行、加/减模式、拖拽排序）
+// ============================================================
+
+@Composable
+private fun MultiplierSettingsCard(
+    multipliers: List<Float>,
+    addMode: Boolean,
+    deleteMode: Boolean,
+    onValueChange: (Int, Float) -> Unit,
+    onAddAfter: (Int) -> Unit,
+    onAddAtTop: () -> Unit,
+    onDelete: (Int) -> Unit,
+    onMove: (Int, Int) -> Unit,
+    onToggleAddMode: () -> Unit,
+    onToggleDeleteMode: () -> Unit,
+) {
+    val count = multipliers.size
+    // 长按进入拖动时震动提示（系统长按触感）
+    val haptic = LocalHapticFeedback.current
+
+    // 拖拽排序状态：长按 ≡ 后拖动；拖动中实时计算目标位，其他行动画让位
+    var draggingIndex by remember { mutableStateOf<Int?>(null) }
+    var dragDy by remember { mutableFloatStateOf(0f) }
+    var currentTarget by remember { mutableStateOf(0) }
+    var rowHeightPx by remember { mutableFloatStateOf(0f) }
+
+    SettingsCard("乘法功能") {
+        Text(
+            "主页面左栏的乘法按钮：点击后当前分数 × 该数，结果向 0.5 四舍五入（不限幅）。",
+            fontSize = 12.sp,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        // 表头（加模式下显示 +，点击在最上面插入）
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "■ 乘法按钮",
+                fontSize = 14.sp,
+                fontWeight = FontWeight.Bold,
+                color = Gold,
+                modifier = Modifier.weight(1f),
+            )
+            if (addMode) {
+                Box(
+                    modifier = Modifier
+                        .size(22.dp)
+                        .clip(CircleShape)
+                        .background(Color(0xFF22aa44))
+                        .clickable { onAddAtTop() },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                }
+            }
+        }
+
+        Spacer(Modifier.height(4.dp))
+
+        if (count == 0) {
+            Text(
+                "（暂无乘法按钮：按下方 + 进入添加模式，表头会出现 + 可在此分类最上面新增）",
+                fontSize = 12.sp,
+                color = TextMuted,
+            )
+        }
+
+        for (i in 0 until count) {
+            val isDragging = draggingIndex == i
+            val fromIdx = draggingIndex
+            // 实时让位：被拖行下方（向下拖）的行上移一行、上方（向上拖）的行下移一行
+            val shiftUp = !isDragging && fromIdx != null && i > fromIdx && i <= currentTarget
+            val shiftDown = !isDragging && fromIdx != null && i < fromIdx && i >= currentTarget
+            val settleOffset by animateFloatAsState(
+                targetValue = when {
+                    shiftUp -> -rowHeightPx
+                    shiftDown -> rowHeightPx
+                    else -> 0f
+                },
+                animationSpec = tween(200, easing = FastOutSlowInEasing),
+                label = "multiplierSettle",
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 2.dp)
+                    .graphicsLayer {
+                        translationY = if (isDragging) dragDy else settleOffset
+                    }
+                    .zIndex(if (isDragging) 1f else 0f)
+                    .onSizeChanged { rowHeightPx = it.height.toFloat() },
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                // 乘法数值输入（受控输入，值直接来自草稿）
+                val value = multipliers.getOrElse(i) { 1f }
+                var valueText by remember(i, value) { mutableStateOf(formatMultiplierValue(value)) }
+                OutlinedTextField(
+                    value = valueText,
+                    onValueChange = { v ->
+                        valueText = v
+                        v.toFloatOrNull()?.let { onValueChange(i, it) }
+                    },
+                    singleLine = true,
+                    textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = Gold,
+                        unfocusedBorderColor = BorderSubtle,
+                        focusedTextColor = TextPrimary,
+                        unfocusedTextColor = TextPrimary,
+                        cursorColor = Gold,
+                    ),
+                    modifier = Modifier.weight(1f),
+                )
+
+                // 加/减模式行内按钮（同事件/阶位：+ 绿色 / × 红色）
+                if (addMode) {
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFF22aa44))
+                            .clickable { onAddAfter(i) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("+", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+                if (deleteMode) {
+                    Spacer(Modifier.width(6.dp))
+                    Box(
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color(0xFFcc0000))
+                            .clickable { onDelete(i) },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text("×", color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                    }
+                }
+
+                Spacer(Modifier.width(4.dp))
+
+                // ≡ 拖拽柄：三根等长横线，长按后变金色提示可拖动，上下拖动实时让位排序
+                Column(
+                    modifier = Modifier
+                        .width(22.dp)
+                        .height(32.dp)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(
+                            if (isDragging) Gold.copy(alpha = 0.25f)
+                            else Color.Transparent
+                        )
+                        .pointerInput(i) {
+                            detectDragGesturesAfterLongPress(
+                                onDragStart = {
+                                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                                    draggingIndex = i
+                                    currentTarget = i
+                                    dragDy = 0f
+                                },
+                                onDrag = { change, amount ->
+                                    change.consume()
+                                    dragDy += amount.y
+                                    // 实时更新目标位：越过半行高度即让位
+                                    if (rowHeightPx > 0f) {
+                                        currentTarget = (i + (dragDy / rowHeightPx).roundToInt())
+                                            .coerceIn(0, count - 1)
+                                    }
+                                },
+                                onDragEnd = {
+                                    if (currentTarget != i) onMove(i, currentTarget)
+                                    draggingIndex = null
+                                    dragDy = 0f
+                                },
+                                onDragCancel = {
+                                    draggingIndex = null
+                                    dragDy = 0f
+                                },
+                            )
+                        },
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
+                ) {
+                    repeat(3) {
+                        Box(
+                            modifier = Modifier
+                                .width(14.dp)
+                                .height(1.5.dp)
+                                .background(
+                                    if (isDragging) Gold else TextSecondary.copy(alpha = 0.8f)
+                                ),
+                        )
+                        if (it < 2) Spacer(Modifier.height(3.dp))
+                    }
+                }
+            }
+        }
+
+        // 底部 +/− 模式切换（同事件：+ 进入添加模式，− 进入删除模式）
+        Spacer(Modifier.height(6.dp))
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            val addActive = addMode
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (addActive) Color(0xFF22aa44) else Color(0xFF1A1A1A))
+                    .border(
+                        1.dp,
+                        if (addActive) Color(0xFF22aa44) else Color(0xFF334444),
+                        RoundedCornerShape(6.dp),
+                    )
+                    .clickable { onToggleAddMode() }
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    "+", fontSize = 16.sp,
+                    color = if (addActive) Color.White else Gold,
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            val delActive = deleteMode && count > 0
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(if (delActive) Color(0xFFb8860b) else Color(0xFF1A1A1A))
+                    .border(
+                        1.dp,
+                        if (delActive) Color(0xFFb8860b) else Color(0xFF334444),
+                        RoundedCornerShape(6.dp),
+                    )
+                    .clickable(enabled = count > 0) { onToggleDeleteMode() }
+                    .padding(horizontal = 12.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    "−", fontSize = 16.sp,
+                    color = when {
+                        delActive -> Color.White
+                        count <= 0 -> Color(0xFF666666)
+                        else -> Gold
+                    },
+                )
+            }
+        }
+    }
+}
+
+/** 乘法数值显示：1/3、2/3、1/4、1/2、3/4 显示分数，其余整数去点、小数最多两位。 */
+private fun formatMultiplierValue(v: Float): String {
+    val frac = when {
+        abs(v - 1f / 3f) < 0.001f -> "1/3"
+        abs(v - 2f / 3f) < 0.001f -> "2/3"
+        abs(v - 1f / 4f) < 0.001f -> "1/4"
+        abs(v - 1f / 2f) < 0.001f -> "1/2"
+        abs(v - 3f / 4f) < 0.001f -> "3/4"
+        else -> null
+    }
+    if (frac != null) return frac
+    return if (v % 1f == 0f) v.toInt().toString()
+    else String.format("%.2f", v).trimEnd('0').trimEnd('.')
 }
 
 // ============================================================
