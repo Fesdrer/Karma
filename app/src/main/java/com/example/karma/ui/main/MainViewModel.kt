@@ -185,13 +185,17 @@ class MainViewModel(
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
         _effectiveEventState.value = event
-        // v3.13：预设事件自动带默认分数 → 左侧分数栏同步移动（之后仍可滑动调整）；
-        // 自定义输入（不在预设列表）不联动
-        defaultScoreFor(event)?.let { score ->
-            val clamped = score.coerceIn(_currentScoreAxisRangeMin, _currentScoreAxisRangeMax)
-            _customScore.value = null
-            _selectedScore.value = clamped
-            _effectiveScoreState.value = clamped
+        // 事件默认分数联动：仅当当前分数为 0（或未选择，显示为 0）时，
+        // 才把左侧分数设为该事件的默认分数；否则保持用户已选的分数不变。
+        // 自定义输入（不在预设列表）不联动。
+        val currentScore = _customScore.value ?: _selectedScore.value
+        if (currentScore == null || currentScore == 0f) {
+            defaultScoreFor(event)?.let { score ->
+                val clamped = score.coerceIn(_currentScoreAxisRangeMin, _currentScoreAxisRangeMax)
+                _customScore.value = null
+                _selectedScore.value = clamped
+                _effectiveScoreState.value = clamped
+            }
         }
         updateTimerEnabled()
     }
