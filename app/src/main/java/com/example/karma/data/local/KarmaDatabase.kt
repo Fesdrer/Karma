@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 22,
+    version = 23,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -253,6 +253,29 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v23：阶位自证功能。设置项（开关+特效颜色）+ 自证进行中状态字段。
+         */
+        private val MIGRATION_22_23 = object : Migration(22, 23) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofEnabled INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofLineColor INTEGER NOT NULL DEFAULT 4294955007")      // 0xFFFFD700
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofGlowColor INTEGER NOT NULL DEFAULT 4294967295")      // 0xFFFFFFFF
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofCountdownBg INTEGER NOT NULL DEFAULT 4278190080")    // 0xFF8B0000
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofCountdownText INTEGER NOT NULL DEFAULT 4294967295")   // 0xFFFFFFFF
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofSuccessColor INTEGER NOT NULL DEFAULT 4278229358")    // 0xFF69f0ae
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofFailColor INTEGER NOT NULL DEFAULT 4294931026")       // 0xFFff5252
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofActive INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofStartTime INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofDurationMs INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofStartRankLevel INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofTargetLevel INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofGuardLevel INTEGER NOT NULL DEFAULT 0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofReward REAL NOT NULL DEFAULT 0.0")
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofPenalty REAL NOT NULL DEFAULT 0.0")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -260,7 +283,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

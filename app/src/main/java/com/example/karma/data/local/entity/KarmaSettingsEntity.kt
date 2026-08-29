@@ -128,6 +128,25 @@ data class KarmaSettingsEntity(
         Fraction(1, 3), Fraction(2, 3), Fraction(1, 4), Fraction(1, 2), Fraction(3, 4),
         Fraction(3, 2), Fraction(2, 1), Fraction(5, 2), Fraction(3, 1),
     ),
+
+    // ===== 阶位自证（v4.0） =====
+    // 设置项：开关 + 特效颜色
+    val proofEnabled: Boolean = false,               // 自证功能总开关
+    val proofLineColor: Long = 0xFFFFD700L,          // 数轴金色粗线
+    val proofGlowColor: Long = 0xFFFFFFFFL,          // 光晕粒子
+    val proofCountdownBg: Long = 0xFF8B0000L,        // 倒计时矩形背景
+    val proofCountdownText: Long = 0xFFFFFFFFL,      // 倒计时文字
+    val proofSuccessColor: Long = 0xFF69f0aeL,       // 成功弹窗主色
+    val proofFailColor: Long = 0xFFff5252L,          // 失败弹窗主色
+    // 自证进行中状态（持久化，防进程被杀丢失）
+    val proofActive: Boolean = false,
+    val proofStartTime: Long = 0L,                   // 开始时间戳
+    val proofDurationMs: Long = 0L,                  // 时长（毫秒）
+    val proofStartRankLevel: Int = 0,                // 徽章停留阶位（主动=当前阶位；被动=加分前阶位）
+    val proofTargetLevel: Int = 0,                   // 成功目标阶位（主动=下一正阶位；被动=已达阶位）
+    val proofGuardLevel: Int = 0,                    // 降级守卫阶位（主动=起始阶位；被动=已达阶位）
+    val proofReward: Float = 0f,                     // 成功奖励分
+    val proofPenalty: Float = 0f,                    // 失败惩罚分
 ) {
     // ===== 事件默认分数归一化（v3.13） =====
 
