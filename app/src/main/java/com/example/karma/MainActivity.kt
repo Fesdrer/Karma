@@ -4,7 +4,9 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -35,11 +37,19 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = Color.Transparent,
                 ) {
-                    val navController = rememberNavController()
-                    KarmaNavGraph(
-                        navController = navController,
-                        appContainer = appContainer,
-                    )
+                    // 整体处理软键盘：键盘弹出时页面底部空出键盘高度、内容可滚动，
+                    // 不依赖华为/旧鸿蒙失效的 adjustResize（所有页面统一生效）
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .imePadding(),
+                    ) {
+                        val navController = rememberNavController()
+                        KarmaNavGraph(
+                            navController = navController,
+                            appContainer = appContainer,
+                        )
+                    }
                 }
             }
         }
