@@ -123,7 +123,16 @@ fun ScorePanel(
                 customText = it
                 onCustomScoreChanged(it)
             },
-            placeholder = { Text("自定义分数...", fontSize = 12.sp, color = Color(0xFF666666)) },
+            placeholder = {
+                // 面板变窄后放不下「自定义分数...」，缩短并强制单行省略，避免占位符换行导致高度跳动
+                Text(
+                    "分数...",
+                    fontSize = 12.sp,
+                    color = Color(0xFF666666),
+                    maxLines = 1,
+                    overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                )
+            },
             textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
             singleLine = true,
             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
