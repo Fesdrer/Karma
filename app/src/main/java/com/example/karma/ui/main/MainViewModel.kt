@@ -4,13 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.karma.data.local.entity.DailyMustDoDeed
+import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.model.Fraction
+import com.example.karma.data.model.ProofEngine
 import com.example.karma.data.model.Rank
 import com.example.karma.data.repository.KarmaRepository
 import com.example.karma.util.LuckAmplifier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
@@ -50,6 +54,42 @@ data class MainUiState(
     val hasScoreAndEvent: Boolean = false,
     // ===== 运气增幅 =====
     val luckValue: Float? = null,
+    // ===== 阶位自证（v4.0） =====
+    val proofEnabled: Boolean = false,
+    val proofActive: Boolean = false,
+    val proofStartRankLevel: Int = 0,      // 徽章停留阶位
+    val proofEndTime: Long = 0L,           // 自证结束时间戳（倒计时用）
+    val proofLineColor: Long = 0xFFFFD700L,
+    val proofGlowColor: Long = 0xFFFFFFFFL,
+    val proofCountdownBg: Long = 0xFF8B0000L,
+    val proofCountdownText: Long = 0xFFFFFFFFL,
+    val proofSuccessColor: Long = 0xFF69f0aeL,
+    val proofFailColor: Long = 0xFFff5252L,
+    val canStartProof: Boolean = false,    // 距离下一正阶位 <10 分且未在自证中
+)
+
+/** 被动自证弹窗数据：加分跨入正阶位瞬间。 */
+data class PassiveProofPrompt(
+    val oldLevel: Int,   // 加分前阶位（徽章停留用）
+    val newLevel: Int,   // 已达阶位（自证目标）
+)
+
+/** 自证模式。 */
+enum class ProofMode { ACTIVE, PASSIVE }
+
+/** 自证设置请求（弹窗确认后 startProof 用）。 */
+data class ProofSetup(
+    val mode: ProofMode,
+    val startRank: Int,
+    val target: Int,
+    val guard: Int,
+)
+
+/** 自证结果（成功/失败弹窗用）。 */
+data class ProofResult(
+    val success: Boolean,
+    val startRank: Int,
+    val targetRank: Int,
 )
 
 class MainViewModel(
@@ -107,6 +147,26 @@ class MainViewModel(
     private var _cachedNegativeRankSettings: List<Any> = emptyList()
     private var _cachedNegativeRanks: List<Rank> = emptyList()
 
+    // ===== 阶位自证状态 =====
+    /** 最新 settings 快照（主动按钮/校验用）。 */
+    private var _latestSettings: com.example.karma.data.local.entity.KarmaSettingsEntity? = null
+    /** 自证相关的分数变化（奖励/惩罚/逃避）置 true，检测跨阶时跳过，避免连环触发。 */
+    private var _selfProofScoreChange = false
+    /** 上一次观察的分数与阶位（被动触发比较用）。 */
+    private var _lastTotal = 0f
+    private var _lastLevel = 0
+    /** 防重入：finishProof 同时被检查与超时协程触发时只执行一次。 */
+    private var _proofFinishing = false
+    /** 被动自证弹窗（加分跨入正阶位时置入，UI 处理后清空）。 */
+    private val _pendingPassiveProof = MutableStateFlow<PassiveProofPrompt?>(null)
+    val pendingPassiveProof: StateFlow<PassiveProofPrompt?> = _pendingPassiveProof.asStateFlow()
+    /** 自证设置弹窗请求（主动按钮 / 被动确认后置入）。 */
+    private val _proofSetup = MutableStateFlow<ProofSetup?>(null)
+    val proofSetup: StateFlow<ProofSetup?> = _proofSetup.asStateFlow()
+    /** 自证结果（成功/失败弹窗）。 */
+    private val _proofResult = MutableStateFlow<ProofResult?>(null)
+    val proofResult: StateFlow<ProofResult?> = _proofResult.asStateFlow()
+
     /** uiState 初始为 null，首帧不渲染。combine 首次发射后一次性显示全部内容。 */
     private val _uiState = MutableStateFlow<MainUiState?>(null)
     val uiState: StateFlow<MainUiState?> = _uiState
@@ -138,9 +198,23 @@ class MainViewModel(
                     _cachedNegativeRankSettings = negativeRankKey
                     _cachedNegativeRanks = repository.buildNegativeRanks(settings)
                 }
+                _latestSettings = settings
+                if (_lastLevel == 0) {
+                    _lastTotal = settings.totalScore
+                    _lastLevel = ProofEngine.rankLevelOf(settings.totalScore, settings)
+                }
+                val actualRank = repository.getRank(settings.totalScore, settings)
+                // 自证期间徽章停留在开始自证时的阶位
+                val displayRank = if (settings.proofActive) {
+                    (_cachedRanks + _cachedNegativeRanks).find { it.level == settings.proofStartRankLevel }
+                        ?: actualRank
+                } else {
+                    actualRank
+                }
+                val currentLevel = actualRank?.level ?: 1
                 MainUiState(
                     totalScore = settings.totalScore,
-                    rank = repository.getRank(settings.totalScore, settings),
+                    rank = displayRank,
                     scorePresets = settings.scorePresets,
                     goodDeedPresets = settings.goodDeedPresets,
                     badDeedPresets = settings.badDeedPresets,
@@ -169,8 +243,34 @@ class MainViewModel(
                     hasScoreAndEvent = timerEnabled,
                     luckValue = luckValue,
                     dailyMustDoDeeds = settings.dailyMustDoDeeds,
+                    proofEnabled = settings.proofEnabled,
+                    proofActive = settings.proofActive,
+                    proofStartRankLevel = settings.proofStartRankLevel,
+                    proofEndTime = settings.proofStartTime + settings.proofDurationMs,
+                    proofLineColor = settings.proofLineColor,
+                    proofGlowColor = settings.proofGlowColor,
+                    proofCountdownBg = settings.proofCountdownBg,
+                    proofCountdownText = settings.proofCountdownText,
+                    proofSuccessColor = settings.proofSuccessColor,
+                    proofFailColor = settings.proofFailColor,
+                    canStartProof = settings.proofEnabled && !settings.proofActive &&
+                        ProofEngine.distanceToNextPositiveRank(settings.totalScore, currentLevel, settings) < 10f,
                 )
             }.collect { _uiState.value = it }
+        }
+        // 自证检测：每次 settings 变化时判定（跨阶触发/降级/达标/超时/开关关闭）
+        viewModelScope.launch {
+            repository.settings.collect { s -> checkProof(s) }
+        }
+        // 自证超时兜底：settings 长时间不变时（无操作），每秒检查一次是否到结束时刻
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(1000)
+                val s = repository.settings.first()
+                if (s.proofActive && System.currentTimeMillis() >= s.proofStartTime + s.proofDurationMs) {
+                    finishProof(s, ProofEngine.isSuccess(s.totalScore, s, s.proofTargetLevel))
+                }
+            }
         }
     }
 
@@ -346,6 +446,146 @@ class MainViewModel(
     fun markDailyMustDoDone(eventName: String) {
         viewModelScope.launch {
             repository.markDeedDone(eventName)
+        }
+    }
+
+    // ===== 阶位自证 =====
+
+    /** 主动开启：距离下一正阶位 <10 分且未在自证中 → 弹设置窗。 */
+    fun requestActiveProof() {
+        val s = _latestSettings ?: return
+        if (!s.proofEnabled || s.proofActive) return
+        val level = ProofEngine.rankLevelOf(s.totalScore, s)
+        if (ProofEngine.distanceToNextPositiveRank(s.totalScore, level, s) >= 10f) return
+        _proofSetup.value = ProofSetup(
+            mode = ProofMode.ACTIVE,
+            startRank = level,
+            target = ProofEngine.nextPositiveRankLevel(level),
+            guard = level,
+        )
+    }
+
+    /** 被动弹窗选「设置自证」：转为设置窗（目标=已达阶位，徽章=加分前阶位）。 */
+    fun onPassiveProofSetup() {
+        val p = _pendingPassiveProof.value ?: return
+        _proofSetup.value = ProofSetup(
+            mode = ProofMode.PASSIVE,
+            startRank = p.oldLevel,
+            target = p.newLevel,
+            guard = p.newLevel,
+        )
+    }
+
+    /** 被动弹窗选「取消」：逃避自证，扣分到最高新阶位阈值-1。 */
+    fun onPassiveProofEscape() {
+        val p = _pendingPassiveProof.value ?: return
+        _pendingPassiveProof.value = null
+        _selfProofScoreChange = true
+        viewModelScope.launch {
+            val s = repository.settings.first()
+            val threshold = ProofEngine.thresholdOf(p.newLevel, s)
+            val targetScore = threshold - 1f
+            val delta = (s.totalScore - targetScore).coerceAtLeast(0.1f)
+            repository.addHistoryEntry(-delta, "逃避自证", "record")
+        }
+    }
+
+    /** 设置窗确认：开始自证（时长/奖励/惩罚）。 */
+    fun startProof(reward: Float, penalty: Float, durationMs: Long) {
+        val setup = _proofSetup.value ?: return
+        _proofSetup.value = null
+        _pendingPassiveProof.value = null
+        viewModelScope.launch {
+            val s = repository.settings.first()
+            repository.updateAllSettings(s.copy(
+                proofActive = true,
+                proofStartTime = System.currentTimeMillis(),
+                proofDurationMs = durationMs,
+                proofStartRankLevel = setup.startRank,
+                proofTargetLevel = setup.target,
+                proofGuardLevel = setup.guard,
+                proofReward = reward,
+                proofPenalty = penalty,
+            ))
+        }
+    }
+
+    /** 关闭设置窗（不开始）。 */
+    fun clearProofSetup() {
+        _proofSetup.value = null
+        _pendingPassiveProof.value = null
+    }
+
+    /** 关闭自证结果弹窗。 */
+    fun clearProofResult() {
+        _proofResult.value = null
+    }
+
+    /**
+     * 自证判定（每次 settings 变化时调用）：
+     * - 自证相关分数变化 → 跳过被动检测
+     * - 开关被关闭 → 强制按失败结束
+     * - 降级（低于守卫阶位）→ 立即失败
+     * - 主动达标（守卫==起始阶位，即主动模式）→ 立即成功
+     * - 否则被动触发：加分跨入正阶位 → 弹被动窗
+     */
+    private fun checkProof(s: KarmaSettingsEntity) {
+        if (_selfProofScoreChange) {
+            _selfProofScoreChange = false
+            _lastTotal = s.totalScore
+            _lastLevel = ProofEngine.rankLevelOf(s.totalScore, s)
+            return
+        }
+        if (s.proofActive) {
+            if (!s.proofEnabled) {
+                finishProof(s, success = false)
+                return
+            }
+            if (ProofEngine.isDowngraded(s.totalScore, s, s.proofGuardLevel)) {
+                finishProof(s, success = false)
+                return
+            }
+            if (s.proofGuardLevel == s.proofStartRankLevel &&
+                ProofEngine.isSuccess(s.totalScore, s, s.proofTargetLevel)
+            ) {
+                finishProof(s, success = true)
+                return
+            }
+        } else {
+            val newLevel = ProofEngine.rankLevelOf(s.totalScore, s)
+            if (s.proofEnabled && newLevel >= 1 && newLevel > _lastLevel && s.totalScore > _lastTotal) {
+                _pendingPassiveProof.value = PassiveProofPrompt(_lastLevel, newLevel)
+            }
+        }
+        _lastTotal = s.totalScore
+        _lastLevel = ProofEngine.rankLevelOf(s.totalScore, s)
+    }
+
+    /** 结束自证（成功/失败）：重置状态 + 加/扣分 + 弹结果窗（防重入）。 */
+    private fun finishProof(s: KarmaSettingsEntity, success: Boolean) {
+        if (_proofFinishing) return
+        _proofFinishing = true
+        _proofResult.value = ProofResult(success, s.proofStartRankLevel, s.proofTargetLevel)
+        _selfProofScoreChange = true
+        viewModelScope.launch {
+            try {
+                repository.updateAllSettings(s.copy(
+                    proofActive = false,
+                    proofStartTime = 0L,
+                    proofDurationMs = 0L,
+                    proofStartRankLevel = 0,
+                    proofTargetLevel = 0,
+                    proofGuardLevel = 0,
+                    proofReward = 0f,
+                    proofPenalty = 0f,
+                ))
+                val delta = if (success) s.proofReward else -s.proofPenalty
+                if (delta != 0f) {
+                    repository.addHistoryEntry(delta, if (success) "自证成功" else "自证失败", "record")
+                }
+            } finally {
+                _proofFinishing = false
+            }
         }
     }
 
