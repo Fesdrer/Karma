@@ -514,6 +514,22 @@ class KarmaRepository(
             goodResultDefaultScores = gsonNullable(importedSettings.goodResultDefaultScores) ?: emptyList(),
             // 乘法按钮（v4.0）：缺键时补默认乘数（只支持新格式对象数组；旧 Float 数组格式不兼容）
             multiplierPresets = gsonNullable(importedSettings.multiplierPresets) ?: KarmaSettingsEntity().multiplierPresets,
+            // 自证（v4.0）：旧导出缺键时 gson 置 null，写 NOT NULL 列会失败，全部补默认值
+            proofEnabled = gsonNullable(importedSettings.proofEnabled) ?: false,
+            proofLineColor = gsonNullable(importedSettings.proofLineColor) ?: 0xFFFFD700L,
+            proofGlowColor = gsonNullable(importedSettings.proofGlowColor) ?: 0xFFFFFFFFL,
+            proofCountdownBg = gsonNullable(importedSettings.proofCountdownBg) ?: 0xFF8B0000L,
+            proofCountdownText = gsonNullable(importedSettings.proofCountdownText) ?: 0xFFFFFFFFL,
+            proofSuccessColor = gsonNullable(importedSettings.proofSuccessColor) ?: 0xFF69f0aeL,
+            proofFailColor = gsonNullable(importedSettings.proofFailColor) ?: 0xFFFF5252L,
+            proofActive = gsonNullable(importedSettings.proofActive) ?: false,
+            proofStartTime = gsonNullable(importedSettings.proofStartTime) ?: 0L,
+            proofDurationMs = gsonNullable(importedSettings.proofDurationMs) ?: 0L,
+            proofStartRankLevel = gsonNullable(importedSettings.proofStartRankLevel) ?: 0,
+            proofTargetLevel = gsonNullable(importedSettings.proofTargetLevel) ?: 0,
+            proofGuardLevel = gsonNullable(importedSettings.proofGuardLevel) ?: 0,
+            proofReward = gsonNullable(importedSettings.proofReward) ?: 0f,
+            proofPenalty = gsonNullable(importedSettings.proofPenalty) ?: 0f,
         ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false
