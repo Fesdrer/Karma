@@ -271,6 +271,7 @@ fun MainScreen(
                         val capturedEvent = ts.selectedEvent
                         val capturedScore = ts.selectedScore
                         val delta = round(totMin / 60.0 * capturedScore * 2.0) / 2.0
+                        viewModel.notifyUserRecord()
                         viewModel.viewModelScope.launch {
                             try {
                                 // ★ 先写 DB（标记每日必做完成 + 添加历史记录）

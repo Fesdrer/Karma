@@ -151,9 +151,10 @@ class MainViewModel(
 
     // ===== 阶位自证状态 =====
     /** 最新 settings 快照（主动按钮/校验用）。 */
-    private var _latestSettings: com.example.karma.data.local.entity.KarmaSettingsEntity? = null
-    /** 自证相关的分数变化（奖励/惩罚/逃避）置 true，检测跨阶时跳过，避免连环触发。 */
-    private var _selfProofScoreChange = false
+    private var _latestSettings: KarmaSettingsEntity? = null
+    /** 用户普通记录加分标记：onConfirm/计时结算时置 true，跨阶被动检测只在此标记下进行
+     *  （自证奖励/惩罚/逃避造成的分数变化不置标记 → 不会误触发被动弹窗）。 */
+    private var _userScoredFlag = false
     /** 上一次观察的分数与阶位（被动触发比较用）。 */
     private var _lastTotal = 0f
     private var _lastLevel = 0
@@ -408,6 +409,8 @@ class MainViewModel(
         _effectiveEventState.value = null
         updateTimerEnabled()
 
+        // 标记用户普通加分（用于跨阶自证被动检测），再写库
+        notifyUserRecord()
         // 在单个协程中顺序执行，避免两个并发读写互覆盖：
         // markDeedDone 读 settings→改 vis→写；addHistoryEntry 读 settings→改 totalScore→写，
         // 并发时后写入的会覆盖前一个的改动（vis 或 totalScore 丢失）。
@@ -482,7 +485,6 @@ class MainViewModel(
     fun onPassiveProofEscape() {
         val p = _pendingPassiveProof.value ?: return
         _pendingPassiveProof.value = null
-        _selfProofScoreChange = true
         viewModelScope.launch {
             val s = repository.settings.first()
             val threshold = ProofEngine.thresholdOf(p.newLevel, s)
@@ -525,19 +527,10 @@ class MainViewModel(
 
     /**
      * 自证判定（每次 settings 变化时调用）：
-     * - 自证相关分数变化 → 跳过被动检测
-     * - 开关被关闭 → 强制按失败结束
-     * - 降级（低于守卫阶位）→ 立即失败
-     * - 主动达标（守卫==起始阶位，即主动模式）→ 立即成功
-     * - 否则被动触发：加分跨入正阶位 → 弹被动窗
+     * - 自证中：开关关闭 → 强制失败；降级（低于守卫阶位）→ 立即失败；主动达标 → 立即成功
+     * - 非自证中：仅当用户普通记录加分（_userScoredFlag）时检测跨入正阶位 → 弹被动窗
      */
     private fun checkProof(s: KarmaSettingsEntity) {
-        if (_selfProofScoreChange) {
-            _selfProofScoreChange = false
-            _lastTotal = s.totalScore
-            _lastLevel = ProofEngine.rankLevelOf(s.totalScore, s)
-            return
-        }
         if (s.proofActive) {
             if (!s.proofEnabled) {
                 finishProof(s, success = false)
@@ -553,7 +546,8 @@ class MainViewModel(
                 finishProof(s, success = true)
                 return
             }
-        } else {
+        } else if (_userScoredFlag) {
+            _userScoredFlag = false
             val newLevel = ProofEngine.rankLevelOf(s.totalScore, s)
             if (s.proofEnabled && newLevel >= 1 && newLevel > _lastLevel && s.totalScore > _lastTotal) {
                 _pendingPassiveProof.value = PassiveProofPrompt(_lastLevel, newLevel)
@@ -568,7 +562,6 @@ class MainViewModel(
         if (_proofFinishing) return
         _proofFinishing = true
         _proofResult.value = ProofResult(success, s.proofStartRankLevel, s.proofTargetLevel, s.proofReward, s.proofPenalty)
-        _selfProofScoreChange = true
         viewModelScope.launch {
             try {
                 repository.updateAllSettings(s.copy(
@@ -589,6 +582,11 @@ class MainViewModel(
                 _proofFinishing = false
             }
         }
+    }
+
+    /** 标记一次用户普通记录加分（确认/计时结算），用于跨阶自证被动检测。 */
+    fun notifyUserRecord() {
+        _userScoredFlag = true
     }
 
     class Factory(private val repository: KarmaRepository) : ViewModelProvider.Factory {
