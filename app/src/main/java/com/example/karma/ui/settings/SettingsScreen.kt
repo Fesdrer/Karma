@@ -108,7 +108,7 @@ private enum class SettingsCategory(val title: String, val subtitle: String) {
     DailyMustDo("每日必做", "善业每日必做与未完成扣分"),
     Mechanics("业力机制", "业力衰减与运气增幅"),
     Splash("启动画面", "启动经文与停留时长"),
-    General("通用", "重置所有设置为默认"),
+    General("重置", "选择性重置设置与数据"),
 }
 
 @Composable
