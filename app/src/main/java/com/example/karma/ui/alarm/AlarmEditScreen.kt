@@ -178,7 +178,25 @@ fun AlarmEditScreen(
                     putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_DEFAULT, true)
                     putExtra(RingtoneManager.EXTRA_RINGTONE_SHOW_SILENT, true)
                 }
-                ringtoneLauncher.launch(intent)
+                // 华为等部分 ROM 没有系统铃声选择器：先检查是否存在，避免启动瞬间
+                // ActivityNotFoundException 闪退；再 try-catch 兜底
+                if (intent.resolveActivity(context.packageManager) != null) {
+                    try {
+                        ringtoneLauncher.launch(intent)
+                    } catch (_: Exception) {
+                        android.widget.Toast.makeText(
+                            context,
+                            "无法打开铃声选择器，将使用系统默认闹钟铃声",
+                            android.widget.Toast.LENGTH_SHORT,
+                        ).show()
+                    }
+                } else {
+                    android.widget.Toast.makeText(
+                        context,
+                        "此设备不支持自选铃声，将使用系统默认闹钟铃声",
+                        android.widget.Toast.LENGTH_SHORT,
+                    ).show()
+                }
             }
             SwitchRow(title = "震动", checked = d.vibrate) { viewModel.setVibrate(it) }
             SettingRow(
