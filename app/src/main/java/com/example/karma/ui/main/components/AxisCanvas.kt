@@ -331,12 +331,36 @@ fun AxisCanvas(
 
         // ---- 5. Axis line ----
         if (proofActive) {
-            // 自证：金色粗线（覆盖普通轴线）
-            drawLine(
-                color = Color(proofLineColor),
-                start = Offset(axisX, 0f),
-                end = Offset(axisX, h),
-                strokeWidth = 4f * density,
+            // 自证：渐变线——线色→光晕色(亮斑)→线色 的波形沿高度流动，
+            // 替代"纯色粗线 + 白色圆点粒子"：亮斑融入线内，不再是一颗颗光点。
+            // 波形中心 center=1-glowProgress：进度 0→1 时中心从底部(1)移到顶部(0)，从下往上流动。
+            val lineColor = Color(proofLineColor)
+            val glowColor = Color(proofGlowColor)
+            val lineW = 4f * density
+            val waves = 4f          // 整条线 4 个亮斑
+            val samples = 96         // 渐变采样点（每帧构建一次 stops，成本可忽略）
+            val center = 1f - glowProgress
+            val stops = ArrayList<Pair<Float, Color>>(samples + 2)
+            stops.add(0f to lineColor)
+            for (i in 1 until samples) {
+                val u = i.toFloat() / samples
+                // 正弦波平方：亮斑中心=1（纯光晕色），两侧快速过渡回线色（"线→白→线"）
+                val w = ((kotlin.math.cos((u - center) * 2f * kotlin.math.PI.toFloat() * waves) + 1f) / 2f)
+                val bright = w * w
+                stops.add(
+                    u to Color(
+                        red = lineColor.red + (glowColor.red - lineColor.red) * bright,
+                        green = lineColor.green + (glowColor.green - lineColor.green) * bright,
+                        blue = lineColor.blue + (glowColor.blue - lineColor.blue) * bright,
+                        alpha = 1f,
+                    )
+                )
+            }
+            stops.add(1f to lineColor)
+            drawRect(
+                brush = Brush.verticalGradient(*stops.toTypedArray()),
+                topLeft = Offset(axisX - lineW / 2f, 0f),
+                size = androidx.compose.ui.geometry.Size(lineW, h),
             )
         } else {
             drawLine(
@@ -350,27 +374,7 @@ fun AxisCanvas(
         // ---- 6. Pointer — glowing dot at center（自证时替换为倒计时矩形） ----
         val ptrY = h / 2f
         if (proofActive) {
-            // 光晕粒子：沿金线从下往上循环移动（多个粒子错开相位）
-            val glowColor = Color(proofGlowColor)
-            val baseRadius = 6f * density
-            repeat(6) { i ->
-                // p 从 0→1，y 从底部(h)→顶部(0)：从下往上
-                val p = (glowProgress + i * 0.16f) % 1f
-                val y = (1f - p) * h
-                drawCircle(
-                    color = glowColor.copy(alpha = 0.30f),
-                    radius = baseRadius,
-                    center = Offset(axisX, y),
-                )
-                // 拖尾小点（在下方）
-                drawCircle(
-                    color = glowColor.copy(alpha = 0.16f),
-                    radius = baseRadius * 0.6f,
-                    center = Offset(axisX, (y + 14f * density).coerceAtMost(h)),
-                )
-            }
-
-            // 倒计时圆边矩形（替换红点）
+            // 倒计时圆边矩形（替换红点）；亮斑已融入渐变线，不再单独绘制光点
             val rectW = 62f * density
             val rectH = 24f * density
             drawRoundRect(
