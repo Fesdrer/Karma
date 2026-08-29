@@ -13,3 +13,5 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+karma_data.json
