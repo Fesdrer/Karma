@@ -105,7 +105,7 @@ fun AxisCanvas(
     dotColor: Long = 0xFFFF0000L,
     // 阶位自证特效（v4.0）
     proofActive: Boolean = false,
-    proofLineColor: Long = 0xFFFF3B30L,
+    proofLineColor: Long = 0xFFFFD700L,
     proofGlowColor: Long = 0xFFFFFFFFL,
     proofCountdownBg: Long = 0xFF8B0000L,
     proofCountdownText: Long = 0xFFFFFFFFL,

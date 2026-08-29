@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 25,
+    version = 26,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -302,6 +302,16 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v26：自证数轴粗线默认色改回金色（0xFFFFD700=4294956800）。
+         * 只更新仍等于 v25 红线的行（用户手动改过的不受影响）。
+         */
+        private val MIGRATION_25_26 = object : Migration(25, 26) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE karma_settings SET proofLineColor = 4294956800 WHERE proofLineColor = 4294916912")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -309,7 +319,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24, MIGRATION_24_25, MIGRATION_25_26)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

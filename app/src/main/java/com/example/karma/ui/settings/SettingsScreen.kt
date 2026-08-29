@@ -2851,7 +2851,7 @@ private fun ProofSettingsCard(
 
         Spacer(Modifier.height(12.dp))
 
-        ColorSettingRow("数轴红色粗线", proofLineColor) { colorPicker = "line" to it }
+        ColorSettingRow("数轴粗线", proofLineColor) { colorPicker = "line" to it }
         ColorSettingRow("光晕粒子", proofGlowColor) { colorPicker = "glow" to it }
         ColorSettingRow("倒计时矩形背景", proofCountdownBg) { colorPicker = "bg" to it }
         ColorSettingRow("倒计时文字", proofCountdownText) { colorPicker = "text" to it }

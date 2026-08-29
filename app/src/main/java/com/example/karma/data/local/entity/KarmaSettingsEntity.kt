@@ -130,9 +130,9 @@ data class KarmaSettingsEntity(
     ),
 
     // ===== 阶位自证（v4.0） =====
-    // 设置项：开关 + 特效颜色（自证主题红色，区别于祈福金色）
+    // 设置项：开关 + 特效颜色（数轴粗线默认金色）
     val proofEnabled: Boolean = false,               // 自证功能总开关
-    val proofLineColor: Long = 0xFFFF3B30L,          // 数轴红色粗线（v25 由金改红，与祈福区分）
+    val proofLineColor: Long = 0xFFFFD700L,          // 数轴粗线（默认金色，可自定义）
     val proofGlowColor: Long = 0xFFFFFFFFL,          // 光晕粒子
     val proofCountdownBg: Long = 0xFF8B0000L,        // 倒计时矩形背景
     val proofCountdownText: Long = 0xFFFFFFFFL,      // 倒计时文字
