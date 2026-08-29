@@ -4,6 +4,7 @@ import androidx.room.Dao
 import androidx.room.Insert
 import androidx.room.OnConflictStrategy
 import androidx.room.Query
+import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import kotlinx.coroutines.flow.Flow
 
@@ -21,6 +22,9 @@ interface KarmaSettingsDao {
 
     @Query("UPDATE karma_settings SET totalScore = :score WHERE id = 1")
     suspend fun updateTotalScore(score: Float)
+
+    @Query("UPDATE karma_settings SET dailyMustDoDeeds = :deeds, dailyMustDoLastDate = :lastDate WHERE id = 1")
+    suspend fun updateDailyMustDoFields(deeds: List<DailyMustDoDeed>, lastDate: String)
 
     @Query("UPDATE karma_settings SET scorePresets = :presets WHERE id = 1")
     suspend fun updateScorePresets(presets: List<Float>)

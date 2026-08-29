@@ -47,7 +47,9 @@ class KarmaRepository(
             type = type,
             totalAfter = newTotal,
         )
-        settingsDao.upsertSettings(current.copy(totalScore = newTotal))
+        // 只原子更新 totalScore 列，不读改写整行：
+        // 避免并发写（如自证状态 proofActive）被旧快照覆盖
+        settingsDao.updateTotalScore(newTotal)
         val id = historyDao.insertEntry(entry)
 
         // Trim history if over limit
@@ -113,10 +115,8 @@ class KarmaRepository(
             if (it.name == deedName) it.copy(vis = 1) else it
         }
         val todayStr = formatDate(System.currentTimeMillis())
-        settingsDao.upsertSettings(settings.copy(
-            dailyMustDoDeeds = updatedDeeds,
-            dailyMustDoLastDate = todayStr,
-        ))
+        // 只原子更新必做相关列，不读改写整行（避免覆盖自证状态等字段）
+        settingsDao.updateDailyMustDoFields(updatedDeeds, todayStr)
     }
 
     /** 将所有 deed 的 vis 重置为 0（新的一天/配置变更时调用）。 */
@@ -124,10 +124,7 @@ class KarmaRepository(
         val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
         val resetDeeds = settings.dailyMustDoDeeds.map { it.copy(vis = 0) }
         val todayStr = formatDate(System.currentTimeMillis())
-        settingsDao.upsertSettings(settings.copy(
-            dailyMustDoDeeds = resetDeeds,
-            dailyMustDoLastDate = todayStr,
-        ))
+        settingsDao.updateDailyMustDoFields(resetDeeds, todayStr)
     }
 
     // ---- 誓约 ----
