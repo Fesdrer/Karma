@@ -69,7 +69,8 @@ fun MultiplierPanel(
                 modifier = Modifier
                     .weight(1f)
                     .verticalScroll(rememberScrollState()),
-                verticalArrangement = Arrangement.spacedBy(5.dp),
+                // 按钮组上下居中；按钮过多超出高度时仍从顶部排列、可滚动
+                verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
             ) {
                 multipliers.forEach { m ->
                     val interaction = remember { MutableInteractionSource() }
