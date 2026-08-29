@@ -75,6 +75,11 @@ fun MainScreen(
     val effectiveScore by viewModel.effectiveScoreState.collectAsState()
     val context = LocalContext.current
 
+    // 自证相关弹窗状态
+    val pendingPassiveProof by viewModel.pendingPassiveProof.collectAsState()
+    val proofSetup by viewModel.proofSetup.collectAsState()
+    val proofResult by viewModel.proofResult.collectAsState()
+
     // 经文启动画面阶段（进程级标志，导航回来不重复显示）
     var splashDone by remember { mutableStateOf(splashShown) }
     val settings by appContainer.repository.settings.collectAsState(initial = KarmaSettingsEntity())
@@ -289,6 +294,10 @@ fun MainScreen(
                 onDivination = onNavigateToDivination,
                 onHistory = onNavigateToHistory,
                 onSettings = onNavigateToSettings,
+                onProof = { viewModel.requestActiveProof() },
+                proofEnabled = s.proofEnabled,
+                proofActive = s.proofActive,
+                canStartProof = s.canStartProof,
             )
         }
     }
@@ -314,6 +323,38 @@ fun MainScreen(
                         }
                     }
                 },
+        )
+    }
+
+    // ---- 阶位自证弹窗 ----
+    // 被动询问：加分跨入正阶位时弹出；点弹窗外忽略（不扣分不开始）
+    pendingPassiveProof?.let { p ->
+        PassiveProofPromptDialog(
+            prompt = p,
+            onSetup = { viewModel.onPassiveProofSetup() },
+            onEscape = { viewModel.onPassiveProofEscape() },
+            onDismiss = { viewModel.clearProofSetup() },
+        )
+    }
+    // 自证设置：主动按钮或被动确认后弹出
+    proofSetup?.let { setup ->
+        ProofSetupDialog(
+            settings = settings,
+            setup = setup,
+            onConfirm = { reward, penalty, durationMs ->
+                viewModel.startProof(reward, penalty, durationMs)
+            },
+            onDismiss = { viewModel.clearProofSetup() },
+        )
+    }
+    // 自证结果：成功/失败
+    proofResult?.let { r ->
+        ProofResultDialog(
+            result = r,
+            ranks = state?.ranks ?: emptyList(),
+            successColor = state?.proofSuccessColor ?: 0xFF69f0aeL,
+            failColor = state?.proofFailColor ?: 0xFFff5252L,
+            onDismiss = { viewModel.clearProofResult() },
         )
     }
 }

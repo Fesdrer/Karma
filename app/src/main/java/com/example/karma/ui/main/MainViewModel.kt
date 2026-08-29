@@ -90,6 +90,8 @@ data class ProofResult(
     val success: Boolean,
     val startRank: Int,
     val targetRank: Int,
+    val reward: Float,
+    val penalty: Float,
 )
 
 class MainViewModel(
@@ -565,7 +567,7 @@ class MainViewModel(
     private fun finishProof(s: KarmaSettingsEntity, success: Boolean) {
         if (_proofFinishing) return
         _proofFinishing = true
-        _proofResult.value = ProofResult(success, s.proofStartRankLevel, s.proofTargetLevel)
+        _proofResult.value = ProofResult(success, s.proofStartRankLevel, s.proofTargetLevel, s.proofReward, s.proofPenalty)
         _selfProofScoreChange = true
         viewModelScope.launch {
             try {

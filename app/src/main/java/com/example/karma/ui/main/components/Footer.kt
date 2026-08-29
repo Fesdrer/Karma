@@ -35,6 +35,10 @@ fun Footer(
     onDivination: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    onProof: () -> Unit,
+    proofEnabled: Boolean = false,
+    proofActive: Boolean = false,
+    canStartProof: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -56,6 +60,18 @@ fun Footer(
         )
 
         FooterDivider()
+
+        // 自证（v4.0，誓约右边）：开关开启才显示；自证中显示"自证中"且不可再点
+        if (proofEnabled) {
+            FooterSegment(
+                text = if (proofActive) "自证中" else "自证",
+                enabled = !proofActive && canStartProof,
+                activeColor = Color(0xFFffb300),
+                onClick = onProof,
+                modifier = Modifier.weight(1f),
+            )
+            FooterDivider()
+        }
 
         // 祈福
         FooterSegment(
