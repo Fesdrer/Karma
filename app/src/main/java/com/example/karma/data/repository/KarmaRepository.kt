@@ -5,6 +5,7 @@ import com.example.karma.data.local.dao.KarmaSettingsDao
 import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
+import com.example.karma.data.model.Fraction
 import com.example.karma.data.model.Rank
 import com.example.karma.data.model.TimerState
 import com.example.karma.data.model.TimerStatus
@@ -495,7 +496,30 @@ class KarmaRepository(
 
         // v2 格式：settings 键存在 → 整体替换全部设置
         val settingsElement = root.get("settings") ?: return false
-        val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
+        val settingsObj = settingsElement.asJsonObject
+        // 乘法按钮（v4.0，Fraction 存储）：先摘出该字段手动解析，兼容两种 JSON 格式——
+        // 新格式对象数组 [{"numerator":1,"denominator":3}] 与旧 v20 格式 Float 数组 [0.33333334]，
+        // 避免 gson 直接反序列化 List<Fraction> 时遇到旧 Float 数组抛 JsonSyntaxException 导致整次导入失败。
+        val multiplierJson = settingsObj.remove("multiplierPresets")
+        val importedSettings = gson.fromJson(settingsObj, KarmaSettingsEntity::class.java)
+        val importedMultipliers = if (multiplierJson != null && multiplierJson.isJsonArray) {
+            multiplierJson.asJsonArray.mapNotNull { el ->
+                when {
+                    el.isJsonObject -> {
+                        val obj = el.asJsonObject
+                        Fraction.of(
+                            obj.get("numerator")?.asLong ?: 0L,
+                            obj.get("denominator")?.asLong ?: 0L,
+                        )
+                    }
+                    el.isJsonPrimitive && el.asJsonPrimitive.isNumber -> Fraction.fromFloat(el.asFloat)
+                    else -> null
+                }
+            }
+        } else {
+            // 旧导出无该字段（v4.0 之前）：补默认乘数，保证主页面乘法按钮可用
+            KarmaSettingsEntity().multiplierPresets
+        }
         // 导入后重置所有每日必做 vis=0（导入是全新开始，不应保留旧的 vis 状态）
         val resetDeeds = gsonNullable(importedSettings.dailyMustDoDeeds)?.map { it.copy(vis = 0) } ?: emptyList()
         // 列表字段兜底：gson 用 unsafe 分配实例绕过构造函数（默认值不生效），
@@ -512,8 +536,7 @@ class KarmaRepository(
             goodDeedDefaultScores = gsonNullable(importedSettings.goodDeedDefaultScores) ?: emptyList(),
             badDeedDefaultScores = gsonNullable(importedSettings.badDeedDefaultScores) ?: emptyList(),
             goodResultDefaultScores = gsonNullable(importedSettings.goodResultDefaultScores) ?: emptyList(),
-            // 乘法按钮（v4.0）：旧导出缺键时补空列表（主页面不显示乘法按钮）
-            multiplierPresets = gsonNullable(importedSettings.multiplierPresets) ?: emptyList(),
+            multiplierPresets = importedMultipliers,
         ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false
