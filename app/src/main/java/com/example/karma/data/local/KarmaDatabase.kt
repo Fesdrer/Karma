@@ -8,14 +8,16 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.karma.data.local.converter.Converters
+import com.example.karma.data.local.dao.AlarmDao
 import com.example.karma.data.local.dao.HistoryEntryDao
 import com.example.karma.data.local.dao.KarmaSettingsDao
+import com.example.karma.data.local.entity.AlarmEntity
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
-    entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 20,
+    entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class, AlarmEntity::class],
+    version = 21,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -23,6 +25,7 @@ abstract class KarmaDatabase : RoomDatabase() {
 
     abstract fun historyEntryDao(): HistoryEntryDao
     abstract fun karmaSettingsDao(): KarmaSettingsDao
+    abstract fun alarmDao(): AlarmDao
 
     companion object {
         private const val DB_NAME = "karma_database"
@@ -224,6 +227,26 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v21：闹钟功能。新表 alarms（照手机闹钟设计：时间、重复周几、事件名、铃声、震动、贪睡、开关）。
+         */
+        private val MIGRATION_20_21 = object : Migration(20, 21) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    "CREATE TABLE IF NOT EXISTS alarms (" +
+                        "id INTEGER PRIMARY KEY AUTOINCREMENT NOT NULL, " +
+                        "enabled INTEGER NOT NULL DEFAULT 1, " +
+                        "hour INTEGER NOT NULL DEFAULT 7, " +
+                        "minute INTEGER NOT NULL DEFAULT 30, " +
+                        "repeatDays TEXT NOT NULL DEFAULT '[]', " +
+                        "eventName TEXT NOT NULL DEFAULT '', " +
+                        "ringtoneUri TEXT NOT NULL DEFAULT '', " +
+                        "vibrate INTEGER NOT NULL DEFAULT 1, " +
+                        "snoozeMinutes INTEGER NOT NULL DEFAULT 10)"
+                )
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -231,7 +254,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }
