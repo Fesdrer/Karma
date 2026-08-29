@@ -136,26 +136,44 @@ fun ParticleEngineCanvas(
     val runePaint = remember {
         android.graphics.Paint().apply {
             textAlign = android.graphics.Paint.Align.CENTER
-            typeface = android.graphics.Typeface.DEFAULT_BOLD
+            typeface = android.graphics.Typeface.SERIF
+            isFakeBoldText = true
         }
     }
     val amountPaint = remember {
         android.graphics.Paint().apply {
             textAlign = android.graphics.Paint.Align.CENTER
             isFakeBoldText = true
+            typeface = android.graphics.Typeface.SERIF
         }
     }
     val divineTextPaint = remember {
-        android.text.TextPaint().apply { isFakeBoldText = true; isAntiAlias = true; color = android.graphics.Color.RED }
+        android.text.TextPaint().apply {
+            isFakeBoldText = true
+            isAntiAlias = true
+            color = android.graphics.Color.RED
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val divineBracketPaint = remember {
-        android.graphics.Paint().apply { isFakeBoldText = true; isAntiAlias = true }
+        android.graphics.Paint().apply {
+            isFakeBoldText = true
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val normalTextPaint = remember {
-        android.text.TextPaint().apply { isAntiAlias = true; color = android.graphics.Color.RED }
+        android.text.TextPaint().apply {
+            isAntiAlias = true
+            color = android.graphics.Color.RED
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val normalBracketPaint = remember {
-        android.graphics.Paint().apply { isAntiAlias = true }
+        android.graphics.Paint().apply {
+            isAntiAlias = true
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     // 复用 stroke paint 绘制金线（避免每帧每线程 new Path() + Compose Path→native 转换）
     val threadStrokePaint = remember {

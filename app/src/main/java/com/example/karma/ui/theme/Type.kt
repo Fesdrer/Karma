@@ -45,23 +45,23 @@ val Typography = Typography(
         lineHeight = 20.sp,
     ),
     bodySmall = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 16.sp,
     ),
     labelLarge = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
     ),
     labelMedium = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.SemiBold,
         fontSize = 12.sp,
     ),
     labelSmall = TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FontFamily.Serif,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,

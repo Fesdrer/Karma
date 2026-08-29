@@ -160,10 +160,16 @@ private fun ScoreAxisView(
 ) {
     // Pre-allocated Paints for tick labels (avoid per-frame allocation in Canvas)
     val leftLabelPaint = remember {
-        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.LEFT }
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.LEFT
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val rightLabelPaint = remember {
-        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.RIGHT
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
 
     Canvas(

@@ -102,10 +102,16 @@ fun AxisCanvas(
 
     // Pre-allocate Paint objects (created once, mutated per-frame inside Canvas)
     val labelPaint = remember {
-        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.RIGHT
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val rangePaint = remember {
-        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.RIGHT
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
 
     Canvas(

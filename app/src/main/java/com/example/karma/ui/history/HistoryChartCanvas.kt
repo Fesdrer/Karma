@@ -44,13 +44,20 @@ fun HistoryChartCanvas(
             color = android.graphics.Color.argb(77, 255, 255, 255)
             textSize = 32f
             textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.SERIF
         }
     }
     val gridLabelPaint = remember {
-        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.RIGHT }
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.RIGHT
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val timeLabelPaint = remember {
-        android.graphics.Paint().apply { textAlign = android.graphics.Paint.Align.CENTER }
+        android.graphics.Paint().apply {
+            textAlign = android.graphics.Paint.Align.CENTER
+            typeface = android.graphics.Typeface.SERIF
+        }
     }
     val cal = remember { java.util.Calendar.getInstance() }
     // ---- Gesture: tap to select point ----
