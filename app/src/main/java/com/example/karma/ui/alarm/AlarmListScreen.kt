@@ -80,6 +80,23 @@ fun AlarmListScreen(
         ) {
             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+        // 精确闹钟权限（Android 12+ 特殊权限）：未授予时引导去系统设置开启，
+        // 否则闹钟只能降级为非精确（可能延迟响）；已做 try-catch 兜底不会崩溃
+        if (Build.VERSION.SDK_INT >= 31) {
+            val am = context.getSystemService(android.content.Context.ALARM_SERVICE) as android.app.AlarmManager
+            if (!am.canScheduleExactAlarms()) {
+                try {
+                    context.startActivity(
+                        android.content.Intent(
+                            android.provider.Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM,
+                            android.net.Uri.parse("package:${context.packageName}"),
+                        )
+                    )
+                } catch (_: Exception) {
+                    // 设备/系统不支持跳转：静默，闹钟降级为非精确
+                }
+            }
+        }
     }
 
     Column(

@@ -4,14 +4,15 @@ import android.app.AlarmManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import com.example.karma.MainActivity
 import com.example.karma.data.local.entity.AlarmEntity
 import java.util.Calendar
 
 /**
- * 闹钟调度（AlarmManager.setAlarmClock，闹钟专用 API）：
- * - 精确触发：Doze/省电模式下不被延迟，且不需要 SCHEDULE_EXACT_ALARM 权限
- * - 状态栏会显示"下一个闹钟"（与系统闹钟一致）
+ * 闹钟调度：
+ * - Android 12+ 精确闹钟需要 SCHEDULE_EXACT_ALARM（特殊权限）：有权限 → setAlarmClock
+ *   （精确、Doze 不延迟、状态栏显示"下一个闹钟"）；无权限 → 降级为普通 set（可能被 Doze 延迟，但不崩溃）
  * - 同一闹钟的 PendingIntent requestCode = alarmId，更新/取消精确对应
  */
 object AlarmScheduler {
@@ -25,14 +26,45 @@ object AlarmScheduler {
             am.cancel(pi)
             return
         }
-        am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showPendingIntent(context, alarm.id)), pi)
+        // 优先精确闹钟；无 SCHEDULE_EXACT_ALARM 权限或调用被拒时降级为普通 set，绝不崩溃
+        if (canScheduleExact(am)) {
+            try {
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showPendingIntent(context, alarm.id)), pi)
+                return
+            } catch (_: SecurityException) {
+                // 权限被拒/撤销：走降级路径
+            }
+        }
+        try {
+            am.set(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+        } catch (_: Exception) {
+            // 极端情况（被系统限制）也不崩溃
+        }
     }
 
     /** 贪睡：now + alarm.snoozeMinutes 触发（requestCode 相同 → 覆盖原触发）。 */
     fun scheduleSnooze(context: Context, alarm: AlarmEntity) {
         val triggerAt = System.currentTimeMillis() + alarm.snoozeMinutes * 60_000L
         val am = context.getSystemService(Context.ALARM_SERVICE) as AlarmManager
-        am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showPendingIntent(context, alarm.id)), ringPendingIntent(context, alarm.id))
+        val pi = ringPendingIntent(context, alarm.id)
+        if (canScheduleExact(am)) {
+            try {
+                am.setAlarmClock(AlarmManager.AlarmClockInfo(triggerAt, showPendingIntent(context, alarm.id)), pi)
+                return
+            } catch (_: SecurityException) {
+                // 权限被拒/撤销：走降级路径
+            }
+        }
+        try {
+            am.set(AlarmManager.RTC_WAKEUP, triggerAt, pi)
+        } catch (_: Exception) {
+            // 极端情况也不崩溃
+        }
+    }
+
+    /** Android 12+ 是否有精确闹钟权限（低版本恒为 true）。 */
+    private fun canScheduleExact(am: AlarmManager): Boolean {
+        return Build.VERSION.SDK_INT < 31 || am.canScheduleExactAlarms()
     }
 
     /** 取消闹钟触发（关闭开关/删除/一次性过期时）。 */
