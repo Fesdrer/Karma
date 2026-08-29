@@ -109,6 +109,7 @@ private enum class SettingsCategory(val title: String, val subtitle: String) {
     Events("事件管理", "善业、恶业、善果预设"),
     DailyMustDo("每日必做", "善业每日必做与未完成扣分"),
     Multipliers("乘法功能", "可用的乘法按钮及其数值"),
+    Proof("自证", "阶位自证开关与特效颜色"),
     Mechanics("业力机制", "业力衰减与运气增幅"),
     Splash("启动画面", "启动经文与停留时长"),
     General("重置", "选择性重置设置与数据"),
@@ -376,6 +377,24 @@ fun SettingsScreen(
                                 onMove = { from, to -> viewModel.moveMultiplier(from, to) },
                                 onToggleAddMode = { viewModel.toggleMultiplierAddMode() },
                                 onToggleDeleteMode = { viewModel.toggleMultiplierDeleteMode() },
+                            )
+                        }
+                        SettingsCategory.Proof -> {
+                            ProofSettingsCard(
+                                proofEnabled = draft.proofEnabled,
+                                proofLineColor = draft.proofLineColor,
+                                proofGlowColor = draft.proofGlowColor,
+                                proofCountdownBg = draft.proofCountdownBg,
+                                proofCountdownText = draft.proofCountdownText,
+                                proofSuccessColor = draft.proofSuccessColor,
+                                proofFailColor = draft.proofFailColor,
+                                onEnabledChange = { viewModel.updateProofEnabled(it) },
+                                onLineColorChange = { viewModel.updateProofLineColor(it) },
+                                onGlowColorChange = { viewModel.updateProofGlowColor(it) },
+                                onCountdownBgChange = { viewModel.updateProofCountdownBg(it) },
+                                onCountdownTextChange = { viewModel.updateProofCountdownText(it) },
+                                onSuccessColorChange = { viewModel.updateProofSuccessColor(it) },
+                                onFailColorChange = { viewModel.updateProofFailColor(it) },
                             )
                         }
                         SettingsCategory.Mechanics -> {
@@ -2777,6 +2796,97 @@ private fun MultiplierSettingsCard(
                 )
             }
         }
+    }
+}
+
+// ============================================================
+// ProofSettingsCard — 阶位自证（开关 + 特效颜色）
+// ============================================================
+
+@Composable
+private fun ProofSettingsCard(
+    proofEnabled: Boolean,
+    proofLineColor: Long,
+    proofGlowColor: Long,
+    proofCountdownBg: Long,
+    proofCountdownText: Long,
+    proofSuccessColor: Long,
+    proofFailColor: Long,
+    onEnabledChange: (Boolean) -> Unit,
+    onLineColorChange: (Long) -> Unit,
+    onGlowColorChange: (Long) -> Unit,
+    onCountdownBgChange: (Long) -> Unit,
+    onCountdownTextChange: (Long) -> Unit,
+    onSuccessColorChange: (Long) -> Unit,
+    onFailColorChange: (Long) -> Unit,
+) {
+    var colorPicker by remember { mutableStateOf<Pair<String, Long>?>(null) }
+
+    SettingsCard("阶位自证") {
+        Text(
+            "开启后，主页面出现「自证」按钮：距离下一正阶位不足 10 分时可按下开启自证。\n" +
+                "时长内达到目标阶位即成功（加奖励分）；超时未达或中途降级即失败（扣惩罚分）。\n" +
+                "跨入正阶位时会弹出自证询问，取消则按逃避自证扣分退回。",
+            fontSize = 12.sp,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text("开启阶位自证", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+            Switch(
+                checked = proofEnabled,
+                onCheckedChange = onEnabledChange,
+                colors = androidx.compose.material3.SwitchDefaults.colors(
+                    checkedThumbColor = Gold,
+                    checkedTrackColor = Gold.copy(alpha = 0.3f),
+                ),
+            )
+        }
+
+        Spacer(Modifier.height(12.dp))
+
+        ColorSettingRow("数轴金色粗线", proofLineColor) { colorPicker = "line" to it }
+        ColorSettingRow("光晕粒子", proofGlowColor) { colorPicker = "glow" to it }
+        ColorSettingRow("倒计时矩形背景", proofCountdownBg) { colorPicker = "bg" to it }
+        ColorSettingRow("倒计时文字", proofCountdownText) { colorPicker = "text" to it }
+        ColorSettingRow("成功弹窗主色", proofSuccessColor) { colorPicker = "success" to it }
+        ColorSettingRow("失败弹窗主色", proofFailColor) { colorPicker = "fail" to it }
+    }
+
+    colorPicker?.let { (key, color) ->
+        ColorPickerDialog(
+            currentColor = color,
+            onColorSelected = { newColor ->
+                when (key) {
+                    "line" -> onLineColorChange(newColor)
+                    "glow" -> onGlowColorChange(newColor)
+                    "bg" -> onCountdownBgChange(newColor)
+                    "text" -> onCountdownTextChange(newColor)
+                    "success" -> onSuccessColorChange(newColor)
+                    "fail" -> onFailColorChange(newColor)
+                }
+                colorPicker = null
+            },
+            onDismiss = { colorPicker = null },
+        )
+    }
+}
+
+@Composable
+private fun ColorSettingRow(label: String, color: Long, onClick: (Long) -> Unit) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 6.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(label, fontSize = 14.sp, color = TextPrimary, modifier = Modifier.weight(1f))
+        ColorSwatch(color = color) { onClick(color) }
     }
 }
 

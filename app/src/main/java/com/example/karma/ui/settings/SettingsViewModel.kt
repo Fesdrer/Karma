@@ -25,6 +25,7 @@ enum class ResetGroup(val label: String) {
     EVENTS("事件管理"),
     DAILY_MUST_DO("每日必做"),
     MULTIPLIERS("乘法功能"),
+    PROOF("自证"),
     MECHANICS("业力机制"),
     SPLASH("启动画面"),
     BETS("誓约"),
@@ -617,6 +618,16 @@ class SettingsViewModel(
         )
         if (ResetGroup.BETS in groups) next = next.copy(bets = defaults.bets)
         if (ResetGroup.MULTIPLIERS in groups) next = next.copy(multiplierPresets = defaults.multiplierPresets)
+        // 自证：只重置开关与特效颜色；进行中的自证状态（proofActive 等）不归设置，不受重置影响
+        if (ResetGroup.PROOF in groups) next = next.copy(
+            proofEnabled = defaults.proofEnabled,
+            proofLineColor = defaults.proofLineColor,
+            proofGlowColor = defaults.proofGlowColor,
+            proofCountdownBg = defaults.proofCountdownBg,
+            proofCountdownText = defaults.proofCountdownText,
+            proofSuccessColor = defaults.proofSuccessColor,
+            proofFailColor = defaults.proofFailColor,
+        )
         if (ResetGroup.TOTAL_SCORE in groups) next = next.copy(totalScore = defaults.totalScore)
         if (ResetGroup.TIMER in groups) next = next.copy(
             timerStatus = defaults.timerStatus,
@@ -884,6 +895,36 @@ class SettingsViewModel(
     fun toggleMultiplierDeleteMode() {
         _multiplierDeleteMode.value = !_multiplierDeleteMode.value
         if (_multiplierDeleteMode.value) _multiplierAddMode.value = false
+    }
+
+    // ===== 阶位自证设置 =====
+
+    fun updateProofEnabled(enabled: Boolean) {
+        setDraft(_draft.value.copy(proofEnabled = enabled))
+    }
+
+    fun updateProofLineColor(color: Long) {
+        setDraft(_draft.value.copy(proofLineColor = color))
+    }
+
+    fun updateProofGlowColor(color: Long) {
+        setDraft(_draft.value.copy(proofGlowColor = color))
+    }
+
+    fun updateProofCountdownBg(color: Long) {
+        setDraft(_draft.value.copy(proofCountdownBg = color))
+    }
+
+    fun updateProofCountdownText(color: Long) {
+        setDraft(_draft.value.copy(proofCountdownText = color))
+    }
+
+    fun updateProofSuccessColor(color: Long) {
+        setDraft(_draft.value.copy(proofSuccessColor = color))
+    }
+
+    fun updateProofFailColor(color: Long) {
+        setDraft(_draft.value.copy(proofFailColor = color))
     }
 
     fun hasChanges(): Boolean = _draft.value != _original.value
