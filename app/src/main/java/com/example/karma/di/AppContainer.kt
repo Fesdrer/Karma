@@ -10,11 +10,9 @@ class AppContainer(context: Context) {
 
     private val historyEntryDao = database.historyEntryDao()
     private val karmaSettingsDao = database.karmaSettingsDao()
-    private val alarmDao = database.alarmDao()
 
     val repository: KarmaRepository = KarmaRepository(
         historyDao = historyEntryDao,
         settingsDao = karmaSettingsDao,
-        alarmDao = alarmDao,
     )
 }

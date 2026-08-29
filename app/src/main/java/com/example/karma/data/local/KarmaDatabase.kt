@@ -8,16 +8,14 @@ import androidx.room.TypeConverters
 import androidx.room.migration.Migration
 import androidx.sqlite.db.SupportSQLiteDatabase
 import com.example.karma.data.local.converter.Converters
-import com.example.karma.data.local.dao.AlarmDao
 import com.example.karma.data.local.dao.HistoryEntryDao
 import com.example.karma.data.local.dao.KarmaSettingsDao
-import com.example.karma.data.local.entity.AlarmEntity
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
-    entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class, AlarmEntity::class],
-    version = 21,
+    entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
+    version = 22,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -25,7 +23,6 @@ abstract class KarmaDatabase : RoomDatabase() {
 
     abstract fun historyEntryDao(): HistoryEntryDao
     abstract fun karmaSettingsDao(): KarmaSettingsDao
-    abstract fun alarmDao(): AlarmDao
 
     companion object {
         private const val DB_NAME = "karma_database"
@@ -247,6 +244,15 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v22：移除闹钟功能（v21 已建 alarms 表，这里删除；数据库版本只能升不能降）。
+         */
+        private val MIGRATION_21_22 = object : Migration(21, 22) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS alarms")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -254,7 +260,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

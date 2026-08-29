@@ -1,9 +1,7 @@
 package com.example.karma.data.repository
 
-import com.example.karma.data.local.dao.AlarmDao
 import com.example.karma.data.local.dao.HistoryEntryDao
 import com.example.karma.data.local.dao.KarmaSettingsDao
-import com.example.karma.data.local.entity.AlarmEntity
 import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
@@ -17,7 +15,6 @@ import java.util.Calendar
 class KarmaRepository(
     private val historyDao: HistoryEntryDao,
     private val settingsDao: KarmaSettingsDao,
-    private val alarmDao: AlarmDao,
 ) {
     companion object {
         private const val MAX_HISTORY = 2000
@@ -437,28 +434,6 @@ class KarmaRepository(
     suspend fun clearAllHistory() {
         historyDao.deleteAll()
     }
-
-    // ---- 闹钟 ----
-
-    val alarms: Flow<List<AlarmEntity>> = alarmDao.getAll()
-
-    /** 新增或更新闹钟，返回闹钟 id（新增时由自增主键生成）。 */
-    suspend fun upsertAlarm(alarm: AlarmEntity): Long {
-        return if (alarm.id == 0L) {
-            alarmDao.insert(alarm)
-        } else {
-            alarmDao.update(alarm)
-            alarm.id
-        }
-    }
-
-    suspend fun deleteAlarm(alarm: AlarmEntity) {
-        alarmDao.delete(alarm)
-    }
-
-    suspend fun getEnabledAlarms(): List<AlarmEntity> = alarmDao.getEnabled()
-
-    suspend fun getAlarmById(id: Long): AlarmEntity? = alarmDao.getById(id)
 
     // ---- Import / Export ----
 

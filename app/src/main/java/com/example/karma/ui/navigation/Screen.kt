@@ -7,8 +7,4 @@ sealed class Screen(val route: String) {
     data object Bet : Screen("bet")
     data object Divination : Screen("divination")
     data object Settings : Screen("settings")
-    data object Alarm : Screen("alarm")
-    data object AlarmEdit : Screen("alarm_edit/{alarmId}") {
-        fun route(alarmId: Long) = "alarm_edit/$alarmId"
-    }
 }

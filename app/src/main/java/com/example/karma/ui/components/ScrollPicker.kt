@@ -35,7 +35,7 @@ import kotlinx.coroutines.launch
 
 /**
  * 滑动选择器（滚轮）：两位数字显示（00~99），选中项居中。
- * 用于闹钟的时/分选择（与业力衰减时间选择器一致）。
+ * 用于业力衰减的时/分选择等场景。
  */
 @Composable
 fun ScrollPicker(

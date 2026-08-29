@@ -66,7 +66,6 @@ fun MainScreen(
     onNavigateToBet: () -> Unit,
     onNavigateToDivination: () -> Unit,
     onNavigateToSettings: () -> Unit,
-    onNavigateToAlarm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val viewModel: MainViewModel = viewModel(
@@ -290,7 +289,6 @@ fun MainScreen(
                 onDivination = onNavigateToDivination,
                 onHistory = onNavigateToHistory,
                 onSettings = onNavigateToSettings,
-                onAlarm = onNavigateToAlarm,
             )
         }
     }
