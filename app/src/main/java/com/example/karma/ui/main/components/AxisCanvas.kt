@@ -354,18 +354,19 @@ fun AxisCanvas(
             val glowColor = Color(proofGlowColor)
             val baseRadius = 6f * density
             repeat(6) { i ->
+                // p 从 0→1，y 从底部(h)→顶部(0)：从下往上
                 val p = (glowProgress + i * 0.16f) % 1f
-                val y = p * h
+                val y = (1f - p) * h
                 drawCircle(
                     color = glowColor.copy(alpha = 0.30f),
                     radius = baseRadius,
                     center = Offset(axisX, y),
                 )
-                // 拖尾小点
+                // 拖尾小点（在下方）
                 drawCircle(
                     color = glowColor.copy(alpha = 0.16f),
                     radius = baseRadius * 0.6f,
-                    center = Offset(axisX, (y - 14f * density).coerceAtLeast(0f)),
+                    center = Offset(axisX, (y + 14f * density).coerceAtMost(h)),
                 )
             }
 

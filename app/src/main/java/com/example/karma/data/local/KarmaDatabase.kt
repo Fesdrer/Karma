@@ -15,7 +15,7 @@ import com.example.karma.data.local.entity.KarmaSettingsEntity
 
 @Database(
     entities = [HistoryEntryEntity::class, KarmaSettingsEntity::class],
-    version = 23,
+    version = 24,
     exportSchema = false,
 )
 @TypeConverters(Converters::class)
@@ -255,16 +255,18 @@ abstract class KarmaDatabase : RoomDatabase() {
 
         /**
          * v23：阶位自证功能。设置项（开关+特效颜色）+ 自证进行中状态字段。
+         * 颜色默认值按 0xRRGGBB 计算：金 0xFFFFD700=4294956800、白 0xFFFFFFFF=4294967295、
+         * 暗红 0xFF8B0000=4287299584、成功绿 0xFF69f0ae=4285132974、失败红 0xFFFF5252=4294922834。
          */
         private val MIGRATION_22_23 = object : Migration(22, 23) {
             override fun migrate(db: SupportSQLiteDatabase) {
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofEnabled INTEGER NOT NULL DEFAULT 0")
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofLineColor INTEGER NOT NULL DEFAULT 4294955007")      // 0xFFFFD700
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofGlowColor INTEGER NOT NULL DEFAULT 4294967295")      // 0xFFFFFFFF
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofCountdownBg INTEGER NOT NULL DEFAULT 4278190080")    // 0xFF8B0000
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofCountdownText INTEGER NOT NULL DEFAULT 4294967295")   // 0xFFFFFFFF
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofSuccessColor INTEGER NOT NULL DEFAULT 4278229358")    // 0xFF69f0ae
-                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofFailColor INTEGER NOT NULL DEFAULT 4294931026")       // 0xFFff5252
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofLineColor INTEGER NOT NULL DEFAULT 4294956800")      // 0xFFFFD700 金
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofGlowColor INTEGER NOT NULL DEFAULT 4294967295")      // 0xFFFFFFFF 白
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofCountdownBg INTEGER NOT NULL DEFAULT 4287299584")    // 0xFF8B0000 暗红
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofCountdownText INTEGER NOT NULL DEFAULT 4294967295")   // 0xFFFFFFFF 白
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofSuccessColor INTEGER NOT NULL DEFAULT 4285132974")    // 0xFF69f0ae 绿
+                db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofFailColor INTEGER NOT NULL DEFAULT 4294922834")       // 0xFFFF5252 红
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofActive INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofStartTime INTEGER NOT NULL DEFAULT 0")
                 db.execSQL("ALTER TABLE karma_settings ADD COLUMN proofDurationMs INTEGER NOT NULL DEFAULT 0")
@@ -276,6 +278,19 @@ abstract class KarmaDatabase : RoomDatabase() {
             }
         }
 
+        /**
+         * v24：修正 v23 迁移中算错的默认颜色值（金线/倒计时背景/成功/失败色）。
+         * 只更新仍等于错误默认值的行（用户手动改过的不受影响）。
+         */
+        private val MIGRATION_23_24 = object : Migration(23, 24) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("UPDATE karma_settings SET proofLineColor = 4294956800 WHERE proofLineColor = 4294955007")
+                db.execSQL("UPDATE karma_settings SET proofCountdownBg = 4287299584 WHERE proofCountdownBg = 4278190080")
+                db.execSQL("UPDATE karma_settings SET proofSuccessColor = 4285132974 WHERE proofSuccessColor = 4278229358")
+                db.execSQL("UPDATE karma_settings SET proofFailColor = 4294922834 WHERE proofFailColor = 4294931026")
+            }
+        }
+
         fun getInstance(context: Context): KarmaDatabase {
             return INSTANCE ?: synchronized(this) {
                 INSTANCE ?: Room.databaseBuilder(
@@ -283,7 +298,7 @@ abstract class KarmaDatabase : RoomDatabase() {
                     KarmaDatabase::class.java,
                     DB_NAME
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7, MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14, MIGRATION_14_15, MIGRATION_15_16, MIGRATION_16_17, MIGRATION_17_18, MIGRATION_18_19, MIGRATION_19_20, MIGRATION_20_21, MIGRATION_21_22, MIGRATION_22_23, MIGRATION_23_24)
                     .fallbackToDestructiveMigration()
                     .build()
                     .also { INSTANCE = it }

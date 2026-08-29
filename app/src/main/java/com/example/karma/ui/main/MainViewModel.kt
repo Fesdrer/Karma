@@ -470,9 +470,10 @@ class MainViewModel(
         )
     }
 
-    /** 被动弹窗选「设置自证」：转为设置窗（目标=已达阶位，徽章=加分前阶位）。 */
+    /** 被动弹窗选「设置自证」：先关闭询问窗，再转设置窗（目标=已达阶位，徽章=加分前阶位）。 */
     fun onPassiveProofSetup() {
         val p = _pendingPassiveProof.value ?: return
+        _pendingPassiveProof.value = null
         _proofSetup.value = ProofSetup(
             mode = ProofMode.PASSIVE,
             startRank = p.oldLevel,
