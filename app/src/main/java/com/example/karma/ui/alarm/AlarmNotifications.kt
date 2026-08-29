@@ -56,9 +56,9 @@ object AlarmNotifications {
             .setOngoing(true)
             .setFullScreenIntent(activityPi, true)
             .setContentIntent(activityPi)
-        // 贪睡关闭（snoozeMinutes <= 0）时不显示贪睡按钮，避免点击立即再响
+        // 稍后提醒关闭（snoozeMinutes <= 0）时不显示该按钮，避免点击立即再响
         if (alarm.snoozeMinutes > 0) {
-            builder.addAction(0, "贪睡", actionPendingIntent(context, AlarmReceiver.ACTION_SNOOZE, alarmId))
+            builder.addAction(0, "稍后提醒", actionPendingIntent(context, AlarmReceiver.ACTION_SNOOZE, alarmId))
         }
         return builder
             .addAction(0, "关闭", actionPendingIntent(context, AlarmReceiver.ACTION_DISMISS, alarmId))

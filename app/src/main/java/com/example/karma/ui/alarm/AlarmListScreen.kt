@@ -99,11 +99,12 @@ fun AlarmListScreen(
                 text = "闹钟",
                 fontSize = 24.sp,
                 fontWeight = FontWeight.Bold,
+                fontFamily = FontFamily.Serif,
                 color = Gold,
                 letterSpacing = 2.sp,
             )
             TextButton(onClick = onNewAlarm) {
-                Text("+ 新建", fontSize = 16.sp, color = Gold, fontWeight = FontWeight.Bold)
+                Text("+ 新建", fontSize = 16.sp, fontFamily = FontFamily.Serif, color = Gold, fontWeight = FontWeight.Bold)
             }
         }
 

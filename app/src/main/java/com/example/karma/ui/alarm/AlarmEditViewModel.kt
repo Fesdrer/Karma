@@ -25,13 +25,17 @@ class AlarmEditViewModel(
     private val _draft = MutableStateFlow<AlarmEntity?>(null)
     val draft: StateFlow<AlarmEntity?> = _draft.asStateFlow()
 
-    /** 加载编辑对象；alarmId <= 0 表示新建。 */
+    /** 加载编辑对象；alarmId <= 0 表示新建（默认当前时间，照手机闹钟）。 */
     fun load(alarmId: Long) {
         viewModelScope.launch {
             _draft.value = if (alarmId > 0) {
                 repository.getAlarmById(alarmId) ?: AlarmEntity()
             } else {
-                AlarmEntity()
+                val now = java.util.Calendar.getInstance()
+                AlarmEntity(
+                    hour = now.get(java.util.Calendar.HOUR_OF_DAY),
+                    minute = now.get(java.util.Calendar.MINUTE),
+                )
             }
         }
     }

@@ -137,7 +137,7 @@ private fun AlarmRingingScreen(
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    RingButton(text = "贪睡", color = Color(0xFF4a90d9), onClick = onSnooze)
+                    RingButton(text = "稍后提醒", color = Color(0xFF4a90d9), onClick = onSnooze)
                     RingButton(text = "关闭", color = Color(0xFFff5252), onClick = onDismiss)
                 }
             } else {
@@ -168,6 +168,7 @@ private fun RingButton(text: String, color: Color, onClick: () -> Unit) {
             text = text,
             fontSize = 18.sp,
             fontWeight = FontWeight.Bold,
+            fontFamily = FontFamily.Serif,
             color = color,
         )
     }

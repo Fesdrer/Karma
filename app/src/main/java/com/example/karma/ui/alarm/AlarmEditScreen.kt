@@ -182,7 +182,7 @@ fun AlarmEditScreen(
             }
             SwitchRow(title = "震动", checked = d.vibrate) { viewModel.setVibrate(it) }
             SettingRow(
-                title = "贪睡",
+                title = "稍后提醒",
                 value = if (d.snoozeMinutes > 0) "${d.snoozeMinutes} 分钟" else "关闭",
             ) {
                 showSnoozeDialog = true
@@ -283,8 +283,8 @@ fun AlarmEditScreen(
     if (showDeleteDialog) {
         AlertDialog(
             onDismissRequest = { showDeleteDialog = false },
-            title = { Text("删除闹钟", color = Gold) },
-            text = { Text("确定删除这个闹钟吗？", color = TextPrimary) },
+            title = { Text("删除闹钟", fontFamily = FontFamily.Serif, color = Gold) },
+            text = { Text("确定删除这个闹钟吗？", fontFamily = FontFamily.Serif, color = TextPrimary) },
             confirmButton = {
                 Button(
                     onClick = {
@@ -292,11 +292,11 @@ fun AlarmEditScreen(
                         viewModel.deleteAndDone(onDone = onBack)
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFff5252)),
-                ) { Text("删除") }
+                ) { Text("删除", fontFamily = FontFamily.Serif) }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteDialog = false }) {
-                    Text("取消", color = TextSecondary)
+                    Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary)
                 }
             },
             containerColor = Color(0xFF1A1A1A),
@@ -384,6 +384,7 @@ private fun AlarmTimePickerDialog(
                     ":",
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
+                    fontFamily = FontFamily.Serif,
                     color = TextPrimary,
                     modifier = Modifier.padding(horizontal = 8.dp),
                 )
@@ -402,10 +403,10 @@ private fun AlarmTimePickerDialog(
                     onDismiss()
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
-            ) { Text("确定") }
+            ) { Text("确定", fontFamily = FontFamily.Serif) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary, fontFamily = FontFamily.Serif) }
         },
         containerColor = Color(0xFF1A1A1A),
     )
@@ -425,16 +426,16 @@ private fun RepeatDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("重复", color = Gold) },
+        title = { Text("重复", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Column {
                 // 快捷：仅一次（清空）/ 每天（全选）
                 Row {
                     TextButton(onClick = { days = emptySet() }) {
-                        Text("仅一次", color = if (days.isEmpty()) Gold else TextSecondary)
+                        Text("仅一次", fontFamily = FontFamily.Serif, color = if (days.isEmpty()) Gold else TextSecondary)
                     }
                     TextButton(onClick = { days = (1..7).toSet() }) {
-                        Text("每天", color = if (days.size == 7) Gold else TextSecondary)
+                        Text("每天", fontFamily = FontFamily.Serif, color = if (days.size == 7) Gold else TextSecondary)
                     }
                 }
                 WEEK_NAMES.forEachIndexed { index, name ->
@@ -467,11 +468,11 @@ private fun RepeatDialog(
         },
         confirmButton = {
             TextButton(onClick = { onConfirm(days.sorted()) }) {
-                Text("确定", color = Gold)
+                Text("确定", fontFamily = FontFamily.Serif, color = Gold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary) }
         },
         containerColor = Color(0xFF1A1A1A),
     )
@@ -492,7 +493,7 @@ private fun EventSelectDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("选择事件", color = Gold) },
+        title = { Text("选择事件", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Column(
                 modifier = Modifier
@@ -541,11 +542,11 @@ private fun EventSelectDialog(
                 },
                 enabled = customText.isNotBlank(),
             ) {
-                Text("确定自定义", color = if (customText.isNotBlank()) Gold else TextMuted)
+                Text("确定自定义", fontFamily = FontFamily.Serif, color = if (customText.isNotBlank()) Gold else TextMuted)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary) }
         },
         containerColor = Color(0xFF1A1A1A),
     )
@@ -595,7 +596,7 @@ private fun SnoozeDialog(
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("贪睡", color = Gold) },
+        title = { Text("稍后提醒", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Column {
                 SNOOZE_OPTIONS.forEach { option ->
@@ -613,6 +614,7 @@ private fun SnoozeDialog(
                     ) {
                         Text(
                             text = label,
+                            fontFamily = FontFamily.Serif,
                             fontSize = 15.sp,
                             color = if (minutes == option) Gold else TextPrimary,
                             fontWeight = if (minutes == option) FontWeight.Bold else FontWeight.Normal,
@@ -626,7 +628,7 @@ private fun SnoozeDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
+            TextButton(onClick = onDismiss) { Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary) }
         },
         containerColor = Color(0xFF1A1A1A),
     )
