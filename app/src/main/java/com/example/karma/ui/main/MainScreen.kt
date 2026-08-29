@@ -1,8 +1,11 @@
 package com.example.karma.ui.main
 
 import android.os.SystemClock
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.EnterTransition
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -275,7 +278,12 @@ fun MainScreen(
     }
 
     // ---- 经文启动画面覆盖层 ----
-    if (!splashDone && state != null) {
+    // 出现瞬间显示（与之前一致）；结束时用透明度渐变换出，避免直接消失的突变
+    AnimatedVisibility(
+        visible = !splashDone && state != null,
+        enter = EnterTransition.None,
+        exit = fadeOut(animationSpec = tween(600)),
+    ) {
         ScriptureOverlay(
             text = settings.splashScripture.ifEmpty { "凡所有相，皆是虚妄。若见诸相非相，即见如来。" },
             modifier = Modifier
