@@ -83,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.data.local.entity.DailyMustDoDeed
+import com.example.karma.data.model.Fraction
 import com.example.karma.di.AppContainer
 import com.example.karma.util.LuckAmplifier
 import com.example.karma.ui.theme.BorderSubtle
@@ -2634,10 +2635,10 @@ private fun formatDailyPenalty(v: Float): String {
 
 @Composable
 private fun MultiplierSettingsCard(
-    multipliers: List<Float>,
+    multipliers: List<Fraction>,
     addMode: Boolean,
     deleteMode: Boolean,
-    onValueChange: (Int, Float) -> Unit,
+    onValueChange: (Int, Fraction) -> Unit,
     onAddAfter: (Int) -> Unit,
     onAddAtTop: () -> Unit,
     onDelete: (Int) -> Unit,
@@ -2732,14 +2733,14 @@ private fun MultiplierSettingsCard(
                     .onSizeChanged { rowHeightPx = it.height.toFloat() },
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                // 乘法数值输入（受控输入，值直接来自草稿；支持小数与分数 1/7）
-                val value = multipliers.getOrElse(i) { 1f }
-                var valueText by remember(i, value) { mutableStateOf(formatMultiplierValue(value)) }
+                // 乘法数值输入（受控输入，值直接来自草稿；支持小数与分数 1/7，显示保持分数形式）
+                val value = multipliers.getOrElse(i) { Fraction.ONE }
+                var valueText by remember(i, value) { mutableStateOf(value.format()) }
                 OutlinedTextField(
                     value = valueText,
                     onValueChange = { v ->
                         valueText = v
-                        parseMultiplierInput(v)?.let { onValueChange(i, it) }
+                        Fraction.parse(v)?.let { onValueChange(i, it) }
                     },
                     singleLine = true,
                     textStyle = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Serif),
@@ -2891,38 +2892,6 @@ private fun MultiplierSettingsCard(
             }
         }
     }
-}
-
-/** 乘法数值显示：1/3、2/3、1/4、1/2、3/4 显示分数，其余整数去点、小数最多两位。 */
-private fun formatMultiplierValue(v: Float): String {
-    val frac = when {
-        abs(v - 1f / 3f) < 0.001f -> "1/3"
-        abs(v - 2f / 3f) < 0.001f -> "2/3"
-        abs(v - 1f / 4f) < 0.001f -> "1/4"
-        abs(v - 1f / 2f) < 0.001f -> "1/2"
-        abs(v - 3f / 4f) < 0.001f -> "3/4"
-        else -> null
-    }
-    if (frac != null) return frac
-    return if (v % 1f == 0f) v.toInt().toString()
-    else String.format("%.2f", v).trimEnd('0').trimEnd('.')
-}
-
-/**
- * 解析乘数输入：支持小数（1.5、0.33）与分数（1/7、2/3）。
- * 解析失败（空、分母为 0、格式不对）返回 null，此时不写入草稿。
- */
-private fun parseMultiplierInput(text: String): Float? {
-    val trimmed = text.trim()
-    if (trimmed.isEmpty()) return null
-    val slash = trimmed.indexOf('/')
-    if (slash > 0) {
-        val num = trimmed.substring(0, slash).toFloatOrNull() ?: return null
-        val den = trimmed.substring(slash + 1).toFloatOrNull() ?: return null
-        if (den == 0f) return null
-        return num / den
-    }
-    return trimmed.toFloatOrNull()
 }
 
 // ============================================================

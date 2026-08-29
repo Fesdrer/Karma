@@ -25,18 +25,19 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.karma.data.model.Fraction
 import com.example.karma.ui.components.pressFeedback
 import com.example.karma.ui.theme.Gold
-import kotlin.math.abs
 
 /**
  * 主页面左栏乘法区：一组乘法按钮（单列竖排，可滚动）。
- * 点击后当前分数 × 该值（结果向 0.5 四舍五入，逻辑在 MainViewModel.multiplyScore）。
+ * 点击后当前分数 × 该分数（结果向 0.5 四舍五入，逻辑在 MainViewModel.multiplyScore）。
+ * 按钮标签始终显示分数形式（×1/3、×1/7、×1.5、×2）。
  */
 @Composable
 fun MultiplierPanel(
-    multipliers: List<Float>,
-    onMultiply: (Float) -> Unit,
+    multipliers: List<Fraction>,
+    onMultiply: (Fraction) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -89,7 +90,7 @@ fun MultiplierPanel(
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
-                            text = formatMultiplierLabel(m),
+                            text = "×" + m.format(),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFFffd700),
@@ -100,23 +101,3 @@ fun MultiplierPanel(
         }
     }
 }
-
-/** 乘法按钮标签：1/3、2/3、1/4、1/2、3/4 显示分数，其余整数去点、小数最多两位。 */
-private fun formatMultiplierLabel(v: Float): String {
-    val frac = when {
-        isNear(v, 1f / 3f) -> "1/3"
-        isNear(v, 2f / 3f) -> "2/3"
-        isNear(v, 1f / 4f) -> "1/4"
-        isNear(v, 1f / 2f) -> "1/2"
-        isNear(v, 3f / 4f) -> "3/4"
-        else -> null
-    }
-    if (frac != null) return "×$frac"
-    return if (v % 1f == 0f) {
-        "×${v.toInt()}"
-    } else {
-        "×" + String.format("%.2f", v).trimEnd('0').trimEnd('.')
-    }
-}
-
-private fun isNear(v: Float, target: Float): Boolean = abs(v - target) < 0.001f

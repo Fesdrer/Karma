@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.karma.data.local.entity.DailyMustDoDeed
+import com.example.karma.data.model.Fraction
 import com.example.karma.data.model.Rank
 import com.example.karma.data.repository.KarmaRepository
 import com.example.karma.util.LuckAmplifier
@@ -20,7 +21,7 @@ data class MainUiState(
     val goodDeedPresets: List<String> = emptyList(),
     val badDeedPresets: List<String> = emptyList(),
     val goodResultPresets: List<String> = emptyList(),
-    val multiplierPresets: List<Float> = emptyList(),
+    val multiplierPresets: List<Fraction> = emptyList(),
     val selectedScore: Float = 0f,
     val effectiveScore: Float = 0f,
     val selectedEvent: String? = null,
@@ -202,10 +203,10 @@ class MainViewModel(
         updateTimerEnabled()
     }
 
-    /** 乘法功能：当前分数 × multiplier，结果向 0.5 四舍五入（×2 → 取整 → ÷2），不限幅。 */
-    fun multiplyScore(multiplier: Float) {
+    /** 乘法功能：当前分数 × fraction（精确分数），结果向 0.5 四舍五入（×2 → 取整 → ÷2），不限幅。 */
+    fun multiplyScore(fraction: Fraction) {
         val base = _customScore.value ?: _selectedScore.value
-        val result = (base * multiplier * 2f).roundToInt() / 2f
+        val result = (base * fraction.value * 2f).roundToInt() / 2f
         _customScore.value = null
         _selectedScore.value = result
         _effectiveScoreState.value = result

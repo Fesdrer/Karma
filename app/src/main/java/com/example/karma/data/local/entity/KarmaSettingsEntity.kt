@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.room.ColumnInfo
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.example.karma.data.model.Fraction
 
 @Immutable
 @Entity(tableName = "karma_settings")
@@ -122,8 +123,10 @@ data class KarmaSettingsEntity(
     val negativeRankDivinationLimits: List<Int> = List(9) { 0 },    // 负阶占卜次数全部默认 0
 
     // ===== 乘法功能（主页面左栏乘法按钮，可增删改排序） =====
-    val multiplierPresets: List<Float> = listOf(
-        1f / 3f, 2f / 3f, 1f / 4f, 1f / 2f, 3f / 4f, 1.5f, 2f, 2.5f, 3f
+    // 用分数精确存储（1/3、1/7…），避免 Float 精度与显示问题
+    val multiplierPresets: List<Fraction> = listOf(
+        Fraction(1, 3), Fraction(2, 3), Fraction(1, 4), Fraction(1, 2), Fraction(3, 4),
+        Fraction(3, 2), Fraction(2, 1), Fraction(5, 2), Fraction(3, 1),
     ),
 ) {
     // ===== 事件默认分数归一化（v3.13） =====

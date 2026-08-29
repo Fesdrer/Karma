@@ -3,12 +3,46 @@ package com.example.karma.data.local.converter
 import androidx.room.TypeConverter
 import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.DailyMustDoDeed
+import com.example.karma.data.model.Fraction
 import com.google.gson.Gson
 import com.google.gson.reflect.TypeToken
 
 class Converters {
 
     private val gson = Gson()
+
+    @TypeConverter
+    fun fromFractionList(value: List<Fraction>): String {
+        return gson.toJson(value)
+    }
+
+    /**
+     * 读取乘数列表。兼容两种格式：
+     * - 新格式：[{"numerator":1,"denominator":3}, ...]（对象数组）
+     * - 旧格式：[0.33333334, 0.75, ...]（Float 数组，v20 时代存储的），自动还原为分数
+     */
+    @TypeConverter
+    fun toFractionList(value: String): List<Fraction> {
+        return try {
+            val arr = gson.fromJson(value, com.google.gson.JsonArray::class.java) ?: return emptyList()
+            arr.mapNotNull { el ->
+                when {
+                    el.isJsonObject -> {
+                        val obj = el.asJsonObject
+                        val n = obj.get("numerator")?.asLong ?: return@mapNotNull null
+                        val d = obj.get("denominator")?.asLong ?: return@mapNotNull null
+                        Fraction.of(n, d)
+                    }
+                    el.isJsonPrimitive && el.asJsonPrimitive.isNumber -> {
+                        Fraction.fromFloat(el.asFloat)
+                    }
+                    else -> null
+                }
+            }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
 
     @TypeConverter
     fun fromFloatList(value: List<Float>): String {

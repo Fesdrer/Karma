@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
 import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.local.entity.KarmaSettingsEntity
+import com.example.karma.data.model.Fraction
 import com.example.karma.data.repository.KarmaRepository
 import java.util.Calendar
 import kotlin.math.abs
@@ -838,7 +839,7 @@ class SettingsViewModel(
     private val _multiplierDeleteMode = MutableStateFlow(false)
     val multiplierDeleteMode: StateFlow<Boolean> = _multiplierDeleteMode.asStateFlow()
 
-    fun updateMultiplier(index: Int, value: Float) {
+    fun updateMultiplier(index: Int, value: Fraction) {
         val d = _draft.value
         if (index !in d.multiplierPresets.indices) return
         val newList = d.multiplierPresets.toMutableList().apply { this[index] = value }
@@ -848,14 +849,14 @@ class SettingsViewModel(
     /** 在 index 乘法按钮下方插入新按钮（默认 ×2）。 */
     fun addMultiplierAfter(index: Int) {
         val d = _draft.value
-        val newList = d.multiplierPresets.toMutableList().apply { add(index + 1, 2f) }
+        val newList = d.multiplierPresets.toMutableList().apply { add(index + 1, Fraction(2, 1)) }
         setDraft(d.copy(multiplierPresets = newList))
     }
 
     /** 表头（+）在最上面插入新乘法按钮。 */
     fun addMultiplierAtTop() {
         val d = _draft.value
-        setDraft(d.copy(multiplierPresets = listOf(2f) + d.multiplierPresets))
+        setDraft(d.copy(multiplierPresets = listOf(Fraction(2, 1)) + d.multiplierPresets))
     }
 
     fun deleteMultiplier(index: Int) {
