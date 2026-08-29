@@ -85,6 +85,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.model.Fraction
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.components.ScrollPicker
 import com.example.karma.util.LuckAmplifier
 import com.example.karma.ui.theme.BorderSubtle
 import kotlin.math.abs
@@ -2392,121 +2393,6 @@ private fun TimePickerDialog(
         },
         containerColor = Color(0xFF1A1A1A),
     )
-}
-
-// ============================================================
-// ScrollPicker — 滑动选择器（修正：选中项居中）
-// ============================================================
-
-@Composable
-private fun ScrollPicker(
-    range: IntRange,
-    selected: Int,
-    onSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val baseItems = range.toList()
-    val baseSize = baseItems.size
-    // 重复 3 份实现循环效果
-    val items = remember(range) {
-        buildList { repeat(3) { addAll(range.toList()) } }
-    }
-    val totalSize = items.size
-
-    val itemHeight = 44.dp
-    val visibleItems = 5
-    val scope = rememberCoroutineScope()
-
-    // 初始定位在中间副本（第 2 份），并让选中项居中
-    val startIndex = baseSize + baseItems.indexOf(selected).coerceAtLeast(0) - visibleItems / 2
-    val listState = rememberLazyListState(
-        initialFirstVisibleItemIndex = startIndex.coerceAtLeast(0)
-    )
-
-    // 用 layoutInfo 找到视口正中间的项
-    val centerItemIndex by remember {
-        derivedStateOf {
-            val layoutInfo = listState.layoutInfo
-            if (layoutInfo.visibleItemsInfo.isEmpty()) return@derivedStateOf 0
-            val viewportCenter = layoutInfo.viewportEndOffset / 2
-            layoutInfo.visibleItemsInfo.minByOrNull { info ->
-                abs((info.offset + info.size / 2) - viewportCenter)
-            }?.index?.coerceIn(0, totalSize - 1) ?: 0
-        }
-    }
-
-    // 选中值通过取模归一化到 base 范围
-    LaunchedEffect(centerItemIndex) {
-        onSelected(baseItems[centerItemIndex % baseSize])
-    }
-
-    // 停止滑动后自动吸附：让最近项对齐到视口中心。
-    // 注意：必须用 snapshotFlow 而非 LaunchedEffect(isScrollInProgress) 作 key，
-    // 否则 animateScrollToItem 触发 isScrollInProgress 变化 → LaunchedEffect 重启 → 协程被取消 → 动画中断。
-    LaunchedEffect(Unit) {
-        snapshotFlow { listState.isScrollInProgress }
-            .collect { scrolling ->
-                if (!scrolling) {
-                    delay(60)
-                    val info = listState.layoutInfo
-                    if (info.visibleItemsInfo.isEmpty()) return@collect
-                    val vc = info.viewportEndOffset / 2
-                    val closest = info.visibleItemsInfo.minByOrNull { i ->
-                        abs((i.offset + i.size / 2) - vc)
-                    } ?: return@collect
-                    val diff = closest.offset + closest.size / 2f - vc
-                    if (abs(diff) > 4f) {
-                        // animateScrollToItem 把目标放顶部；减 visibleItems/2 位置 → 目标落到第 3 位 = 中心
-                        val snapFirst = (closest.index - visibleItems / 2)
-                            .coerceIn(0, totalSize - 1)
-                        listState.animateScrollToItem(snapFirst)
-                    }
-                }
-            }
-    }
-
-    Box(
-        modifier = modifier
-            .height(itemHeight * visibleItems)
-            .clip(RoundedCornerShape(8.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        // 选中高亮条（始终保持在正中间）
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(itemHeight)
-                .background(Gold.copy(alpha = 0.12f))
-                .border(1.dp, Gold.copy(alpha = 0.25f), RoundedCornerShape(4.dp)),
-        )
-
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
-        ) {
-            itemsIndexed(items) { index, value ->
-                val isCenter = index == centerItemIndex
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(itemHeight)
-                        .clickable {
-                            scope.launch { listState.animateScrollToItem(index) }
-                            onSelected(baseItems[value % baseSize])
-                        },
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = String.format("%02d", value),
-                        fontSize = if (isCenter) 22.sp else 14.sp,
-                        fontWeight = if (isCenter) FontWeight.Bold else FontWeight.Normal,
-                        color = if (isCenter) Color.White else TextMuted,
-                        textAlign = TextAlign.Center,
-                    )
-                }
-            }
-        }
-    }
 }
 
 // ============================================================

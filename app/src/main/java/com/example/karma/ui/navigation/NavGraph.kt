@@ -9,6 +9,8 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import com.example.karma.di.AppContainer
+import com.example.karma.ui.alarm.AlarmEditScreen
+import com.example.karma.ui.alarm.AlarmListScreen
 import com.example.karma.ui.bet.BetScreen
 import com.example.karma.ui.divination.DivinationScreen
 import com.example.karma.ui.history.HistoryScreen
@@ -48,6 +50,9 @@ fun KarmaNavGraph(
                 },
                 onNavigateToSettings = {
                     navController.navigate(Screen.Settings.route)
+                },
+                onNavigateToAlarm = {
+                    navController.navigate(Screen.Alarm.route)
                 },
             )
         }
@@ -109,6 +114,34 @@ fun KarmaNavGraph(
             popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
         ) {
             DivinationScreen(
+                appContainer = appContainer,
+                onBack = { navController.popBackStack() },
+            )
+        }
+        composable(
+            route = Screen.Alarm.route,
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+        ) {
+            AlarmListScreen(
+                appContainer = appContainer,
+                onBack = { navController.popBackStack() },
+                onNewAlarm = { navController.navigate(Screen.AlarmEdit.route(0L)) },
+                onEditAlarm = { id -> navController.navigate(Screen.AlarmEdit.route(id)) },
+            )
+        }
+        composable(
+            route = Screen.AlarmEdit.route,
+            enterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            exitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+            popEnterTransition = { fadeIn(tween(250, easing = FastOutSlowInEasing)) },
+            popExitTransition = { fadeOut(tween(250, easing = FastOutSlowInEasing)) },
+        ) { backStackEntry ->
+            val alarmId = backStackEntry.arguments?.getString("alarmId")?.toLongOrNull() ?: 0L
+            AlarmEditScreen(
+                alarmId = alarmId,
                 appContainer = appContainer,
                 onBack = { navController.popBackStack() },
             )

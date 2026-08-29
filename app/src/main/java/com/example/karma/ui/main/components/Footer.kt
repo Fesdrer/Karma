@@ -35,6 +35,7 @@ fun Footer(
     onDivination: () -> Unit,
     onHistory: () -> Unit,
     onSettings: () -> Unit,
+    onAlarm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -85,6 +86,17 @@ fun Footer(
             enabled = true,
             activeColor = Color(0xFF00bcd4),
             onClick = onDivination,
+            modifier = Modifier.weight(1f),
+        )
+
+        FooterDivider()
+
+        // 闹钟
+        FooterSegment(
+            text = "闹钟",
+            enabled = true,
+            activeColor = Color(0xFFff7043),
+            onClick = onAlarm,
             modifier = Modifier.weight(1f),
         )
 
