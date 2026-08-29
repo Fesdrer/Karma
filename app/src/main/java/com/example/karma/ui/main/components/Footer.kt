@@ -66,7 +66,7 @@ fun Footer(
             FooterSegment(
                 text = if (proofActive) "自证中" else "自证",
                 enabled = !proofActive && canStartProof,
-                activeColor = Color(0xFFffb300),
+                activeColor = Color(0xFFFF3B30),   // 红色：自证主题色（区别于祈福金色）
                 onClick = onProof,
                 modifier = Modifier.weight(1f),
             )

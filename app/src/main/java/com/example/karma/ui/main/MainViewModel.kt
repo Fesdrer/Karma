@@ -59,7 +59,7 @@ data class MainUiState(
     val proofActive: Boolean = false,
     val proofStartRankLevel: Int = 0,      // 徽章停留阶位
     val proofEndTime: Long = 0L,           // 自证结束时间戳（倒计时用）
-    val proofLineColor: Long = 0xFFFFD700L,
+    val proofLineColor: Long = 0xFFFF3B30L,
     val proofGlowColor: Long = 0xFFFFFFFFL,
     val proofCountdownBg: Long = 0xFF8B0000L,
     val proofCountdownText: Long = 0xFFFFFFFFL,

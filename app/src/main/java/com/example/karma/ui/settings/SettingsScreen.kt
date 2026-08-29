@@ -2825,7 +2825,8 @@ private fun ProofSettingsCard(
     SettingsCard("阶位自证") {
         Text(
             "开启后，主页面出现「自证」按钮：距离下一正阶位不足 10 分时可按下开启自证。\n" +
-                "时长内达到目标阶位即成功（加奖励分）；超时未达或中途降级即失败（扣惩罚分）。\n" +
+                "规则：以起点阶位为基准，整个时长内保持不降级（中途降级即失败）；" +
+                "时长结束时阶位高于起点即成功（加奖励分），否则失败（扣惩罚分）。\n" +
                 "跨入正阶位时会弹出自证询问，取消则按逃避自证扣分退回。",
             fontSize = 12.sp,
             color = TextSecondary,
@@ -2850,7 +2851,7 @@ private fun ProofSettingsCard(
 
         Spacer(Modifier.height(12.dp))
 
-        ColorSettingRow("数轴金色粗线", proofLineColor) { colorPicker = "line" to it }
+        ColorSettingRow("数轴红色粗线", proofLineColor) { colorPicker = "line" to it }
         ColorSettingRow("光晕粒子", proofGlowColor) { colorPicker = "glow" to it }
         ColorSettingRow("倒计时矩形背景", proofCountdownBg) { colorPicker = "bg" to it }
         ColorSettingRow("倒计时文字", proofCountdownText) { colorPicker = "text" to it }

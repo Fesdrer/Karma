@@ -513,7 +513,7 @@ class KarmaRepository(
             multiplierPresets = gsonNullable(importedSettings.multiplierPresets) ?: KarmaSettingsEntity().multiplierPresets,
             // 自证（v4.0）：旧导出缺键时 gson 置 null，写 NOT NULL 列会失败，全部补默认值
             proofEnabled = gsonNullable(importedSettings.proofEnabled) ?: false,
-            proofLineColor = gsonNullable(importedSettings.proofLineColor) ?: 0xFFFFD700L,
+            proofLineColor = gsonNullable(importedSettings.proofLineColor) ?: 0xFFFF3B30L,
             proofGlowColor = gsonNullable(importedSettings.proofGlowColor) ?: 0xFFFFFFFFL,
             proofCountdownBg = gsonNullable(importedSettings.proofCountdownBg) ?: 0xFF8B0000L,
             proofCountdownText = gsonNullable(importedSettings.proofCountdownText) ?: 0xFFFFFFFFL,
