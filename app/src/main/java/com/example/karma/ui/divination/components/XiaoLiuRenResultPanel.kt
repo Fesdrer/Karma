@@ -50,6 +50,7 @@ import com.example.karma.ui.theme.TextSecondary
 fun XiaoLiuRenResultPanel(
     result: PalaceRevelation,
     onRetry: () -> Unit,
+    topic: String = "",
     modifier: Modifier = Modifier,
 ) {
     AnimatedVisibility(
@@ -204,6 +205,15 @@ fun XiaoLiuRenResultPanel(
                     Text("再来一次", fontFamily = FontFamily.Serif, fontSize =16.sp, fontWeight = FontWeight.Bold)
                 }
 
+                Spacer(Modifier.height(10.dp))
+
+                // ===== AI 分析（结果页最后）=====
+                AiAnalysisSection(
+                    divinationType = "小六壬",
+                    topic = topic,
+                    resultSummary = buildXiaoLiuRenAiSummary(result),
+                )
+
                 Spacer(Modifier.height(8.dp))
             }
         }
@@ -235,4 +245,18 @@ private fun RevelationSection(title: String, content: String) {
         Spacer(Modifier.height(4.dp))
         HorizontalDivider(color = BorderSubtle, thickness = 0.5.dp)
     }
+}
+
+/** 拼装小六壬 AI 分析用的结果摘要文本（与面板展示内容一致） */
+private fun buildXiaoLiuRenAiSummary(result: PalaceRevelation): String = buildString {
+    appendLine("【宫位】${result.name}（${result.fortuneLevel.label}）")
+    appendLine("${result.wuxing} · ${result.direction} · ${result.sixGods}")
+    appendLine()
+    appendLine("【运势】${result.fortune}")
+    appendLine("【财富】${result.wealth}")
+    appendLine("【感情】${result.love}")
+    appendLine("【事业】${result.career}")
+    appendLine("【健康】${result.health}")
+    appendLine()
+    appendLine("【口诀】${result.verse.replace("\n", " ")}")
 }

@@ -72,16 +72,19 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.onSizeChanged
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.example.karma.data.ai.AiConfigStore
 import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.model.Fraction
 import com.example.karma.di.AppContainer
@@ -110,6 +113,7 @@ private enum class SettingsCategory(val title: String, val subtitle: String) {
     DailyMustDo("每日必做", "善业每日必做与未完成扣分"),
     Multipliers("乘法功能", "可用的乘法按钮及其数值"),
     Proof("自证", "阶位自证开关与特效颜色"),
+    AiConfig("AI 分析", "大模型 API 地址、Key 与模型配置"),
     Mechanics("业力机制", "业力衰减与运气增幅"),
     Splash("启动画面", "启动经文与停留时长"),
     General("重置", "选择性重置设置与数据"),
@@ -396,6 +400,9 @@ fun SettingsScreen(
                                 onSuccessColorChange = { viewModel.updateProofSuccessColor(it) },
                                 onFailColorChange = { viewModel.updateProofFailColor(it) },
                             )
+                        }
+                        SettingsCategory.AiConfig -> {
+                            AiConfigCard()
                         }
                         SettingsCategory.Mechanics -> {
                             DecaySettingsCard(
@@ -2796,6 +2803,108 @@ private fun MultiplierSettingsCard(
                 )
             }
         }
+    }
+}
+
+// ============================================================
+// AiConfigCard — AI 分析（大模型 API 配置）
+// ============================================================
+
+@Composable
+private fun AiConfigCard() {
+    val context = LocalContext.current
+    val store = remember { AiConfigStore(context.applicationContext) }
+
+    // 本地编辑状态，初始化自存储；改动立即写入（不依赖底部「保存设置」按钮）
+    var baseUrl by remember { mutableStateOf(store.baseUrl) }
+    var apiKey by remember { mutableStateOf(store.apiKey) }
+    var model by remember { mutableStateOf(store.model) }
+
+    SettingsCard("AI 分析") {
+        Text(
+            text = "占卜结果页的「AI 分析」按钮会调用该接口解读卦象（OpenAI 兼容格式，如 DeepSeek、Ollama 本地服务）。修改后立即生效，无需点击保存。",
+            fontSize = 12.sp,
+            color = TextMuted,
+            lineHeight = 18.sp,
+        )
+        Spacer(Modifier.height(14.dp))
+
+        Text("API 地址", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = baseUrl,
+            onValueChange = {
+                baseUrl = it
+                store.baseUrl = it
+            },
+            placeholder = { Text("https://api.deepseek.com", fontSize = 12.sp, color = TextMuted) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = BorderSubtle,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                cursorColor = Gold,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("API Key", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = apiKey,
+            onValueChange = {
+                apiKey = it
+                store.apiKey = it
+            },
+            placeholder = { Text("sk-...", fontSize = 12.sp, color = TextMuted) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
+            textStyle = MaterialTheme.typography.bodyMedium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = BorderSubtle,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                cursorColor = Gold,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(Modifier.height(12.dp))
+
+        Text("模型名", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        OutlinedTextField(
+            value = model,
+            onValueChange = {
+                model = it
+                store.model = it
+            },
+            placeholder = { Text("deepseek-chat", fontSize = 12.sp, color = TextMuted) },
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium,
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = BorderSubtle,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+                cursorColor = Gold,
+            ),
+            modifier = Modifier.fillMaxWidth(),
+        )
+
+        Spacer(Modifier.height(8.dp))
+        Text(
+            text = "提示：Key 保存在本机 SharedPreferences 中。地址需以 http(s):// 开头，本地服务（如 Ollama）可用 http://IP:端口。",
+            fontSize = 11.sp,
+            color = TextMuted,
+            lineHeight = 16.sp,
+        )
     }
 }
 

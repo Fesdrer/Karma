@@ -269,6 +269,7 @@ fun DivinationScreen(
                     if (ys.showResult && ys.result != null) {
                         YarrowResultPanel(
                             result = ys.result!!,
+                            topic = divinationTopic,
                             onRetry = {
                                 yv.reset()
                                 yarrowReady = false
@@ -312,6 +313,7 @@ fun DivinationScreen(
 
                 XiaoLiuRenContent(
                     state = xlrState,
+                    topic = divinationTopic,
                     onInputModeChanged = xlrViewModel::setInputMode,
                     onMonthChanged = xlrViewModel::setMonth,
                     onDayChanged = xlrViewModel::setDay,
@@ -524,6 +526,7 @@ private fun DivinationLockedOverlay(title: String, noQuota: Boolean = false) {
 @Composable
 private fun XiaoLiuRenContent(
     state: DivinationUiState,
+    topic: String,
     onInputModeChanged: (InputMode) -> Unit,
     onMonthChanged: (Int) -> Unit,
     onDayChanged: (Int) -> Unit,
@@ -590,6 +593,7 @@ private fun XiaoLiuRenContent(
             if (state.animationPhase == AnimationPhase.COMPLETE && state.resultPalace != null) {
                 XiaoLiuRenResultPanel(
                     result = state.resultPalace!!,
+                    topic = topic,
                     onRetry = onRetry,
                 )
             }

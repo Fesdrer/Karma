@@ -41,6 +41,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.karma.ui.divination.model.HexagramRevelation
 import com.example.karma.ui.divination.model.IntegrationResult
 import com.example.karma.ui.divination.model.Trigram
 import com.example.karma.ui.divination.model.YarrowResult
@@ -54,6 +55,7 @@ import com.example.karma.ui.theme.TextSecondary
 fun YarrowResultPanel(
     result: YarrowResult,
     onRetry: () -> Unit,
+    topic: String = "",
     modifier: Modifier = Modifier,
 ) {
     val primary = result.primaryHexagram ?: return
@@ -181,6 +183,15 @@ fun YarrowResultPanel(
                 ) {
                     Text("再来一次", fontFamily = FontFamily.Serif, fontSize =16.sp, fontWeight = FontWeight.Bold)
                 }
+
+                Spacer(Modifier.height(10.dp))
+
+                // ===== AI 分析（结果页最后）=====
+                AiAnalysisSection(
+                    divinationType = "大衍筮法",
+                    topic = topic,
+                    resultSummary = buildYarrowAiSummary(result, primary, transformed, integration),
+                )
 
                 Spacer(Modifier.height(8.dp))
             }
@@ -382,5 +393,29 @@ private fun SectionBorder(
             .padding(12.dp),
     ) {
         content()
+    }
+}
+
+/** 拼装大衍筮法 AI 分析用的结果摘要文本（与面板展示内容一致） */
+private fun buildYarrowAiSummary(
+    result: YarrowResult,
+    primary: HexagramRevelation,
+    transformed: HexagramRevelation,
+    integration: IntegrationResult,
+): String = buildString {
+    appendLine("【本卦】${primary.fullName}（${primary.name}）")
+    appendLine("卦象总纲：${primary.summary}")
+    appendLine()
+    appendLine("【六爻精解】")
+    val movingSet = result.movingLines.toSet()
+    for (i in 5 downTo 0) {
+        val star = if (movingSet.contains(i + 1)) "（动爻★）" else ""
+        appendLine(primary.revelations.getOrElse(i) { "" } + star)
+    }
+    appendLine()
+    appendLine("【变卦】${transformed.fullName}，趋势：${transformed.trend}")
+    appendLine("【能量趋势】${integration.energyFlow}，${integration.trendDesc}")
+    if (movingSet.isEmpty()) {
+        appendLine("【变卦指向】此卦无动爻，以静卦为断。")
     }
 }
