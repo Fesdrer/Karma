@@ -41,6 +41,7 @@ import com.example.karma.ui.theme.ChartBg
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.RedNegative
 import com.example.karma.ui.theme.TextPrimary
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
@@ -78,6 +79,9 @@ fun AiAnalysisSection(
             try {
                 val text = AiAnalysisClient.analyze(context, divinationType, topic, resultSummary)
                 uiState = AiAnalysisUiState.Content(text)
+            } catch (e: CancellationException) {
+                // 用户关闭弹窗/离开页面导致的协程取消：静默退出，不显示错误
+                throw e
             } catch (e: Exception) {
                 uiState = AiAnalysisUiState.Error(e.message ?: "AI 分析失败，请稍后重试")
             }
