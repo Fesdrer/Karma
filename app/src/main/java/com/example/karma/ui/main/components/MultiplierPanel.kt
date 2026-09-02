@@ -30,14 +30,19 @@ import com.example.karma.ui.components.pressFeedback
 import com.example.karma.ui.theme.Gold
 
 /**
- * 主页面左栏乘法区：一组乘法按钮（单列竖排，可滚动）。
- * 点击后当前分数 × 该分数（结果向 0.5 四舍五入，逻辑在 MainViewModel.multiplyScore）。
- * 按钮标签始终显示分数形式（×1/3、×1/7、×1.5、×2）。
+ * 主页面左栏乘法区：一组乘法按钮（单列竖排，可滚动）+ 底部「确定」。
+ *
+ * v4.1 起为「乘法分配律」交互：
+ * - 点击乘数仅切换选中状态（分数不变），选中按钮金色高亮；不能重复选中同一乘数，再按一次取消。
+ * - 底部「确定」一次性应用：新分数 = 当前分数 × Σ(选中乘数)，向 0.5 四舍五入（逻辑在 MainViewModel.confirmMultipliers）。
+ * - 按钮标签始终显示分数形式（×1/3、×1/7、×1.5、×2）。
  */
 @Composable
 fun MultiplierPanel(
     multipliers: List<Fraction>,
-    onMultiply: (Fraction) -> Unit,
+    selectedIndices: Set<Int>,
+    onToggle: (Int) -> Unit,
+    onConfirm: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -73,31 +78,81 @@ fun MultiplierPanel(
                 // 按钮组上下居中；按钮过多超出高度时仍从顶部排列、可滚动
                 verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
             ) {
-                multipliers.forEach { m ->
+                multipliers.forEachIndexed { index, m ->
+                    val selected = index in selectedIndices
                     val interaction = remember { MutableInteractionSource() }
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(32.dp)
                             .clip(RoundedCornerShape(7.dp))
-                            .background(Color(0xFF1A1A2E))
-                            .border(1.dp, Color(0xFFb8860b).copy(alpha = 0.5f), RoundedCornerShape(7.dp))
+                            .background(if (selected) Color(0xFFffd700) else Color(0xFF1A1A2E))
+                            .border(
+                                1.dp,
+                                if (selected) Color(0xFFffd700) else Color(0xFFb8860b).copy(alpha = 0.5f),
+                                RoundedCornerShape(7.dp),
+                            )
                             .pressFeedback(interaction)
                             .clickable(
                                 interactionSource = interaction,
                                 indication = null,
-                            ) { onMultiply(m) },
+                            ) { onToggle(index) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(
                             text = "×" + m.format(),
                             fontSize = 10.sp,
                             fontWeight = FontWeight.Bold,
-                            color = Color(0xFFffd700),
+                            color = if (selected) Color(0xFF1A1A2E) else Color(0xFFffd700),
                         )
                     }
                 }
             }
+        }
+
+        // ===== 已选乘数提示 =====
+        Spacer(Modifier.height(6.dp))
+        Text(
+            text = if (selectedIndices.isEmpty()) {
+                "点击选择乘数"
+            } else {
+                "已选：" + selectedIndices.sorted().joinToString(" ") { i ->
+                    "×" + (multipliers.getOrNull(i)?.format() ?: "?")
+                }
+            },
+            fontSize = 8.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (selectedIndices.isEmpty()) Color(0xFF666666) else Color(0xFFffd700),
+            modifier = Modifier.fillMaxWidth(),
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
+
+        Spacer(Modifier.height(4.dp))
+
+        // ===== 确定按钮（无选中时禁用）=====
+        val confirmInteraction = remember { MutableInteractionSource() }
+        val canConfirm = selectedIndices.isNotEmpty()
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(30.dp)
+                .clip(RoundedCornerShape(7.dp))
+                .background(if (canConfirm) Color(0xFFb8860b) else Color(0xFF2a2a3a))
+                .pressFeedback(confirmInteraction)
+                .clickable(
+                    enabled = canConfirm,
+                    interactionSource = confirmInteraction,
+                    indication = null,
+                ) { onConfirm() },
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "确定",
+                fontSize = 11.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (canConfirm) Color.White else Color(0xFF777777),
+            )
         }
     }
 }

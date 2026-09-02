@@ -73,6 +73,7 @@ fun MainScreen(
     )
     val state by viewModel.uiState.collectAsState()
     val effectiveScore by viewModel.effectiveScoreState.collectAsState()
+    val selectedMultiplierIndices by viewModel.selectedMultipliersState.collectAsState()
     val context = LocalContext.current
 
     // 自证相关弹窗状态
@@ -213,7 +214,9 @@ fun MainScreen(
 
                     MultiplierPanel(
                         multipliers = s.multiplierPresets,
-                        onMultiply = { viewModel.multiplyScore(it) },
+                        selectedIndices = selectedMultiplierIndices,
+                        onToggle = { viewModel.toggleMultiplier(it) },
+                        onConfirm = { viewModel.confirmMultipliers() },
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
