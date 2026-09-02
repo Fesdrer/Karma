@@ -2900,7 +2900,7 @@ private fun AiConfigCard() {
 
         Spacer(Modifier.height(8.dp))
         Text(
-            text = "提示：Key 保存在本机 SharedPreferences 中。地址需以 http(s):// 开头，本地服务（如 Ollama）可用 http://IP:端口。",
+            text = "提示：模型名区分大小写，DeepSeek 官方模型为 deepseek-v4-flash / deepseek-v4-pro（旧别名 deepseek-chat 亦可用）；Key 保存在本机 SharedPreferences 中。地址需以 http(s):// 开头，本地服务（如 Ollama）可用 http://IP:端口。",
             fontSize = 11.sp,
             color = TextMuted,
             lineHeight = 16.sp,
