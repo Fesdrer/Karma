@@ -36,6 +36,15 @@ class KarmaApplication : Application() {
         super.onCreate()
         container = AppContainer(this)
 
+        // 全新安装/数据被清后：确保默认设置行存在（否则 updateTotalScore 更新 0 行，总分永远无法累计）
+        applicationScope.launch {
+            try {
+                container.repository.ensureSettingsRow()
+            } catch (e: Exception) {
+                Log.e("KarmaInit", "初始化默认设置行失败", e)
+            }
+        }
+
         // 应用启动时检查业力衰减
         applicationScope.launch {
             try {

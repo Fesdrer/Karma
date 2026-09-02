@@ -33,12 +33,28 @@ class KarmaRepository(
 
     val allHistory: Flow<List<HistoryEntryEntity>> = historyDao.getAllEntries()
 
+    /**
+     * 确保默认设置行存在（id=1）。全新安装 / 数据被清后 karma_settings 表是空的，
+     * 而 updateTotalScore 等 UPDATE 语句会更新 0 行，导致总分永远无法累计。
+     * 应用启动时调用（v4.1-改4 修复）。
+     */
+    suspend fun ensureSettingsRow() {
+        if (settingsDao.getSettingsOnce() == null) {
+            settingsDao.upsertSettings(KarmaSettingsEntity())
+        }
+    }
+
     suspend fun addHistoryEntry(
         delta: Float,
         event: String,
         type: String,
     ): HistoryEntryEntity {
-        val current = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
+        var current = settingsDao.getSettingsOnce()
+        if (current == null) {
+            // 设置行缺失（全新安装且启动补齐尚未完成时）：先插入默认行，保证 updateTotalScore 能命中
+            current = KarmaSettingsEntity()
+            settingsDao.upsertSettings(current)
+        }
         val newTotal = roundToOneDecimal(current.totalScore + delta)
         val entry = HistoryEntryEntity(
             timestamp = System.currentTimeMillis(),
