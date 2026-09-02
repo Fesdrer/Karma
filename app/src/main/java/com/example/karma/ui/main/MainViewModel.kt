@@ -311,46 +311,12 @@ class MainViewModel(
         updateTimerEnabled()
     }
 
-    /** 乘法功能：当前分数 × fraction（精确分数），结果向 0.5 四舍五入（×2 → 取整 → ÷2），不限幅。 */
-    fun multiplyScore(fraction: Fraction) {
-        val base = _customScore.value ?: _selectedScore.value
-        val result = (base * fraction.value * 2f).roundToInt() / 2f
-        _customScore.value = null
-        _selectedScore.value = result
-        _effectiveScoreState.value = result
-        updateTimerEnabled()
-    }
-
-    // ===== 乘法分配律（v4.1）：先选择多个乘数（分数不变），确定后一次性应用 =====
+    // ===== 乘法分配律（v4.1）：点击乘数仅切换选中（分数不变），主页面「确认」时一次性应用 =====
 
     /** 切换某个乘数按钮的选中状态（不能重复选中同一乘数，再按一次取消）。 */
     fun toggleMultiplier(index: Int) {
         val set = _selectedMultipliers.value
         _selectedMultipliers.value = if (index in set) set - index else set + index
-    }
-
-    /** 清空乘数选中状态（不改动分数）。 */
-    fun clearMultipliers() {
-        _selectedMultipliers.value = emptySet()
-    }
-
-    /**
-     * 按分配律应用选中的乘数：结果 = 当前分数 × Σ(选中乘数)，向 0.5 四舍五入。
-     * 例如当前分数 +3，选中 ×1 与 ×1/3 → 3 × (1 + 1/3) = 4。
-     * 应用后清空选中状态。
-     */
-    fun confirmMultipliers() {
-        val selected = _selectedMultipliers.value
-        if (selected.isEmpty()) return
-        val presets = _latestSettings?.multiplierPresets ?: return
-        val sum = selected.fold(0f) { acc, i -> acc + (presets.getOrNull(i)?.value ?: 0f) }
-        val base = _customScore.value ?: _selectedScore.value
-        val result = (base * sum * 2f).roundToInt() / 2f
-        _customScore.value = null
-        _selectedScore.value = result
-        _effectiveScoreState.value = result
-        _selectedMultipliers.value = emptySet()
-        updateTimerEnabled()
     }
 
     /** 查找预设事件的默认分数（带符号：善业正、恶业/善果负）；未找到返回 null。 */
@@ -423,12 +389,26 @@ class MainViewModel(
     }
 
     fun onConfirm() {
-        val score = _customScore.value ?: _selectedScore.value
+        val base = _customScore.value ?: _selectedScore.value
         val rawEvent = _customGoodDeedEvent.value
             ?: _customBadDeedEvent.value
             ?: _customGoodResultEvent.value
             ?: _selectedEvent.value
             ?: return
+
+        // 乘法分配律（v4.1）：本次记录分数 = 当前分数 × Σ(选中乘数)，向 0.5 四舍五入。
+        // 例如当前分数 +3，选中 ×1 与 ×1/3 → 3 × (1 + 1/3) = 4。未选乘数时分数不变。
+        var score = base
+        val selectedMultipliers = _selectedMultipliers.value
+        if (selectedMultipliers.isNotEmpty()) {
+            val presets = _latestSettings?.multiplierPresets
+            if (presets != null) {
+                val sum = selectedMultipliers.fold(0f) { acc, i ->
+                    acc + (presets.getOrNull(i)?.value ?: 0f)
+                }
+                score = (base * sum * 2f).roundToInt() / 2f
+            }
+        }
 
         // 善果事件自动加"善果："前缀（仿祈福前缀模式）
         val isGoodResult = _selectedEvent.value in _currentGoodResultPresets
@@ -442,6 +422,7 @@ class MainViewModel(
         _customGoodDeedEvent.value = null
         _customBadDeedEvent.value = null
         _customGoodResultEvent.value = null
+        _selectedMultipliers.value = emptySet()
         _effectiveScoreState.value = 0f
         _effectiveEventState.value = null
         updateTimerEnabled()

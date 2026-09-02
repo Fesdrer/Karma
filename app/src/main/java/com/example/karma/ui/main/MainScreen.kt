@@ -216,7 +216,6 @@ fun MainScreen(
                         multipliers = s.multiplierPresets,
                         selectedIndices = selectedMultiplierIndices,
                         onToggle = { viewModel.toggleMultiplier(it) },
-                        onConfirm = { viewModel.confirmMultipliers() },
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
