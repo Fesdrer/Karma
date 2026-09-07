@@ -1,5 +1,6 @@
 package com.example.karma.ui.prayer
 
+import androidx.compose.ui.geometry.Offset
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
@@ -21,6 +22,10 @@ data class PrayerUiState(
     val errorMessage: String? = null,
     val showDeityInput: Boolean = false,
     val deity: String = "",
+    // ===== 神秘学符号画板（v4.2）：画作仅自赏，不入事件记录、不持久化 =====
+    val showSymbolBoard: Boolean = false,               // 开关：绘制神秘符号
+    val symbolStrokes: List<List<Offset>> = emptyList(), // 已完成笔画（坐标已归一化 0~1）
+    val currentStroke: List<Offset> = emptyList(),       // 正在画的笔画（归一化 0~1）
 )
 
 class PrayerViewModel(
@@ -53,6 +58,44 @@ class PrayerViewModel(
 
     fun onToggleDeityInput() {
         _uiState.value = _uiState.value.copy(showDeityInput = !_uiState.value.showDeityInput)
+    }
+
+    // ===== 神秘学符号画板（v4.2）=====
+
+    /** 切换「绘制神秘符号」开关。 */
+    fun toggleSymbolBoard() {
+        _uiState.value = _uiState.value.copy(showSymbolBoard = !_uiState.value.showSymbolBoard)
+    }
+
+    /** 清空画板全部笔画。 */
+    fun clearSymbolStrokes() {
+        _uiState.value = _uiState.value.copy(symbolStrokes = emptyList(), currentStroke = emptyList())
+    }
+
+    /** 开始一笔：记录起点（p 为画板坐标 / 画板尺寸，归一化 0~1）。 */
+    fun startSymbolStroke(p: Offset) {
+        _uiState.value = _uiState.value.copy(currentStroke = listOf(p))
+    }
+
+    /** 追加当前笔画路径点（归一化坐标），坐标越界时钳制在 0~1。 */
+    fun addSymbolPoint(p: Offset) {
+        val clamped = Offset(p.x.coerceIn(0f, 1f), p.y.coerceIn(0f, 1f))
+        _uiState.value = _uiState.value.copy(
+            currentStroke = _uiState.value.currentStroke + clamped,
+        )
+    }
+
+    /** 抬笔：≥2 点才算一笔，并入已完成笔画列表；不足则丢弃（防误触一个点）。 */
+    fun endSymbolStroke() {
+        val cur = _uiState.value.currentStroke
+        if (cur.size >= 2) {
+            _uiState.value = _uiState.value.copy(
+                symbolStrokes = _uiState.value.symbolStrokes + listOf(cur),
+                currentStroke = emptyList(),
+            )
+        } else {
+            _uiState.value = _uiState.value.copy(currentStroke = emptyList())
+        }
     }
 
     fun onDeityChanged(text: String) {
