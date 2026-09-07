@@ -280,6 +280,21 @@ class MainViewModel(
                 }
             }
         }
+        // 业力衰减 & 每日必做：2 秒周期判定（v4.2-改5）
+        // 应用前台/计时/自证期间持续运行，跨过衰减时刻即自动补扣 + 每日必做判定；
+        // 进程被杀后由 KarmaApplication 启动补扣兜底（维持非 AlarmManager 决策）。
+        // applyDecay 幂等：未到判定时刻直接返回 0，不重复扣分。
+        viewModelScope.launch {
+            while (true) {
+                kotlinx.coroutines.delay(2000)
+                try {
+                    repository.applyDecay()
+                } catch (e: Exception) {
+                    // 单次失败不中断轮询（下轮重试）；记录日志便于定位
+                    android.util.Log.e("KarmaDecay", "周期衰减判定失败", e)
+                }
+            }
+        }
     }
 
     // ---- Actions ----
