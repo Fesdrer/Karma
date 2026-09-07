@@ -12,8 +12,8 @@ android {
         applicationId = "com.example.karma"
         minSdk = 24
         targetSdk = 34
-        versionCode = 23
-        versionName = "4.1"
+        versionCode = 24
+        versionName = "4.2"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
