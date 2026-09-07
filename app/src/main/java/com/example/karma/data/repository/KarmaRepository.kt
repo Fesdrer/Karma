@@ -239,7 +239,7 @@ class KarmaRepository(
 
         // lastDecayDate 为空 → 设置今天并返回 0，不做追溯扣除
         if (settings.lastDecayDate.isEmpty()) {
-            settingsDao.upsertSettings(settings.copy(lastDecayDate = todayStr))
+            settingsDao.updateLastDecayDate(todayStr)
             return 0f
         }
 
@@ -326,12 +326,10 @@ class KarmaRepository(
             dailyDeeds
         }
 
-        // 更新总分、lastDecayDate、每日必做 deeds（每个 deed 有自己的 name/penalty/vis）
-        settingsDao.upsertSettings(settings.copy(
-            totalScore = currentScore,
-            lastDecayDate = dateB,
-            dailyMustDoDeeds = newDeeds,
-        ))
+        // 更新总分、lastDecayDate、每日必做 deeds（每个 deed 有自己的 name/penalty/vis）。
+        // 用原子列更新而非整行 upsert：settings 快照取自本函数开头，
+        // 整行写回会用旧值覆盖并发写入的自证状态/计时等字段（v4.2-改4）。
+        settingsDao.updateDecayResult(currentScore, dateB, newDeeds)
 
         return totalDeducted
     }
