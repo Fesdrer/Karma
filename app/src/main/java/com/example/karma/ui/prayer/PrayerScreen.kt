@@ -1,8 +1,10 @@
 package com.example.karma.ui.prayer
 
 import android.widget.Toast
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -35,7 +37,14 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.StrokeJoin
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontFamily
@@ -49,6 +58,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.components.DialogEntranceContainer
 import com.example.karma.ui.theme.BorderSubtle
+import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
 
 @Composable
@@ -263,6 +273,41 @@ fun PrayerScreen(
                             modifier = Modifier.fillMaxWidth(),
                         )
                     }
+
+                    // ———— 神秘学符号画板（v4.2）：仿「添加神明」开关，画作仅自赏不入记录 ————
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            text = "绘制神秘符号",
+                            fontFamily = FontFamily.Serif,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFFffd700),
+                        )
+                        Switch(
+                            checked = state.showSymbolBoard,
+                            onCheckedChange = { viewModel.toggleSymbolBoard() },
+                            colors = SwitchDefaults.colors(
+                                checkedThumbColor = Color(0xFFffd700),
+                                checkedTrackColor = Color(0xFFffd700).copy(alpha = 0.3f),
+                            ),
+                        )
+                    }
+
+                    if (state.showSymbolBoard) {
+                        Spacer(Modifier.height(12.dp))
+                        SymbolDrawingBoard(
+                            strokes = state.symbolStrokes,
+                            currentStroke = state.currentStroke,
+                            onStrokeStart = { viewModel.startSymbolStroke(it) },
+                            onStrokeMove = { viewModel.addSymbolPoint(it) },
+                            onStrokeEnd = { viewModel.endSymbolStroke() },
+                            onClear = { viewModel.clearSymbolStrokes() },
+                        )
+                    }
                     Spacer(Modifier.height(16.dp))
 
                     // Action buttons
@@ -293,6 +338,102 @@ fun PrayerScreen(
                         }
                     }
                 }
+            }
+        }
+    }
+}
+
+// ============================================================
+// SymbolDrawingBoard — 神秘学符号手绘画板（v4.2）
+// 笔画坐标已由调用方归一化到 0~1；此处按画板实际尺寸等比缩放绘制。
+// 画作仅供本次祈福自赏：不入事件记录、不持久化。
+// ============================================================
+
+@Composable
+private fun SymbolDrawingBoard(
+    strokes: List<List<Offset>>,
+    currentStroke: List<Offset>,
+    onStrokeStart: (Offset) -> Unit,
+    onStrokeMove: (Offset) -> Unit,
+    onStrokeEnd: () -> Unit,
+    onClear: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    // 画板高度 ≈ 弹窗可视区一半以上（弹窗整体可滚动，超高时内部滚动）
+    val boardHeight = with(LocalConfiguration.current) { (screenHeightDp * 0.5f).dp }
+    val hasContent = strokes.isNotEmpty() || currentStroke.isNotEmpty()
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(boardHeight)
+                .clip(RoundedCornerShape(12.dp))
+                .background(ScoreBtnBg)
+                .border(1.dp, Color(0xFFffd700).copy(alpha = 0.35f), RoundedCornerShape(12.dp))
+                .pointerInput(Unit) {
+                    // pointerInput scope 自带 size（画板实际像素尺寸），把手指坐标归一化到 0~1
+                    fun normalize(x: Float, y: Float): Offset {
+                        val w = size.width.toFloat().coerceAtLeast(1f)
+                        val h = size.height.toFloat().coerceAtLeast(1f)
+                        return Offset(x / w, y / h)
+                    }
+                    detectDragGestures(
+                        onDragStart = { off -> onStrokeStart(normalize(off.x, off.y)) },
+                        onDrag = { change, _ -> onStrokeMove(normalize(change.position.x, change.position.y)) },
+                        onDragEnd = { onStrokeEnd() },
+                        onDragCancel = { onStrokeEnd() },
+                    )
+                },
+            contentAlignment = Alignment.Center,
+        ) {
+            Canvas(Modifier.fillMaxSize()) {
+                val w = size.width
+                val h = size.height
+                if (w <= 0f || h <= 0f) return@Canvas
+                val strokeWidth = (minOf(w, h) * 0.012f).coerceIn(3f, 14f)
+                val penColor = Color(0xFFFF0000)
+
+                fun drawStrokePath(pts: List<Offset>) {
+                    if (pts.size < 2) return
+                    val path = Path()
+                    pts.forEachIndexed { i, p ->
+                        val x = p.x * w
+                        val y = p.y * h
+                        if (i == 0) path.moveTo(x, y) else path.lineTo(x, y)
+                    }
+                    drawPath(
+                        path = path,
+                        color = penColor,
+                        style = Stroke(
+                            width = strokeWidth,
+                            cap = StrokeCap.Round,
+                            join = StrokeJoin.Round,
+                        ),
+                    )
+                }
+                strokes.forEach { drawStrokePath(it) }
+                drawStrokePath(currentStroke)
+            }
+
+            if (!hasContent) {
+                Text(
+                    text = "（手指在此绘制神秘符号）",
+                    fontFamily = FontFamily.Serif,
+                    fontSize = 13.sp,
+                    color = Color(0xFF888888),
+                    textAlign = TextAlign.Center,
+                )
+            }
+        }
+
+        // 清空按钮
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.End,
+        ) {
+            TextButton(onClick = onClear) {
+                Text("清空", fontFamily = FontFamily.Serif, fontSize = 13.sp, color = Color(0xFFffd700))
             }
         }
     }
