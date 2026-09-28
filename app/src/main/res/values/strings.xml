@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Karma</string>
+
+    <!-- 每日必做桌面组件（v4.3） -->
+    <string name="widget_daily_must_do_title">每日必做</string>
+    <string name="widget_daily_must_do_empty">今日必做已全部完成</string>
+    <string name="widget_daily_must_do_desc">显示今日未完成的每日必做，点圆圈标记完成</string>
 </resources>

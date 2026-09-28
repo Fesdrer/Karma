@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  每日必做组件单行：左侧圆圈 + 事件名。
+  RemoteViews 不支持自绘，圆圈用文字「○」呈现；
+  点击 fill-in intent 只挂在圆圈上（按需求：点圆圈才算完成）。
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:paddingTop="3dp"
+    android:paddingBottom="3dp">
+
+    <TextView
+        android:id="@+id/widget_item_circle"
+        android:layout_width="26dp"
+        android:layout_height="26dp"
+        android:gravity="center"
+        android:text="○"
+        android:textColor="@color/blue_light"
+        android:textSize="15sp" />
+
+    <TextView
+        android:id="@+id/widget_item_name"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:ellipsize="end"
+        android:maxLines="1"
+        android:textColor="@color/blue_light"
+        android:textSize="12sp" />
+
+</LinearLayout>

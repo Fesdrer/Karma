@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- 桌面组件背景：深色圆角面板 + 淡金描边（与 App 深色金调一致） -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="#F2141923" />
+    <corners android:radius="16dp" />
+    <stroke
+        android:width="1dp"
+        android:color="#33FFD700" />
+</shape>

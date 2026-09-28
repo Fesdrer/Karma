@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  每日必做桌面组件配置：目标 2×2。
+  targetCellWidth/Height 仅 Android 12+ 生效，低版本回退 minWidth/minHeight；
+  updatePeriodMillis=0 表示不做系统定时刷新，改由 App 内主动 notifyAppWidgetViewDataChanged。
+-->
+<appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+    android:description="@string/widget_daily_must_do_desc"
+    android:initialLayout="@layout/widget_daily_must_do"
+    android:minHeight="110dp"
+    android:minWidth="110dp"
+    android:resizeMode="horizontal|vertical"
+    android:targetCellHeight="2"
+    android:targetCellWidth="2"
+    android:updatePeriodMillis="0"
+    android:widgetCategory="home_screen" />

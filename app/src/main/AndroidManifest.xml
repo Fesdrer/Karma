@@ -37,6 +37,23 @@
             android:name=".ui.timer.TimerService"
             android:foregroundServiceType="specialUse"
             android:exported="false" />
+
+        <!-- 每日必做桌面组件（v4.3）：Provider + 集合组件数据服务 -->
+        <receiver
+            android:name=".ui.widget.DailyMustDoWidgetProvider"
+            android:exported="false">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/daily_must_do_widget_info" />
+        </receiver>
+
+        <service
+            android:name=".ui.widget.DailyMustDoWidgetService"
+            android:exported="false"
+            android:permission="android.permission.BIND_REMOTEVIEWS" />
     </application>
 
 </manifest>
