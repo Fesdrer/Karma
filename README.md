@@ -226,7 +226,7 @@
 - 未完成的每日必做会在业力衰减补扣时自动扣除设定分数，历史记录为"未完成：{事件名}"（v4.2 起衰减运行期间每 2 秒周期判定，跨过时刻即自动补扣并重置 vis，不必等重启）
 - 保存设置时若必做配置有变动，所有 vis 重置为 0（新的一天）
 - 导出/导入 JSON 时包含全部每日必做配置，导入后 vis 自动归零
-- **桌面组件**（v4.3）：手机桌面可添加 2×2 组件（EMUI 中叫「窗口小工具 / 服务卡片」），列出今日**未完成**的每日必做，每行前面一个圆圈；点圆圈即视为完成——会打开 App、按该善业的默认分加分并写一条历史记录，该行随即从组件消失；条目多时可上下滚动，全部完成时显示「今日必做已全部完成」
+- **桌面组件**（v4.3）：手机桌面可添加 2×2 组件（EMUI 中叫「窗口小工具 / 服务卡片」），列出今日**未完成**的每日必做，每行前面一个圆圈；点圆圈即视为完成——组件直接写库（标记完成 + 按该善业的默认分加分 + 写一条历史记录），该行随即从组件消失，**不打开 App**；**仅当这次加分跨入更高正阶位时**才打开 App 弹自证窗；条目多时可上下滚动，全部完成时显示「今日必做已全部完成」
 
 ### 计时记录（★ v3.4 新增，v3.7 内嵌改造，v3.8 崩溃恢复）
 
@@ -388,7 +388,7 @@ Kotlin + Jetpack Compose
 - **冷却动画**（v4.3）：气运测试按钮用 `Animatable(1f)` 从 0 线性动画到 1，自绘 Box 灰底 + 金色覆盖层 `fillMaxWidth(progress)` 实现从左到右恢复；时长读设置（0~10 秒）
 - **跨阶自证触发统一为「总分增加」**（v4.3）：不再依赖「用户点确认/计时结算」白名单标记——只要 `totalScore` 相对上次观察值增加且跨入更高正阶位就弹被动窗（普通记录、计时结算、誓约了结加分、首页誓约到期结算一律覆盖）；自证奖励自身的加分做一次性豁免，避免"成功即再触发"的无限连锁；启动首个快照只建立基线，避免把既有总分误判为加分
 - **誓约到期结算**（v4.3）：`Bet.deadlineAt` 由纯文本改为时间戳，`getExpiredBets` 与衰减/每日必做共用一个 2 秒周期判定，首页弹窗强制「完成/未完成」结算
-- **每日必做桌面组件**（v4.3）：集合组件（`ListView` + `RemoteViewsService`/`RemoteViewsFactory`）只列 `vis == 0` 条目，行圆圈挂 fill-in intent、Provider 用 `setPendingIntentTemplate`；点击经 `PendingIntent` 唤起 `MainActivity`（`singleTask`，`onCreate` 与 `onNewIntent` 共用同一处理函数，避免「App 已开着时点组件不加分」），由 App 内执行「标记完成 + 加分 + 写历史」，自证仍由 `checkProof` 按总分增加判定；组件进程不写库，写库等自证基线就绪后出队（避免冷启动把已加分总分当基线）
+- **每日必做桌面组件**（v4.3）：集合组件（`ListView` + `RemoteViewsService`/`RemoteViewsFactory`）只列 `vis == 0` 条目，行圆圈挂 fill-in intent、Provider 用 `setPendingIntentTemplate` + `getBroadcast` 模板；点击在 `AppWidgetProvider.onReceive` 里 `goAsync` + 协程直接写库（标记完成 + 加分 + 写历史），**不打开 App**；写库后用 `ProofEngine` 比较加分前后阶位，**只有跨入更高正阶位**才 `startActivity`（`singleTask`，`onCreate` 与 `onNewIntent` 共用同一处理函数）并把阶位差带进 App 补弹自证窗（App 未运行时 `checkProof` 首个快照会漏判，故绕开基线直接置入）
 
 ### 项目结构
 
@@ -450,8 +450,8 @@ app/src/main/java/com/example/karma/
 
 **每日必做桌面组件（★ 新功能）**
 - 桌面可添加 **2×2 组件**（AppWidget；EMUI 中为「窗口小工具 / 服务卡片」）：列出今日**未完成**的每日必做，每行前一个圆圈，条目多时可上下滚动，全部完成时显示「今日必做已全部完成」
-- **点圆圈 = 完成**：组件通过 `PendingIntent` 唤起 App（`MainActivity` 改 `singleTask`，`onCreate` 与 `onNewIntent` 走**同一处理函数**——保证「App 已开着时点组件同样加分」），由 App 内执行「标记 `vis=1` + 按该善业默认分加分 + 写一条历史记录」，随后组件刷新、该行消失
-- 加分同样参与自证判定（跨入更高正阶位弹被动窗）：写库等 `checkProof` 建立基线后出队，避免冷启动把「已加分的总分」当作基线而漏判
+- **点圆圈 = 完成，且不打开 App**：组件在 `AppWidgetProvider.onReceive` 里 `goAsync` + 协程**直接写库**——标记 `vis=1`、按该善业默认分加分、写一条历史记录，随后组件刷新、该行消失
+- **只有跨阶才打开 App**：写库后用 `ProofEngine` 比较加分前后阶位，仅当**跨入更高正阶位**（且自证开关开启）才打开 App 弹被动自证询问窗；`MainActivity` 改 `singleTask`、`onCreate` 与 `onNewIntent` 走**同一处理函数**（保证 App 已开着时也生效），阶位差随 Intent 带入以绕开冷启动基线漏判
 - 设计为**不可撤销**（点掉即视为已完成）；数据库结构不变（复用 `dailyMustDoDeeds.vis`）
 
 **其他修复与调整**
