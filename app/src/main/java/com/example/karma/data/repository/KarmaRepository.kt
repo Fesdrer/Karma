@@ -5,6 +5,7 @@ import com.example.karma.data.local.dao.KarmaSettingsDao
 import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.HistoryEntryEntity
 import com.example.karma.data.local.entity.KarmaSettingsEntity
+import com.example.karma.data.model.ProofEngine
 import com.example.karma.data.model.Rank
 import com.example.karma.data.model.TimerState
 import com.example.karma.data.model.TimerStatus
@@ -145,6 +146,38 @@ class KarmaRepository(
         val todayStr = formatDate(System.currentTimeMillis())
         // 只原子更新必做相关列，不读改写整行（避免覆盖自证状态等字段）
         settingsDao.updateDailyMustDoFields(updatedDeeds, todayStr)
+    }
+
+    /**
+     * 桌面组件点圆圈（v4.3）：标记完成 + 按善业默认分加分 + 写一条历史。
+     *
+     * 由组件广播接收器在本进程内直接调用，**不经过 App UI**，因此不会打开 App。
+     * 幂等：已完成（vis != 0）或非每日必做条目直接忽略，重复点击不会重复加分。
+     *
+     * @return 本次加分若跨入更高的正阶位，返回「加分前阶位 to 加分后阶位」；否则返回 null。
+     *         调用方据此决定是否打开 App 弹被动自证窗（自证窗必须由 App UI 呈现）。
+     */
+    suspend fun completeDailyMustDoFromWidget(deedName: String): Pair<Int, Int>? {
+        val settings = settingsDao.getSettingsOnce() ?: return null
+        val deed = settings.dailyMustDoDeeds.find { it.name == deedName } ?: return null
+        if (deed.vis != 0) return null
+
+        // 每日必做与善业预设同步增删改，正常都能查到；查不到按 +1 兜底
+        val index = settings.goodDeedPresets.indexOf(deedName)
+        val score = settings.goodDeedDefaultScores.getOrElse(index) { 1f }
+        val oldLevel = ProofEngine.rankLevelOf(settings.totalScore, settings)
+
+        // 先标记完成（vis）再写历史（总分），顺序执行避免「读 settings→改→写」互相覆盖
+        markDeedDone(deedName)
+        addHistoryEntry(score, deedName, "record")
+
+        val newTotal = roundToOneDecimal(settings.totalScore + score)
+        val newLevel = ProofEngine.rankLevelOf(newTotal, settings)
+        return if (settings.proofEnabled && newLevel >= 1 && newLevel > oldLevel) {
+            oldLevel to newLevel
+        } else {
+            null
+        }
     }
 
     /** 将所有 deed 的 vis 重置为 0（新的一天/配置变更时调用）。 */
