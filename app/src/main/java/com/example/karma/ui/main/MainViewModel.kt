@@ -583,10 +583,15 @@ class MainViewModel(
             // 注意：不在此处判成功——达标必须撑到时长结束（超时协程判定），
             // 否则"登上了就成功"会绕过保持能力的考验。
         } else if (_userScoredFlag) {
-            _userScoredFlag = false
-            val newLevel = ProofEngine.rankLevelOf(s.totalScore, s)
-            if (s.proofEnabled && newLevel >= 1 && newLevel > _lastLevel && s.totalScore > _lastTotal) {
-                _pendingPassiveProof.value = PassiveProofPrompt(_lastLevel, newLevel)
+            // v4.3：只有总分实际变化（用户加分写库）才消费标记。
+            // 每日必做的 markDeedDone 会先写 settings 但总分未变，
+            // 此时保留标记，等真正加分的发射再做跨阶判定。
+            if (s.totalScore != _lastTotal) {
+                _userScoredFlag = false
+                val newLevel = ProofEngine.rankLevelOf(s.totalScore, s)
+                if (s.proofEnabled && newLevel >= 1 && newLevel > _lastLevel && s.totalScore > _lastTotal) {
+                    _pendingPassiveProof.value = PassiveProofPrompt(_lastLevel, newLevel)
+                }
             }
         }
         _lastTotal = s.totalScore
