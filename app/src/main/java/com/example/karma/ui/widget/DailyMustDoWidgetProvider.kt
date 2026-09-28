@@ -66,8 +66,9 @@ class DailyMustDoWidgetProvider : AppWidgetProvider() {
 
         // 行的统一模板：真正的点击 Intent 由每行的 fill-in intent 补齐（携带 deed 名称）。
         // fill-in intent 要求模板 PendingIntent 为 MUTABLE（Android 12+）。
-        val flags = PendingIntent.FLAG_UPDATE_CURRENT or
+        val mutableFlag =
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) PendingIntent.FLAG_MUTABLE else 0
+        val flags = PendingIntent.FLAG_UPDATE_CURRENT or mutableFlag
         val template = PendingIntent.getActivity(
             context,
             0,
