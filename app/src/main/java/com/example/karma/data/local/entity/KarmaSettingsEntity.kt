@@ -147,6 +147,9 @@ data class KarmaSettingsEntity(
     val proofGuardLevel: Int = 0,                    // 降级守卫阶位（主动=起始阶位；被动=已达阶位）
     val proofReward: Float = 0f,                     // 成功奖励分
     val proofPenalty: Float = 0f,                    // 失败惩罚分
+
+    // ===== 气运测试冷却（v4.3） =====
+    val luckTestCooldownSec: Float = 1.5f,           // 冷却秒数（主页面气运测试按钮，0 表示不冷却）
 ) {
     // ===== 事件默认分数归一化（v3.13） =====
 

@@ -33,6 +33,7 @@ enum class ResetGroup(val label: String) {
     HISTORY("历史记录"),
     TIMER("计时状态"),
     DIVINATION("今日占卜次数"),
+    DIVINATION_SETTINGS("占卜设置"),
 }
 
 /**
@@ -525,6 +526,11 @@ class SettingsViewModel(
         setDraft(_draft.value.copy(splashDurationSec = sec.coerceIn(1, 30)))
     }
 
+    // ===== 气运测试冷却（v4.3） =====
+    fun updateLuckTestCooldownSec(v: Float) {
+        setDraft(_draft.value.copy(luckTestCooldownSec = v.coerceIn(0f, 10f)))
+    }
+
     // ===== 保存 / 重置 =====
     fun save() {
         viewModelScope.launch {
@@ -640,6 +646,9 @@ class SettingsViewModel(
         if (ResetGroup.DIVINATION in groups) next = next.copy(
             divinationDate = defaults.divinationDate,
             divinationCount = defaults.divinationCount,
+        )
+        if (ResetGroup.DIVINATION_SETTINGS in groups) next = next.copy(
+            luckTestCooldownSec = defaults.luckTestCooldownSec,
         )
         setDraft(next)
         if (ResetGroup.HISTORY in groups) {

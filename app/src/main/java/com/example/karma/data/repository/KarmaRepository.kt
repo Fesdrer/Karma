@@ -541,6 +541,8 @@ class KarmaRepository(
             proofGuardLevel = gsonNullable(importedSettings.proofGuardLevel) ?: 0,
             proofReward = gsonNullable(importedSettings.proofReward) ?: 0f,
             proofPenalty = gsonNullable(importedSettings.proofPenalty) ?: 0f,
+            // v4.3：旧导出无此键，补默认 1.5
+            luckTestCooldownSec = gsonNullable(importedSettings.luckTestCooldownSec) ?: 1.5f,
         ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false
