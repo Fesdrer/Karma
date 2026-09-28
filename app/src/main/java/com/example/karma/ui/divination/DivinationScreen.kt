@@ -2,6 +2,8 @@ package com.example.karma.ui.divination
 
 import android.widget.Toast
 import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -64,6 +66,7 @@ import com.example.karma.ui.divination.model.ShiChen
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 @Composable
 fun DivinationScreen(
@@ -76,6 +79,8 @@ fun DivinationScreen(
     var luckComputing by remember { mutableStateOf(false) }
     var selectedTab by remember { mutableIntStateOf(0) }
     val scope = rememberCoroutineScope()
+    // 气运测试冷却进度（v4.3）：0=全灰未恢复，1=已恢复可点
+    val luckCooldownProgress = remember { Animatable(1f) }
 
     // 占卜输入面板状态（小六壬和大衍筮法各自独立）
     var divinationTopic by remember { mutableStateOf("") }
@@ -111,6 +116,9 @@ fun DivinationScreen(
     val divinationLimit = settings?.let { s ->
         appContainer.repository.getDivinationLimit(s)
     } ?: 0
+
+    // 气运测试冷却时长（v4.3，设置页可配：「占卜」分类；0 表示不冷却）
+    val luckCooldownMs = ((settings?.luckTestCooldownSec ?: 1.5f).coerceIn(0f, 10f) * 1000f).toInt()
 
     val tabs = listOf("气运测试", "大衍筮法", "小六壬")
 
@@ -156,35 +164,55 @@ fun DivinationScreen(
                         textAlign = TextAlign.Center,
                     )
                     Spacer(Modifier.weight(1f))
-                    Button(
-                        onClick = {
-                            luckComputing = true
-                            scope.launch(Dispatchers.Default) {
-                                var cnt = 0
-                                for (i in 1..1000) {
-                                    if (Random.nextInt(1, 1001) <= 490) {
-                                        cnt++
-                                    }
-                                }
-                                luckResult = cnt
-                                luckComputing = false
-                            }
-                        },
-                        enabled = !luckComputing,
+                    // 冷却中的按钮：灰色底 + 金色从左侧按进度填充恢复（v4.3）
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(52.dp),
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(
-                            containerColor = Color(0xFFb8860b),
-                            contentColor = Color.White,
-                        ),
+                            .height(52.dp)
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(Color(0xFF5A5A5A))
+                            .clickable(
+                                enabled = !luckComputing && luckCooldownProgress.value >= 1f,
+                            ) {
+                                luckComputing = true
+                                scope.launch(Dispatchers.Default) {
+                                    var cnt = 0
+                                    for (i in 1..1000) {
+                                        if (Random.nextInt(1, 1001) <= 490) {
+                                            cnt++
+                                        }
+                                    }
+                                    luckResult = cnt
+                                    luckComputing = false
+                                }
+                                if (luckCooldownMs > 0) {
+                                    scope.launch {
+                                        luckCooldownProgress.snapTo(0f)
+                                        luckCooldownProgress.animateTo(
+                                            targetValue = 1f,
+                                            animationSpec = tween(
+                                                durationMillis = luckCooldownMs,
+                                                easing = LinearEasing,
+                                            ),
+                                        )
+                                    }
+                                }
+                            },
                     ) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.CenterStart)
+                                .fillMaxWidth(luckCooldownProgress.value)
+                                .height(52.dp)
+                                .background(Color(0xFFb8860b)),
+                        )
                         Text(
                             text = if (luckResult == null) "开始" else "再来一次",
                             fontFamily = FontFamily.Serif,
                             fontSize = 18.sp,
                             fontWeight = FontWeight.Bold,
+                            color = Color.White,
+                            modifier = Modifier.align(Alignment.Center),
                         )
                     }
                 }
