@@ -116,6 +116,7 @@ private enum class SettingsCategory(val title: String, val subtitle: String) {
     AiConfig("AI 分析", "大模型 API 地址、Key 与模型配置"),
     Mechanics("业力机制", "业力衰减与运气增幅"),
     Splash("启动画面", "启动经文与停留时长"),
+    Divination("占卜", "气运测试冷却时长"),
     General("重置", "选择性重置设置与数据"),
 }
 
@@ -433,6 +434,12 @@ fun SettingsScreen(
                                 splashDurationSec = draft.splashDurationSec,
                                 onScriptureChange = { viewModel.updateSplashScripture(it) },
                                 onDurationChange = { viewModel.updateSplashDuration(it) },
+                            )
+                        }
+                        SettingsCategory.Divination -> {
+                            DivinationSettingsCard(
+                                cooldownSec = draft.luckTestCooldownSec,
+                                onCooldownChange = { viewModel.updateLuckTestCooldownSec(it) },
                             )
                         }
                         SettingsCategory.General -> {
@@ -1289,6 +1296,48 @@ private fun SplashSettingsCard(
         )
         Spacer(Modifier.height(4.dp))
         Text("建议 1~10 秒", fontSize = 11.sp, color = TextMuted)
+    }
+}
+
+// ============================================================
+// DivinationSettingsCard — 占卜（气运测试冷却时长，v4.3）
+// ============================================================
+
+@Composable
+private fun DivinationSettingsCard(
+    cooldownSec: Float,
+    onCooldownChange: (Float) -> Unit,
+) {
+    SettingsCard("气运测试") {
+        Text(
+            "冷却期间按钮置灰不可点击，底部颜色从左到右逐渐恢复",
+            fontSize = 12.sp,
+            color = TextSecondary,
+        )
+        Spacer(Modifier.height(12.dp))
+
+        Text("冷却秒数", style = MaterialTheme.typography.bodyMedium, color = TextSecondary)
+        Spacer(Modifier.height(4.dp))
+        var cooldownText by remember(cooldownSec) { mutableStateOf(formatFloat(cooldownSec)) }
+        OutlinedTextField(
+            value = cooldownText,
+            onValueChange = { v ->
+                cooldownText = v
+                v.toFloatOrNull()?.let { onCooldownChange(it) }
+            },
+            modifier = Modifier.widthIn(min = 90.dp),
+            singleLine = true,
+            textStyle = MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Serif),
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+            colors = OutlinedTextFieldDefaults.colors(
+                focusedBorderColor = Gold,
+                unfocusedBorderColor = BorderSubtle,
+                focusedTextColor = TextPrimary,
+                unfocusedTextColor = TextPrimary,
+            ),
+        )
+        Spacer(Modifier.height(4.dp))
+        Text("默认 1.5 秒，范围 0~10 秒（0 表示不冷却）", fontSize = 11.sp, color = TextMuted)
     }
 }
 
