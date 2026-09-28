@@ -67,7 +67,10 @@ fun EventPanel(
     modifier: Modifier = Modifier,
     // 计时控制
     timerEnabled: Boolean = false,
-    selectedScore: Float = 0f,
+    // 分数用 StateFlow 传进来而不是传值：拖动分数栏时它每帧都在变，
+    // 若由上层读成 Float 再传下来，上层（MainScreen）会每帧重组整屏；
+    // 传流进来后只有下面计时按钮里的那一个 Text 会重组。
+    scoreFlow: StateFlow<Float>,
     dailyMustDoDeeds: List<DailyMustDoDeed> = emptyList(),
     onStopTimer: (elapsedMs: Long) -> Unit = {},
 ) {
@@ -136,7 +139,6 @@ fun EventPanel(
         Spacer(Modifier.height(6.dp))
         val timerState by TimerService.timerState.collectAsState()
         val context = LocalContext.current
-        val scoreText = if (selectedScore >= 0) "+$selectedScore" else "$selectedScore"
         var displayMs by remember { mutableStateOf(timerState.currentElapsedMs()) }
         LaunchedEffect(timerState.status) {
             displayMs = timerState.currentElapsedMs()
@@ -164,17 +166,12 @@ fun EventPanel(
                             indication = null,
                             enabled = timerEnabled,
                         ) {
-                            TimerService.start(context, selectedScore, selectedEvent ?: "")
+                            TimerService.start(context, scoreFlow.value, selectedEvent ?: "")
                         },
                     contentAlignment = Alignment.Center,
                 ) {
                     if (timerEnabled) {
-                        Text(
-                            text = "▶ 开始计时  $scoreText",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF69f0ae),
-                        )
+                        TimerStartLabel(scoreFlow)
                     } else {
                         Text(
                             text = "选择分数与事件",
@@ -258,6 +255,23 @@ fun EventPanel(
 }
 
 // ===== 图标组件 =====
+
+/**
+ * 计时按钮上的「▶ 开始计时  +2」文字。
+ * 独立成一个 composable，是为了把分数的订阅范围压到这一个 Text：
+ * 拖动分数栏时分数每帧都在变，只有它需要重组。
+ */
+@Composable
+private fun TimerStartLabel(scoreFlow: StateFlow<Float>) {
+    val score by scoreFlow.collectAsState()
+    val scoreText = if (score >= 0) "+$score" else "$score"
+    Text(
+        text = "▶ 开始计时  $scoreText",
+        fontSize = 13.sp,
+        fontWeight = FontWeight.Bold,
+        color = Color(0xFF69f0ae),
+    )
+}
 
 @Composable
 private fun PauseIcon() {

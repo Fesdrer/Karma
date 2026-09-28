@@ -57,7 +57,9 @@ fun ScorePanel(
     axisRangeMax: Float = 6f,
     modifier: Modifier = Modifier,
 ) {
-    val selectedScore by scoreFlow.collectAsState()
+    // 注意：本组件**不**在组合阶段订阅分数（原来的 `collectAsState()` 已下移）。
+    // 拖动分数栏时 `_effectiveScoreState` 每帧都在变，若在这里读它，
+    // 下面整个 Column（含 OutlinedTextField、重置按钮）都会跟着每帧重组。
     Column(
         modifier = modifier
             .border(1.dp, Gold.copy(alpha = 0.3f), RoundedCornerShape(12.dp))
@@ -76,25 +78,9 @@ fun ScorePanel(
         Spacer(Modifier.height(4.dp))
 
         // ===== 当前选中分数显示（始终占位） =====
-        val displayScore = selectedScore
-        val displayText = if (displayScore % 1f == 0f) {
-            (if (displayScore > 0) "+" else "") + displayScore.toInt().toString()
-        } else {
-            (if (displayScore > 0) "+" else "") + String.format("%.1f", displayScore)
-        }
-        val scoreColor = when {
-            displayScore > 0f -> Color(0xFF69f0ae)
-            displayScore < 0f -> Color(0xFFff5252)
-            else -> Color(0xFFa0c4ff)
-        }
-        Text(
-            text = displayText,
-            fontSize = 16.sp,
-            fontWeight = FontWeight.Medium,
-            color = scoreColor,
-            modifier = Modifier.fillMaxWidth(),
-            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
-        )
+        // 单独拆成一个 composable：拖动分数栏时分数每帧都在变，
+        // 只让这一个 Text 重组，别把下面的自定义输入框、重置按钮一起带上。
+        CurrentScoreText(scoreFlow)
         Spacer(Modifier.height(4.dp))
         // ===== 结束选中分数显示 =====
 
@@ -106,7 +92,7 @@ fun ScorePanel(
             contentAlignment = Alignment.Center,
         ) {
             ScoreAxisView(
-                selectedScore = selectedScore,
+                scoreFlow = scoreFlow,
                 onScoreSelected = onScoreSelected,
                 axisFontSize = axisFontSize,
                 axisRangeMin = axisRangeMin,
@@ -175,15 +161,48 @@ fun ScorePanel(
     }
 }
 
+/**
+ * 「当前选中分数」那一行文字。
+ * 独立成一个 composable 的目的：它每帧都要变（拖动分数栏时），
+ * 让订阅范围只覆盖这一个 Text，避免整个 ScorePanel 跟着重组。
+ */
+@Composable
+private fun CurrentScoreText(scoreFlow: StateFlow<Float>) {
+    val displayScore by scoreFlow.collectAsState()
+    val displayText = if (displayScore % 1f == 0f) {
+        (if (displayScore > 0) "+" else "") + displayScore.toInt().toString()
+    } else {
+        (if (displayScore > 0) "+" else "") + String.format("%.1f", displayScore)
+    }
+    val scoreColor = when {
+        displayScore > 0f -> Color(0xFF69f0ae)
+        displayScore < 0f -> Color(0xFFff5252)
+        else -> Color(0xFFa0c4ff)
+    }
+    Text(
+        text = displayText,
+        fontSize = 16.sp,
+        fontWeight = FontWeight.Medium,
+        color = scoreColor,
+        modifier = Modifier.fillMaxWidth(),
+        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+    )
+}
+
 @Composable
 private fun ScoreAxisView(
-    selectedScore: Float,
+    scoreFlow: StateFlow<Float>,
     onScoreSelected: (Float) -> Unit,
     axisFontSize: Float = 22f,
     axisRangeMin: Float = -6f,
     axisRangeMax: Float = 6f,
     modifier: Modifier = Modifier,
 ) {
+    // 只订阅、**不在组合阶段读 .value**：分数变化不会触发本组件重组，
+    // 下面 Canvas 的绘制代码里读 scoreState.value，Compose 只会让这个节点重绘。
+    // 拖动时每帧一次「重组整棵子树」变成每帧一次「重绘一张画布」，这是流畅度的关键。
+    val scoreState = scoreFlow.collectAsState()
+
     // Pre-allocated Paints for tick labels (avoid per-frame allocation in Canvas)
     val leftLabelPaint = remember {
         android.graphics.Paint().apply {
@@ -210,7 +229,8 @@ private fun ScoreAxisView(
             .pointerInput(axisRangeMin, axisRangeMax) {
                 // 拖动中实时吸附到最近的整数或 .5 刻度（只在刻度位置停留），
                 // 松手/取消时再吸附一次，确保最终落在刻度上。
-                var lastRawScore = selectedScore
+                // 这里读 scoreState.value 只是取初值，不是组合期读取，不会造成订阅。
+                var lastRawScore = scoreState.value
                 detectVerticalDragGestures(
                     onDragStart = { offset ->
                         lastRawScore = snapToHalf(
@@ -234,6 +254,9 @@ private fun ScoreAxisView(
                 )
             }
     ) {
+        // 在绘制阶段读分数：只重绘，不重组
+        val selectedScore = scoreState.value
+
         val w = size.width
         val h = size.height
         val densityFactor = density

@@ -84,7 +84,10 @@ fun MainScreen(
         factory = MainViewModel.Factory(appContainer.repository)
     )
     val state by viewModel.uiState.collectAsState()
-    val effectiveScore by viewModel.effectiveScoreState.collectAsState()
+    // 注意：这里**不能**collect effectiveScoreState。
+    // 它在拖动左侧分数栏时每帧都变，在本函数体里读它 = 每帧重组整个主页面
+    // （Header / 三栏 / 事件列表 / 计时按钮 / 页脚全部重来），这才是分数栏拖动卡顿的根因。
+    // 需要它的地方（分数面板、计时按钮文字）各自在最小范围内订阅。
     val selectedMultiplierIndices by viewModel.selectedMultipliersState.collectAsState()
     val context = LocalContext.current
 
@@ -289,7 +292,7 @@ fun MainScreen(
                         .weight(1f)
                         .fillMaxHeight(),
                     timerEnabled = s.hasScoreAndEvent,
-                    selectedScore = effectiveScore,
+                    scoreFlow = viewModel.effectiveScoreState,
                     dailyMustDoDeeds = s.dailyMustDoDeeds,
                     onStopTimer = { elapsedMs ->
                         val ts = TimerService.timerState.value
