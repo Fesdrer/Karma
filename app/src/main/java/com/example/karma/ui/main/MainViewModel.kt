@@ -157,12 +157,14 @@ class MainViewModel(
     // ===== 阶位自证状态 =====
     /** 最新 settings 快照（主动按钮/校验用）。 */
     private var _latestSettings: KarmaSettingsEntity? = null
-    /** 用户普通记录加分标记：onConfirm/计时结算时置 true，跨阶被动检测只在此标记下进行
-     *  （自证奖励/惩罚/逃避造成的分数变化不置标记 → 不会误触发被动弹窗）。 */
-    private var _userScoredFlag = false
     /** 上一次观察的分数与阶位（被动触发比较用）。 */
     private var _lastTotal = 0f
     private var _lastLevel = 0
+    /** 被动自证基线是否已建立：首个 settings 发射只记录基线，
+     *  避免把启动时已有的总分误判成"本次加分"而误弹被动窗。 */
+    private var _proofBaselineReady = false
+    /** 一次性豁免：自证结算自身的奖励加分不触发新的被动自证（避免无限连锁）。 */
+    private var _suppressPassiveProofOnce = false
     /** 防重入：finishProof 同时被检查与超时协程触发时只执行一次。 */
     private var _proofFinishing = false
     /** 被动自证弹窗（加分跨入正阶位时置入，UI 处理后清空）。 */
@@ -210,10 +212,6 @@ class MainViewModel(
                     _cachedNegativeRanks = repository.buildNegativeRanks(settings)
                 }
                 _latestSettings = settings
-                if (_lastLevel == 0) {
-                    _lastTotal = settings.totalScore
-                    _lastLevel = ProofEngine.rankLevelOf(settings.totalScore, settings)
-                }
                 val actualRank = repository.getRank(settings.totalScore, settings)
                 // 自证期间徽章停留在开始自证时的阶位
                 val displayRank = if (settings.proofActive) {
@@ -312,10 +310,12 @@ class MainViewModel(
 
     /**
      * 誓约到期判定（v4.3）：与业力衰减/每日必做一起在 2 秒周期内判定。
-     * 已有弹窗在显示时跳过，避免覆盖用户正在处理的誓约（处理完下一轮再弹下一条）。
+     * 已有弹窗在显示时跳过，避免覆盖用户正在处理的誓约或叠出多个弹窗
+     * （处理完下一轮再弹下一条）。
      */
     private suspend fun checkExpiredBets() {
         if (_expiredBetPrompt.value != null) return
+        if (_pendingPassiveProof.value != null || _proofSetup.value != null || _proofResult.value != null) return
         val s = repository.settings.first()
         repository.getExpiredBets(s).firstOrNull()?.let { _expiredBetPrompt.value = it }
     }
@@ -508,8 +508,7 @@ class MainViewModel(
         _effectiveEventState.value = null
         updateTimerEnabled()
 
-        // 标记用户普通加分（用于跨阶自证被动检测），再写库
-        notifyUserRecord()
+        // 写库（加分跨阶的被动自证由 checkProof 按总分增加统一判定，无需额外标记）
         // 在单个协程中顺序执行，避免两个并发读写互覆盖：
         // markDeedDone 读 settings→改 vis→写；addHistoryEntry 读 settings→改 totalScore→写，
         // 并发时后写入的会覆盖前一个的改动（vis 或 totalScore 丢失）。
@@ -629,14 +628,24 @@ class MainViewModel(
      * 自证判定（每次 settings 变化时调用）：
      * - 自证中：开关关闭 → 强制失败；阶位低于起点 x → 立即失败。
      *   成功只发生在时长结束（超时协程判定 y > x），时长中不提前判成功。
-     * - 非自证中：仅当用户普通记录加分（_userScoredFlag）时检测跨入正阶位 → 弹被动窗
+     * - 非自证中：**任何总分增加**（普通记录、计时结算、誓约了结加分等）导致跨入更高的正阶位时弹被动窗。
+     *   自证结算自身的奖励加分用一次性豁免跳过，避免"成功即再触发"的无限连锁。
      */
     private fun checkProof(s: KarmaSettingsEntity) {
+        // 首个发射只建立基线：启动时既有总分不能当作"本次加分"
+        if (!_proofBaselineReady) {
+            _proofBaselineReady = true
+            _lastTotal = s.totalScore
+            _lastLevel = ProofEngine.rankLevelOf(s.totalScore, s)
+            // 启动时若自证仍在进行：开关已关或阶位已跌破起点 → 直接判失败
+            if (s.proofActive && (!s.proofEnabled ||
+                    ProofEngine.isDowngraded(s.totalScore, s, s.proofStartRankLevel))) {
+                finishProof(s, success = false)
+            }
+            return
+        }
         if (s.proofActive) {
-            // 自证中：用户加分标记作废——加分行为由自证判定处理（降级/时长结束），
-            // 不再触发被动弹窗；否则 finishProof 重置 proofActive 后残留的 flag
-            // 会让下一次 settings 发射误走非自证分支弹被动窗。
-            _userScoredFlag = false
+            // 自证进行中不弹被动窗：加分行为由自证判定处理（降级/时长结束）
             if (!s.proofEnabled) {
                 finishProof(s, success = false)
                 return
@@ -648,14 +657,13 @@ class MainViewModel(
             }
             // 注意：不在此处判成功——达标必须撑到时长结束（超时协程判定），
             // 否则"登上了就成功"会绕过保持能力的考验。
-        } else if (_userScoredFlag) {
-            // v4.3：只有总分实际变化（用户加分写库）才消费标记。
-            // 每日必做的 markDeedDone 会先写 settings 但总分未变，
-            // 此时保留标记，等真正加分的发射再做跨阶判定。
-            if (s.totalScore != _lastTotal) {
-                _userScoredFlag = false
+        } else if (s.totalScore > _lastTotal) {
+            // 任何加分都判定是否跨入更高正阶位
+            if (_suppressPassiveProofOnce) {
+                _suppressPassiveProofOnce = false   // 本次加分来自自证奖励，豁免一次
+            } else {
                 val newLevel = ProofEngine.rankLevelOf(s.totalScore, s)
-                if (s.proofEnabled && newLevel >= 1 && newLevel > _lastLevel && s.totalScore > _lastTotal) {
+                if (s.proofEnabled && newLevel >= 1 && newLevel > _lastLevel) {
                     _pendingPassiveProof.value = PassiveProofPrompt(_lastLevel, newLevel)
                 }
             }
@@ -669,10 +677,9 @@ class MainViewModel(
     private fun finishProof(s: KarmaSettingsEntity, success: Boolean) {
         if (_proofFinishing) return
         _proofFinishing = true
-        // 结束自证时清除残留的用户加分标记：
-        // 若自证以达标/降级/超时结束，而最后一次加分的 flag 尚未被消费，
-        // 重置 proofActive 后 settings 再发射会走非自证分支误弹被动窗。
-        _userScoredFlag = false
+        // 结算本身的奖励加分做一次性豁免：写库后总分增加，若不豁免会立刻再弹一次被动自证
+        val delta = if (success) s.proofReward else -s.proofPenalty
+        if (delta > 0f) _suppressPassiveProofOnce = true
         val endRank = ProofEngine.rankLevelOf(s.totalScore, s)
         _proofResult.value = ProofResult(success, s.proofStartRankLevel, endRank, s.proofReward, s.proofPenalty)
         viewModelScope.launch {
@@ -687,7 +694,6 @@ class MainViewModel(
                     proofReward = 0f,
                     proofPenalty = 0f,
                 ))
-                val delta = if (success) s.proofReward else -s.proofPenalty
                 if (delta != 0f) {
                     repository.addHistoryEntry(delta, if (success) "自证成功" else "自证失败", "record")
                 }
@@ -695,11 +701,6 @@ class MainViewModel(
                 _proofFinishing = false
             }
         }
-    }
-
-    /** 标记一次用户普通记录加分（确认/计时结算），用于跨阶自证被动检测。 */
-    fun notifyUserRecord() {
-        _userScoredFlag = true
     }
 
     class Factory(private val repository: KarmaRepository) : ViewModelProvider.Factory {
