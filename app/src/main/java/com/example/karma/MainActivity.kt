@@ -1,5 +1,6 @@
 package com.example.karma
 
+import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,12 +9,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.core.view.WindowCompat
 import androidx.navigation.compose.rememberNavController
 import com.example.karma.ui.navigation.KarmaNavGraph
+import com.example.karma.ui.navigation.Screen
 import com.example.karma.ui.theme.KarmaTheme
+import com.example.karma.ui.widget.DailyMustDoWidgetProvider
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -31,6 +37,9 @@ class MainActivity : ComponentActivity() {
 
         val appContainer = (application as KarmaApplication).container
 
+        // 桌面组件点击进入（冷启动路径）：先登记请求，再建 UI
+        handleWidgetDeedIntent(intent)
+
         setContent {
             KarmaTheme(repository = appContainer.repository) {
                 Surface(
@@ -45,6 +54,22 @@ class MainActivity : ComponentActivity() {
                             .imePadding(),
                     ) {
                         val navController = rememberNavController()
+
+                        // 桌面组件点击时把界面拉回首页：
+                        // 用户若停在设置/誓约等子页，MainScreen 未被组合，请求不会被消费，
+                        // 故收到请求先导航回 Main（已在 Main 时 launchSingleTop 使其成为空操作）。
+                        val widgetRequest by appContainer.widgetDeedRequest.collectAsState()
+                        LaunchedEffect(widgetRequest) {
+                            if (widgetRequest != null) {
+                                navController.navigate(Screen.Main.route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        inclusive = false
+                                    }
+                                    launchSingleTop = true
+                                }
+                            }
+                        }
+
                         KarmaNavGraph(
                             navController = navController,
                             appContainer = appContainer,
@@ -53,5 +78,26 @@ class MainActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    /**
+     * App 已开着时点桌面组件走这里（singleTask 不重建 Activity，只回调 onNewIntent）。
+     * **必须与 onCreate 走同一处理函数**，否则「App 开着时点组件不加分」。
+     */
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        handleWidgetDeedIntent(intent)
+    }
+
+    /**
+     * 统一处理桌面组件点击：取出 deed 名称登记到容器，并立刻清空 extra，
+     * 防止 Activity 重建（旋屏、被系统回收后恢复）时重复消费同一次点击。
+     */
+    private fun handleWidgetDeedIntent(intent: Intent?) {
+        val deedName = intent?.getStringExtra(DailyMustDoWidgetProvider.EXTRA_DEED_NAME) ?: return
+        intent.removeExtra(DailyMustDoWidgetProvider.EXTRA_DEED_NAME)
+        setIntent(Intent())
+        (application as KarmaApplication).container.requestWidgetDeedCompletion(deedName)
     }
 }
