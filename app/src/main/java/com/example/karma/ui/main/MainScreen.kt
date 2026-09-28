@@ -120,7 +120,7 @@ fun MainScreen(
         // step 1：恢复上次未结束的计时
         val saved = appContainer.repository.loadTimerState()
         if (saved != null && (saved.status == TimerStatus.RUNNING || saved.status == TimerStatus.PAUSED)) {
-            TimerService.restoreTimerState(saved, SystemClock.elapsedRealtime())
+            TimerService.restoreTimerState(saved, System.currentTimeMillis())   // v4.3：墙钟时间
             if (saved.status == TimerStatus.RUNNING) {
                 val intent = android.content.Intent(context, com.example.karma.ui.timer.TimerService::class.java).apply { action = "RESTORE" }
                 if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {

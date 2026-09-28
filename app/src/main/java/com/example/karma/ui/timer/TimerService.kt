@@ -8,7 +8,6 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.IBinder
-import android.os.SystemClock
 import androidx.core.app.NotificationCompat
 import com.example.karma.KarmaApplication
 import com.example.karma.MainActivity
@@ -67,16 +66,17 @@ class TimerService : Service() {
         /**
          * 从 Room 恢复计时状态。
          * 如果 timer 之前在 RUNNING 状态，回填离线经过的时间。
+         * v4.3：改用墙钟时间（System.currentTimeMillis），设备重启后仍连续。
          */
-        fun restoreTimerState(saved: TimerState, currentElapsed: Long) {
+        fun restoreTimerState(saved: TimerState, currentWallMs: Long) {
             var restored = saved
             if (saved.status == TimerStatus.RUNNING) {
-                // 回填离线时间（设备未重启的情况）
-                val offlineMs = currentElapsed - saved.resumeElapsed
+                // 回填离线时间（含设备重启场景）
+                val offlineMs = currentWallMs - saved.resumeElapsed
                 if (offlineMs > 0 && offlineMs < 365L * 24 * 60 * 60 * 1000L) {
                     restored = saved.copy(accumulatedMs = saved.accumulatedMs + offlineMs)
                 }
-                restored = restored.copy(resumeElapsed = currentElapsed)
+                restored = restored.copy(resumeElapsed = currentWallMs)
             }
             _timerState.value = restored
         }
@@ -135,7 +135,7 @@ class TimerService : Service() {
 
     private fun startTiming(score: Float, event: String) {
         if (_timerState.value.status == TimerStatus.RUNNING || _timerState.value.status == TimerStatus.PAUSED) return
-        val now = SystemClock.elapsedRealtime()
+        val now = System.currentTimeMillis()   // v4.3：墙钟时间戳
         _timerState.value = TimerState(
             status = TimerStatus.RUNNING,
             startElapsed = now,
@@ -165,7 +165,7 @@ class TimerService : Service() {
         if (state.status != TimerStatus.PAUSED) return
         _timerState.value = state.copy(
             status = TimerStatus.RUNNING,
-            resumeElapsed = SystemClock.elapsedRealtime(),
+            resumeElapsed = System.currentTimeMillis(),   // v4.3：墙钟时间戳
         )
         startTick()
     }
