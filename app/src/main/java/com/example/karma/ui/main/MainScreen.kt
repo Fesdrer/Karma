@@ -20,7 +20,12 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.material3.SnackbarHost
@@ -32,12 +37,19 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.KarmaSettingsEntity
+import com.example.karma.data.repository.KarmaRepository
+import com.example.karma.ui.theme.Gold
+import com.example.karma.ui.theme.TextPrimary
+import com.example.karma.ui.theme.TextSecondary
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewModelScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.karma.di.AppContainer
@@ -80,6 +92,8 @@ fun MainScreen(
     val pendingPassiveProof by viewModel.pendingPassiveProof.collectAsState()
     val proofSetup by viewModel.proofSetup.collectAsState()
     val proofResult by viewModel.proofResult.collectAsState()
+    // 誓约到期弹窗（v4.3）
+    val expiredBetPrompt by viewModel.expiredBetPrompt.collectAsState()
 
     // 经文启动画面阶段（进程级标志，导航回来不重复显示）
     var splashDone by remember { mutableStateOf(splashShown) }
@@ -367,6 +381,76 @@ fun MainScreen(
             onDismiss = { viewModel.clearProofResult() },
         )
     }
+    // 誓约到期：询问是否完成（v4.3，完成 +成功分 / 未完成 −失败分，均移除誓约）
+    expiredBetPrompt?.let { bet ->
+        BetExpiryPromptDialog(
+            bet = bet,
+            onComplete = { viewModel.onExpiredBetComplete() },
+            onFail = { viewModel.onExpiredBetFail() },
+        )
+    }
+}
+
+/**
+ * 誓约到期弹窗（v4.3）：到期后强制做一次结算选择。
+ * 点弹窗外与返回键均不关闭，避免誓约一直处于到期未结算状态。
+ */
+@Composable
+private fun BetExpiryPromptDialog(
+    bet: Bet,
+    onComplete: () -> Unit,
+    onFail: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { },
+        title = {
+            Text("誓约到期", fontFamily = FontFamily.Serif, color = Gold)
+        },
+        text = {
+            Column {
+                Text(
+                    text = bet.content,
+                    fontFamily = FontFamily.Serif,
+                    fontSize = 15.sp,
+                    color = TextPrimary,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "终止时间：${KarmaRepository.formatDateTime(bet.deadlineAt)}",
+                    fontFamily = FontFamily.Serif,
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                )
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = "是否已完成？完成 +${formatBetPoints(bet.successPoints)} 分，未完成 -${formatBetPoints(bet.failurePoints)} 分",
+                    fontFamily = FontFamily.Serif,
+                    fontSize = 13.sp,
+                    color = TextSecondary,
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = onComplete,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = Color(0xFF4CAF50),
+                    contentColor = Color.Black,
+                ),
+            ) { Text("完成", fontFamily = FontFamily.Serif) }
+        },
+        dismissButton = {
+            TextButton(onClick = onFail) {
+                Text("未完成", fontFamily = FontFamily.Serif, color = Color(0xFFe53935))
+            }
+        },
+        containerColor = Color(0xFF1A1A1A),
+    )
+}
+
+/** 誓约分数格式化：整数去小数点（3 而非 3.0）。 */
+private fun formatBetPoints(value: Float): String {
+    return if (value % 1f == 0f) value.toInt().toString() else value.toString()
 }
 
 /**

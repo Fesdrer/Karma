@@ -3,6 +3,7 @@ package com.example.karma.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.example.karma.data.local.entity.Bet
 import com.example.karma.data.local.entity.DailyMustDoDeed
 import com.example.karma.data.local.entity.KarmaSettingsEntity
 import com.example.karma.data.model.Fraction
@@ -173,6 +174,9 @@ class MainViewModel(
     /** 自证结果（成功/失败弹窗）。 */
     private val _proofResult = MutableStateFlow<ProofResult?>(null)
     val proofResult: StateFlow<ProofResult?> = _proofResult.asStateFlow()
+    /** 誓约到期弹窗（v4.3：与衰减/每日必做一起判定；UI 处理完成后清空）。 */
+    private val _expiredBetPrompt = MutableStateFlow<Bet?>(null)
+    val expiredBetPrompt: StateFlow<Bet?> = _expiredBetPrompt.asStateFlow()
 
     /** uiState 初始为 null，首帧不渲染。combine 首次发射后一次性显示全部内容。 */
     private val _uiState = MutableStateFlow<MainUiState?>(null)
@@ -289,10 +293,55 @@ class MainViewModel(
                 kotlinx.coroutines.delay(2000)
                 try {
                     repository.applyDecay()
+                    checkExpiredBets()
                 } catch (e: Exception) {
                     // 单次失败不中断轮询（下轮重试）；记录日志便于定位
                     android.util.Log.e("KarmaDecay", "周期衰减判定失败", e)
                 }
+            }
+        }
+        // 誓约到期：打开应用时立即判定一次（v4.3）
+        viewModelScope.launch {
+            try {
+                checkExpiredBets()
+            } catch (e: Exception) {
+                android.util.Log.e("KarmaBet", "誓约到期判定失败", e)
+            }
+        }
+    }
+
+    /**
+     * 誓约到期判定（v4.3）：与业力衰减/每日必做一起在 2 秒周期内判定。
+     * 已有弹窗在显示时跳过，避免覆盖用户正在处理的誓约（处理完下一轮再弹下一条）。
+     */
+    private suspend fun checkExpiredBets() {
+        if (_expiredBetPrompt.value != null) return
+        val s = repository.settings.first()
+        repository.getExpiredBets(s).firstOrNull()?.let { _expiredBetPrompt.value = it }
+    }
+
+    /** 誓约到期：选择「完成」→ +成功分并移除该誓约。 */
+    fun onExpiredBetComplete() {
+        val bet = _expiredBetPrompt.value ?: return
+        _expiredBetPrompt.value = null
+        viewModelScope.launch {
+            try {
+                repository.resolveBet(bet, true)
+            } catch (e: Exception) {
+                android.util.Log.e("KarmaBet", "誓约结算失败", e)
+            }
+        }
+    }
+
+    /** 誓约到期：选择「未完成」→ −失败分并移除该誓约。 */
+    fun onExpiredBetFail() {
+        val bet = _expiredBetPrompt.value ?: return
+        _expiredBetPrompt.value = null
+        viewModelScope.launch {
+            try {
+                repository.resolveBet(bet, false)
+            } catch (e: Exception) {
+                android.util.Log.e("KarmaBet", "誓约结算失败", e)
             }
         }
     }
