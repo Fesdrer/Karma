@@ -95,6 +95,15 @@ fun MainScreen(
     // 誓约到期弹窗（v4.3）
     val expiredBetPrompt by viewModel.expiredBetPrompt.collectAsState()
 
+    // 桌面组件点击（v4.3）：交给 ViewModel 处理（标记完成 + 加分 + 写历史，自证由其内部判定），
+    // 处理完按 nonce 清空请求，避免重复消费。
+    val widgetDeedRequest by appContainer.widgetDeedRequest.collectAsState()
+    LaunchedEffect(widgetDeedRequest) {
+        val request = widgetDeedRequest ?: return@LaunchedEffect
+        viewModel.completeDailyMustDoFromWidget(request.name)
+        appContainer.consumeWidgetDeedRequest(request.nonce)
+    }
+
     // 经文启动画面阶段（进程级标志，导航回来不重复显示）
     var splashDone by remember { mutableStateOf(splashShown) }
     val settings by appContainer.repository.settings.collectAsState(initial = KarmaSettingsEntity())

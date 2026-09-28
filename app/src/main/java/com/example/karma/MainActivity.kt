@@ -55,18 +55,27 @@ class MainActivity : ComponentActivity() {
                     ) {
                         val navController = rememberNavController()
 
+                        // 每日必做 vis / 条目变化后刷新桌面组件（组件未添加时 refreshAll 内部直接返回）。
+                        // 放在 Activity 层而非 MainScreen：用户停在设置等子页时 MainScreen 未组合，
+                        // 此时衰减跨天重置 vis、或设置页改配置，也需要刷新组件。
+                        val settings by appContainer.repository.settings.collectAsState(initial = null)
+                        LaunchedEffect(settings?.dailyMustDoDeeds) {
+                            DailyMustDoWidgetProvider.refreshAll(this@MainActivity)
+                        }
+
                         // 桌面组件点击时把界面拉回首页：
                         // 用户若停在设置/誓约等子页，MainScreen 未被组合，请求不会被消费，
-                        // 故收到请求先导航回 Main（已在 Main 时 launchSingleTop 使其成为空操作）。
+                        // 故收到请求先导航回 Main（已在 Main 时直接返回，冷启动也无需导航）。
                         val widgetRequest by appContainer.widgetDeedRequest.collectAsState()
                         LaunchedEffect(widgetRequest) {
-                            if (widgetRequest != null) {
-                                navController.navigate(Screen.Main.route) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        inclusive = false
-                                    }
-                                    launchSingleTop = true
-                                }
+                            if (widgetRequest == null) return@LaunchedEffect
+                            // currentDestination 为 null 表示 NavHost 尚未就绪（首帧）：此时起始页就是 Main，
+                            // 请求会由 MainScreen 自行消费，不必也不应访问 graph（否则可能抛 setGraph 未调用）。
+                            val current = navController.currentDestination?.route ?: return@LaunchedEffect
+                            if (current == Screen.Main.route) return@LaunchedEffect
+                            navController.navigate(Screen.Main.route) {
+                                popUpTo(Screen.Main.route) { inclusive = false }
+                                launchSingleTop = true
                             }
                         }
 
