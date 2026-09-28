@@ -66,7 +66,6 @@ import com.example.karma.ui.divination.model.ShiChen
 import kotlin.random.Random
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 
 @Composable
 fun DivinationScreen(
