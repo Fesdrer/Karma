@@ -3,6 +3,7 @@ package com.example.karma.ui.main.components
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Box
@@ -50,6 +51,7 @@ fun ScorePanel(
     scoreFlow: StateFlow<Float>,
     onScoreSelected: (Float) -> Unit,
     onCustomScoreChanged: (String) -> Unit,
+    onReset: () -> Unit = {},
     axisFontSize: Float = 22f,
     axisRangeMin: Float = -6f,
     axisRangeMax: Float = 6f,
@@ -146,6 +148,30 @@ fun ScorePanel(
             ),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        Spacer(Modifier.height(6.dp))
+
+        // ===== 重置（v4.3）：选中的加减分归 0、事件取消选中、乘法取消选中 =====
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(7.dp))
+                .background(Color(0xFF3A1F1F))
+                .border(1.dp, Color(0xFFe53935).copy(alpha = 0.6f), RoundedCornerShape(7.dp))
+                .clickable {
+                    customText = ""   // 一并清空本组件内的自定义分数输入框
+                    onReset()
+                }
+                .padding(vertical = 7.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(
+                text = "重置",
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Bold,
+                color = Color(0xFFe53935),
+            )
+        }
     }
 }
 

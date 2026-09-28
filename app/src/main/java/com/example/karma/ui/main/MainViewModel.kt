@@ -355,6 +355,23 @@ class MainViewModel(
         updateTimerEnabled()
     }
 
+    /**
+     * 重置当前选择（v4.3，左栏分数面板底部「重置」按钮）：
+     * 选中的加减分归 0、事件取消选中、乘法按钮取消选中。不影响业力总分。
+     */
+    fun resetSelection() {
+        _selectedScore.value = 0f
+        _customScore.value = null
+        _selectedEvent.value = null
+        _customGoodDeedEvent.value = null
+        _customBadDeedEvent.value = null
+        _customGoodResultEvent.value = null
+        _selectedMultipliers.value = emptySet()
+        _effectiveScoreState.value = 0f
+        _effectiveEventState.value = null
+        updateTimerEnabled()
+    }
+
     fun selectEvent(event: String) {
         _selectedEvent.value = event
         _customGoodDeedEvent.value = null

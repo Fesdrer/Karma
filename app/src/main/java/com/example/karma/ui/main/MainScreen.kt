@@ -216,6 +216,7 @@ fun MainScreen(
                         scoreFlow = viewModel.effectiveScoreState,
                         onScoreSelected = { viewModel.selectScore(it) },
                         onCustomScoreChanged = { viewModel.onCustomScoreChanged(it) },
+                        onReset = { viewModel.resetSelection() },
                         axisFontSize = s.scoreAxisFontSize,
                         axisRangeMin = s.scoreAxisRangeMin,
                         axisRangeMax = s.scoreAxisRangeMax,
