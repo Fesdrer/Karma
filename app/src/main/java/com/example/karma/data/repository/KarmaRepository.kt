@@ -27,6 +27,18 @@ class KarmaRepository(
                 cal.get(Calendar.MONTH) + 1,
                 cal.get(Calendar.DAY_OF_MONTH))
         }
+
+        /** 将时间戳格式化为 "yyyy-MM-dd HH:mm:ss"（v4.3：誓约终止时间展示）。供外部复用。 */
+        fun formatDateTime(timestamp: Long): String {
+            val cal = Calendar.getInstance().apply { timeInMillis = timestamp }
+            return String.format("%04d-%02d-%02d %02d:%02d:%02d",
+                cal.get(Calendar.YEAR),
+                cal.get(Calendar.MONTH) + 1,
+                cal.get(Calendar.DAY_OF_MONTH),
+                cal.get(Calendar.HOUR_OF_DAY),
+                cal.get(Calendar.MINUTE),
+                cal.get(Calendar.SECOND))
+        }
     }
 
     // ---- History ----
@@ -152,7 +164,7 @@ class KarmaRepository(
         addHistoryEntry(
             delta = 0f,
             // 四项分 4 行显示，不用分隔符（历史显示支持换行，祈福记录已有 \n 先例）
-            event = "誓约：${bet.content}\n${bet.deadline}\n+${formatPoints(bet.successPoints)}\n-${formatPoints(bet.failurePoints)}",
+            event = "誓约：${bet.content}\n${formatDateTime(bet.deadlineAt)}\n+${formatPoints(bet.successPoints)}\n-${formatPoints(bet.failurePoints)}",
             type = "bet",
         )
     }
@@ -167,9 +179,18 @@ class KarmaRepository(
         settingsDao.upsertSettings(settings.copy(bets = settings.bets.filter { it != bet }))
         addHistoryEntry(
             delta = delta,
-            event = "誓约结果：${bet.content}\n${bet.deadline}\n${if (success) "成功" else "失败"}",
+            event = "誓约结果：${bet.content}\n${formatDateTime(bet.deadlineAt)}\n${if (success) "成功" else "失败"}",
             type = "bet_result",
         )
+    }
+
+    /**
+     * 已到期的誓约（v4.3）：终止时间已过且在有效时间戳范围内。
+     * 旧数据 deadlineAt=0（无时间）不参与判定，避免误弹。
+     */
+    fun getExpiredBets(settings: KarmaSettingsEntity): List<Bet> {
+        val now = System.currentTimeMillis()
+        return settings.bets.filter { it.deadlineAt in 1L..now }
     }
 
     // ---- Timer Persistence ----
