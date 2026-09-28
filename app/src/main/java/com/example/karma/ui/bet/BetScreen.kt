@@ -1,5 +1,6 @@
 package com.example.karma.ui.bet
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,14 +20,17 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -34,7 +38,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -47,11 +53,13 @@ import com.example.karma.data.repository.KarmaRepository
 import com.example.karma.di.AppContainer
 import com.example.karma.ui.components.BackButton
 import com.example.karma.ui.components.DialogEntranceContainer
+import com.example.karma.ui.components.ScrollPicker
 import com.example.karma.ui.theme.BorderSubtle
 import com.example.karma.ui.theme.Gold
 import com.example.karma.ui.theme.ScoreBtnBg
 import com.example.karma.ui.theme.TextPrimary
 import com.example.karma.ui.theme.TextSecondary
+import java.util.Calendar
 
 /** ✔ 成功（绿色系） */
 private val SuccessGreen = Color(0xFF4CAF50)
@@ -159,8 +167,8 @@ fun BetScreen(
     if (showNewBetDialog) {
         NewBetDialog(
             onDismiss = { showNewBetDialog = false },
-            onConfirm = { content, deadline, success, failure ->
-                viewModel.addBet(content, deadline, success, failure)
+            onConfirm = { content, deadlineAt, success, failure ->
+                viewModel.addBet(content, deadlineAt, success, failure)
                 showNewBetDialog = false
             },
         )
@@ -205,7 +213,7 @@ private fun BetRow(
         Spacer(Modifier.width(8.dp))
 
         Text(
-            text = bet.deadline,
+            text = KarmaRepository.formatDateTime(bet.deadlineAt),
             fontSize = 12.sp,
             color = TextSecondary,
             maxLines = 1,
@@ -241,20 +249,22 @@ private fun BetRow(
     }
 }
 
-/** 新建誓约表单弹窗：四项全合法前「确定」禁用。 */
+/** 新建誓约表单弹窗：内容/时间/两个分数全合法前「确定」禁用。 */
 @Composable
 private fun NewBetDialog(
     onDismiss: () -> Unit,
-    onConfirm: (content: String, deadline: String, success: Float, failure: Float) -> Unit,
+    onConfirm: (content: String, deadlineAt: Long, success: Float, failure: Float) -> Unit,
 ) {
     var content by remember { mutableStateOf("") }
-    var deadline by remember { mutableStateOf("") }
+    // v4.3：终止时间改为滚轮选择，默认当前时间
+    var deadlineAt by remember { mutableStateOf(System.currentTimeMillis()) }
+    var showTimePicker by remember { mutableStateOf(false) }
     var successText by remember { mutableStateOf("") }
     var failureText by remember { mutableStateOf("") }
 
     val success = successText.toFloatOrNull()
     val failure = failureText.toFloatOrNull()
-    val valid = content.isNotBlank() && deadline.isNotBlank() &&
+    val valid = content.isNotBlank() &&
         success != null && success > 0f &&
         failure != null && failure > 0f
 
@@ -286,13 +296,36 @@ private fun NewBetDialog(
             )
             Spacer(Modifier.height(12.dp))
 
-            FormField(
-                label = "时间期限",
-                value = deadline,
-                onValueChange = { deadline = it },
-                placeholder = "如：本周内",
-                imeAction = ImeAction.Next,
-            )
+            // v4.3：终止时间（点击弹滚轮选择，默认当前时间）
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "终止时间",
+                    fontSize = 13.sp,
+                    color = Color(0xFF888888),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(4.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(ScoreBtnBg)
+                        .border(1.dp, BorderSubtle, RoundedCornerShape(10.dp))
+                        .clickable { showTimePicker = true }
+                        .padding(horizontal = 12.dp, vertical = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = KarmaRepository.formatDateTime(deadlineAt),
+                        fontSize = 16.sp,
+                        color = Color(0xFFe0e0e0),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text("修改", fontSize = 13.sp, color = Color(0xFFa0c4ff))
+                }
+                Spacer(Modifier.height(4.dp))
+                Text("到期后回到首页会弹出提示，选择是否完成", fontSize = 11.sp, color = Color(0xFF666666))
+            }
             Spacer(Modifier.height(12.dp))
 
             FormField(
@@ -332,7 +365,7 @@ private fun NewBetDialog(
                         val s = successText.toFloatOrNull()
                         val f = failureText.toFloatOrNull()
                         if (s != null && f != null) {
-                            onConfirm(content.trim(), deadline.trim(), s, f)
+                            onConfirm(content.trim(), deadlineAt, s, f)
                         }
                     },
                     enabled = valid,
@@ -347,6 +380,150 @@ private fun NewBetDialog(
                 }
             }
         }
+    }
+
+    // 终止时间选择（v4.3）
+    if (showTimePicker) {
+        BetTimePickerDialog(
+            initialAt = deadlineAt,
+            onConfirm = { deadlineAt = it },
+            onDismiss = { showTimePicker = false },
+        )
+    }
+}
+
+/**
+ * 终止时间选择弹窗（v4.3）：第一行 年/月/日，第二行 时/分/秒（仿业力衰减的滚轮设置）。
+ * 年月日不联动（日固定 1~31），确定时校验合法性——如 2 月 30 日弹错误提示不关闭。
+ */
+@Composable
+private fun BetTimePickerDialog(
+    initialAt: Long,
+    onConfirm: (Long) -> Unit,
+    onDismiss: () -> Unit,
+) {
+    val context = LocalContext.current
+    val cal = remember(initialAt) { Calendar.getInstance().apply { timeInMillis = initialAt } }
+    var year by remember { mutableIntStateOf(cal.get(Calendar.YEAR)) }
+    var month by remember { mutableIntStateOf(cal.get(Calendar.MONTH) + 1) }
+    var day by remember { mutableIntStateOf(cal.get(Calendar.DAY_OF_MONTH)) }
+    var hour by remember { mutableIntStateOf(cal.get(Calendar.HOUR_OF_DAY)) }
+    var minute by remember { mutableIntStateOf(cal.get(Calendar.MINUTE)) }
+    var second by remember { mutableIntStateOf(cal.get(Calendar.SECOND)) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("选择终止时间", fontFamily = FontFamily.Serif, color = Gold) },
+        text = {
+            Column {
+                // 第一行：年 / 月 / 日
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ScrollPicker(
+                        range = 2024..2100,
+                        selected = year,
+                        onSelected = { year = it },
+                        modifier = Modifier.weight(1.4f),
+                    )
+                    PickerUnit("年")
+                    ScrollPicker(
+                        range = 1..12,
+                        selected = month,
+                        onSelected = { month = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                    PickerUnit("月")
+                    ScrollPicker(
+                        range = 1..31,
+                        selected = day,
+                        onSelected = { day = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                    PickerUnit("日")
+                }
+                Spacer(Modifier.height(8.dp))
+                // 第二行：时 / 分 / 秒
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    ScrollPicker(
+                        range = 0..23,
+                        selected = hour,
+                        onSelected = { hour = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                    PickerUnit("时")
+                    ScrollPicker(
+                        range = 0..59,
+                        selected = minute,
+                        onSelected = { minute = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                    PickerUnit("分")
+                    ScrollPicker(
+                        range = 0..59,
+                        selected = second,
+                        onSelected = { second = it },
+                        modifier = Modifier.weight(1f),
+                    )
+                    PickerUnit("秒")
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val maxDay = daysInMonth(year, month)
+                    if (day > maxDay) {
+                        Toast.makeText(
+                            context,
+                            "${year}年${month}月没有${day}日，请重新选择",
+                            Toast.LENGTH_SHORT,
+                        ).show()
+                    } else {
+                        val picked = Calendar.getInstance().apply {
+                            set(Calendar.YEAR, year)
+                            set(Calendar.MONTH, month - 1)
+                            set(Calendar.DAY_OF_MONTH, day)
+                            set(Calendar.HOUR_OF_DAY, hour)
+                            set(Calendar.MINUTE, minute)
+                            set(Calendar.SECOND, second)
+                            set(Calendar.MILLISECOND, 0)
+                        }
+                        onConfirm(picked.timeInMillis)
+                        onDismiss()
+                    }
+                },
+                colors = ButtonDefaults.buttonColors(containerColor = Gold, contentColor = Color.Black),
+            ) { Text("确定") }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text("取消", color = TextSecondary) }
+        },
+        containerColor = Color(0xFF1A1A1A),
+    )
+}
+
+/** 滚轮右侧的单位文字（年/月/日 时/分/秒）。 */
+@Composable
+private fun PickerUnit(text: String) {
+    Text(
+        text = text,
+        fontSize = 14.sp,
+        color = TextSecondary,
+        modifier = Modifier.padding(horizontal = 4.dp),
+    )
+}
+
+/** 该年月的天数（用于校验 2 月 30 日等非法日期）。 */
+private fun daysInMonth(year: Int, month: Int): Int {
+    return when (month) {
+        1, 3, 5, 7, 8, 10, 12 -> 31
+        4, 6, 9, 11 -> 30
+        else -> if ((year % 4 == 0 && year % 100 != 0) || year % 400 == 0) 29 else 28
     }
 }
 
@@ -417,7 +594,7 @@ private fun BetDetailDialog(
 
             DetailRow("内容", bet.content)
             Spacer(Modifier.height(10.dp))
-            DetailRow("期限", bet.deadline)
+            DetailRow("终止时间", KarmaRepository.formatDateTime(bet.deadlineAt))
             Spacer(Modifier.height(10.dp))
             DetailRow("成功加分", "+${formatPoints(bet.successPoints)}")
             Spacer(Modifier.height(10.dp))

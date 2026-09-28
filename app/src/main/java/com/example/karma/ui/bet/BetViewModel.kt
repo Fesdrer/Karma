@@ -24,9 +24,9 @@ class BetViewModel(
         }
     }
 
-    fun addBet(content: String, deadline: String, success: Float, failure: Float) {
+    fun addBet(content: String, deadlineAt: Long, success: Float, failure: Float) {
         viewModelScope.launch {
-            repository.addBet(Bet(content, deadline, success, failure, System.currentTimeMillis()))
+            repository.addBet(Bet(content, deadlineAt, success, failure, System.currentTimeMillis()))
         }
     }
 
