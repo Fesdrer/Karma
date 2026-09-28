@@ -11,12 +11,25 @@ import com.example.karma.data.model.TimerState
 import com.example.karma.data.model.TimerStatus
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.util.Calendar
 
 class KarmaRepository(
     private val historyDao: HistoryEntryDao,
     private val settingsDao: KarmaSettingsDao,
 ) {
+    /**
+     * settings 表「读快照 → 计算 → 写回」序列的串行锁。
+     *
+     * 这些方法都不是单条 SQL 原子操作，并发执行时后写入者会用**旧快照**覆盖前者：
+     * 「组件点圆圈写库」与 `KarmaApplication.onCreate` 里启动补扣的 `applyDecay`
+     * 在冷启动那一刻天然并发，`applyDecay` 末尾的 `updateDecayResult` 会把刚写好的
+     * vis=1 与加分一起回滚掉（表现为：点了圆圈，条目又出现、分数没涨、自证窗不弹）。
+     * 因此把这两段序列用同一把锁串起来。
+     */
+    private val settingsWriteMutex = Mutex()
+
     companion object {
         private const val MAX_HISTORY = 2000
 
@@ -149,15 +162,25 @@ class KarmaRepository(
     }
 
     /**
-     * 桌面组件点圆圈（v4.3）：标记完成 + 按善业默认分加分 + 写一条历史。
+     * 桌面组件点圆圈（v4.3）：**先 vis=1 → 再加分 → 最后判断是否需要弹被动自证窗**。
      *
-     * 由组件广播接收器在本进程内直接调用，**不经过 App UI**，因此不会打开 App。
+     * 顺序是需求本身，不能调换：先把该 deed 标记为今日已完成，再按善业默认分加分并写一条历史，
+     * 最后拿**写库后**的真实总分重新算阶位，与加分前的阶位比较。
      * 幂等：已完成（vis != 0）或非每日必做条目直接忽略，重复点击不会重复加分。
      *
-     * @return 本次加分若跨入更高的正阶位，返回「加分前阶位 to 加分后阶位」；否则返回 null。
-     *         调用方据此决定是否打开 App 弹被动自证窗（自证窗必须由 App UI 呈现）。
+     * 不加分也照样返回 null 的两种情况：自证开关关着；或者**此刻正在自证中**。
+     * 后者与 App 内 `checkProof` 的规则一致——正在进行的那个自证还没结算，
+     * 这时再弹一个被动自证设置窗会把它整个顶掉，那次自证的奖励/惩罚就丢了。
+     * 这个判断用写库后重新读到的快照来做（`after.proofActive`），而不是 ViewModel 里的缓存：
+     * 冷启动时 App 的 settings 流还没发射，缓存还是 null，用它判断会漏掉"正在自证"。
+     *
+     * @return 本次加分若跨入更高的正阶位、且现在可以弹被动自证窗，返回「加分前阶位 to 加分后阶位」；
+     *         否则返回 null。调用方据此决定是否打开 App 弹自证窗（自证窗必须由 App UI 呈现）。
      */
-    suspend fun completeDailyMustDoFromWidget(deedName: String): Pair<Int, Int>? {
+    suspend fun completeDailyMustDoFromWidget(deedName: String): Pair<Int, Int>? =
+        settingsWriteMutex.withLock { completeDailyMustDoFromWidgetLocked(deedName) }
+
+    private suspend fun completeDailyMustDoFromWidgetLocked(deedName: String): Pair<Int, Int>? {
         val settings = settingsDao.getSettingsOnce() ?: return null
         val deed = settings.dailyMustDoDeeds.find { it.name == deedName } ?: return null
         if (deed.vis != 0) return null
@@ -167,17 +190,17 @@ class KarmaRepository(
         val score = settings.goodDeedDefaultScores.getOrElse(index) { 1f }
         val oldLevel = ProofEngine.rankLevelOf(settings.totalScore, settings)
 
-        // 先标记完成（vis）再写历史（总分），顺序执行避免「读 settings→改→写」互相覆盖
+        // ① 先标记完成（vis → 1）
         markDeedDone(deedName)
+        // ② 再加分（写历史 + 原子更新 totalScore 列）
         addHistoryEntry(score, deedName, "record")
 
-        val newTotal = roundToOneDecimal(settings.totalScore + score)
-        val newLevel = ProofEngine.rankLevelOf(newTotal, settings)
-        return if (settings.proofEnabled && newLevel >= 1 && newLevel > oldLevel) {
-            oldLevel to newLevel
-        } else {
-            null
-        }
+        // ③ 重新读库取加分后的真实总分：settings 快照是加分前的，不能拿来算新阶位
+        val after = settingsDao.getSettingsOnce() ?: return null
+        val newLevel = ProofEngine.rankLevelOf(after.totalScore, after)
+        val shouldPromptProof =
+            after.proofEnabled && !after.proofActive && newLevel >= 1 && newLevel > oldLevel
+        return if (shouldPromptProof) oldLevel to newLevel else null
     }
 
     /** 将所有 deed 的 vis 重置为 0（新的一天/配置变更时调用）。 */
@@ -283,8 +306,14 @@ class KarmaRepository(
      * - lastDecayDate 为空 → 设为今天并返回 0（不做追溯扣除）
      * - 日期B = 今天，若当前时间 ≥ 设定时间则为明天
      * - while 日期A < 日期B：按阶位扣分，时间戳统一为当前时间
+     *
+     * 整段与 `completeDailyMustDoFromWidget` 共用 [settingsWriteMutex]：
+     * 末尾的 updateDecayResult 是「用函数开头的旧快照整列覆盖」，
+     * 若与组件点击的 vis/加并发，会把对方刚写的结果回滚。
      */
-    suspend fun applyDecay(): Float {
+    suspend fun applyDecay(): Float = settingsWriteMutex.withLock { applyDecayLocked() }
+
+    private suspend fun applyDecayLocked(): Float {
         val settings = settingsDao.getSettingsOnce() ?: KarmaSettingsEntity()
         if (!settings.decayEnabled) return 0f
 

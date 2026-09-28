@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  WidgetClickActivity 在 Android 12+ 强制启动画面（SplashScreen）里显示的图标：全透明。
+  放一个完全透明的 shape 而不是直接写颜色，避免部分 ROM 把图标渲染成默认应用图标。
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="rectangle">
+    <solid android:color="@android:color/transparent" />
+</shape>

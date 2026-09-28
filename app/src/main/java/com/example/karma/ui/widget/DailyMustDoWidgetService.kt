@@ -49,7 +49,7 @@ class DailyMustDoRemoteViewsFactory(
         val deed = unfinishedDeeds.getOrNull(position) ?: return null
         return RemoteViews(context.packageName, R.layout.widget_daily_must_do_item).apply {
             setTextViewText(R.id.widget_item_name, deed.name)
-            // 点圆圈：携带 deed 名称；与 Provider 的模板 PendingIntent 合并后唤起 MainActivity
+            // 点圆圈：携带 deed 名称；与 Provider 的模板 PendingIntent 合并后落到 WidgetClickActivity
             setOnClickFillInIntent(
                 R.id.widget_item_circle,
                 Intent().putExtra(DailyMustDoWidgetProvider.EXTRA_DEED_NAME, deed.name),

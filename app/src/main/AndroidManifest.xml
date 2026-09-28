@@ -55,6 +55,20 @@
             android:name=".ui.widget.DailyMustDoWidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
+
+        <!--
+          每日必做组件点圆圈的中转 Activity（v4.3）：全透明、无界面，只做「vis=1 → 加分 → 判断跨阶」，
+          跨阶时才 startActivity(MainActivity) 弹自证窗，不跨阶则立刻 finish（App 不出现）。
+          taskAffinity 用独立值 + NEW_TASK：保证它不会挤进 App 主任务，
+          否则 App 在后台时点圆圈会把主任务（MainActivity 界面）拖到前台，透明窗口下面就是 App 界面。
+        -->
+        <activity
+            android:name=".ui.widget.WidgetClickActivity"
+            android:excludeFromRecents="true"
+            android:exported="false"
+            android:noHistory="true"
+            android:taskAffinity="com.example.karma.widgetclick"
+            android:theme="@style/Theme.Karma.WidgetClick" />
     </application>
 
 </manifest>

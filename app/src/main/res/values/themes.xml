@@ -7,4 +7,23 @@
         <item name="android:navigationBarColor">#FF0A0A0A</item>
         <item name="android:windowLightStatusBar">false</item>
     </style>
+
+    <!--
+      桌面组件点圆圈的中转 Activity（WidgetClickActivity）专用主题：完全不可见。
+      不跨阶时它做完写库就 finish()，用户不应看到任何东西，所以这里逐项消掉所有可见痕迹：
+      windowIsTranslucent/windowBackground → 窗口本身透明；
+      windowDisablePreview + windowAnimationStyle=@null → 无启动预览、无切入切出动画；
+      windowSplashScreenBackground/AnimatedIcon（Android 12+ 强制启动画面）→ 背景与图标都透明，
+      否则会闪一下应用图标，等于「App 出现了」。
+    -->
+    <style name="Theme.Karma.WidgetClick" parent="@android:style/Theme.Translucent.NoTitleBar">
+        <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowIsTranslucent">true</item>
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowDisablePreview">true</item>
+        <item name="android:backgroundDimEnabled">false</item>
+        <item name="android:windowAnimationStyle">@null</item>
+        <item name="android:windowSplashScreenBackground">@android:color/transparent</item>
+        <item name="android:windowSplashScreenAnimatedIcon">@drawable/widget_click_transparent</item>
+    </style>
 </resources>
