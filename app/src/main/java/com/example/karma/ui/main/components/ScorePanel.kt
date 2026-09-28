@@ -270,7 +270,7 @@ private fun ScoreAxisView(
             val labelColor = when {
                 tickValue == 0f -> Color(0xFFffd700)
                 tickValue < 0 -> Color(0xFFff8a80)
-                else -> Color(0xFFa0c4ff)
+                else -> Color(0xFF69f0ae)   // v4.3：正数由浅蓝改绿
             }
             val alpha = if (tickValue == 0f) 1f else 0.7f
 
