@@ -8,11 +8,11 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 
 /**
- * 桌面组件点击产生的待处理请求（v4.3）。
- * @param name 被点击的每日必做事件名
- * @param nonce 请求序号：用于区分同名事件的多次点击，消费时按 nonce 校验，避免误清后续请求
+ * 桌面组件「加分跨入更高正阶位」时的补弹自证请求（v4.3）。
+ * 组件点击本身已直接写库，此请求只负责让 App 弹出被动自证询问窗。
+ * @param nonce 请求序号：用于区分多次请求，消费时按 nonce 校验，避免误清后续请求
  */
-data class WidgetDeedRequest(val name: String, val nonce: Long)
+data class WidgetProofRequest(val oldLevel: Int, val newLevel: Int, val nonce: Long)
 
 class AppContainer(context: Context) {
 
@@ -26,22 +26,22 @@ class AppContainer(context: Context) {
         settingsDao = karmaSettingsDao,
     )
 
-    // ===== 桌面组件请求中转（v4.3）=====
-    // MainActivity 收到组件点击后写入，MainScreen 在首页组合时消费。
+    // ===== 桌面组件跨阶补弹自证请求中转（v4.3）=====
+    // MainActivity 收到组件跨阶带来的 Intent extra 后写入，MainScreen 在首页组合时消费。
     // 放在容器里是因为 ViewModel 是导航级的：用户停在设置页时 MainScreen 未组合，
-    // 请求需先暂存，待导航回首页再处理，避免点击丢失。
-    private val _widgetDeedRequest = MutableStateFlow<WidgetDeedRequest?>(null)
-    val widgetDeedRequest: StateFlow<WidgetDeedRequest?> = _widgetDeedRequest.asStateFlow()
+    // 请求需先暂存，待导航回首页再处理，避免自证询问窗丢失。
+    private val _widgetProofRequest = MutableStateFlow<WidgetProofRequest?>(null)
+    val widgetProofRequest: StateFlow<WidgetProofRequest?> = _widgetProofRequest.asStateFlow()
 
-    /** 桌面组件点击某行圆圈（App 冷启动 / 已开着都走这里）。 */
-    fun requestWidgetDeedCompletion(name: String) {
-        _widgetDeedRequest.value = WidgetDeedRequest(name, System.nanoTime())
+    /** 组件点击加分跨阶：登记一次补弹自证请求。 */
+    fun requestWidgetProof(oldLevel: Int, newLevel: Int) {
+        _widgetProofRequest.value = WidgetProofRequest(oldLevel, newLevel, System.nanoTime())
     }
 
     /** 首页处理完请求后清空（校验 nonce，避免清掉期间新产生的请求）。 */
-    fun consumeWidgetDeedRequest(nonce: Long) {
-        if (_widgetDeedRequest.value?.nonce == nonce) {
-            _widgetDeedRequest.value = null
+    fun consumeWidgetProofRequest(nonce: Long) {
+        if (_widgetProofRequest.value?.nonce == nonce) {
+            _widgetProofRequest.value = null
         }
     }
 }

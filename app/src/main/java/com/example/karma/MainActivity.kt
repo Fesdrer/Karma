@@ -37,8 +37,8 @@ class MainActivity : ComponentActivity() {
 
         val appContainer = (application as KarmaApplication).container
 
-        // 桌面组件点击进入（冷启动路径）：先登记请求，再建 UI
-        handleWidgetDeedIntent(intent)
+        // 桌面组件跨阶打开 App（冷启动路径）：先登记补弹自证请求，再建 UI
+        handleWidgetProofIntent(intent)
 
         setContent {
             KarmaTheme(repository = appContainer.repository) {
@@ -63,10 +63,10 @@ class MainActivity : ComponentActivity() {
                             DailyMustDoWidgetProvider.refreshAll(this@MainActivity)
                         }
 
-                        // 桌面组件点击时把界面拉回首页：
-                        // 用户若停在设置/誓约等子页，MainScreen 未被组合，请求不会被消费，
+                        // 桌面组件跨阶时把界面拉回首页：
+                        // 用户若停在设置/誓约等子页，MainScreen 未被组合，补弹请求不会被消费，
                         // 故收到请求先导航回 Main（已在 Main 时直接返回，冷启动也无需导航）。
-                        val widgetRequest by appContainer.widgetDeedRequest.collectAsState()
+                        val widgetRequest by appContainer.widgetProofRequest.collectAsState()
                         LaunchedEffect(widgetRequest) {
                             if (widgetRequest == null) return@LaunchedEffect
                             // currentDestination 为 null 表示 NavHost 尚未就绪（首帧）：此时起始页就是 Main，
@@ -90,23 +90,33 @@ class MainActivity : ComponentActivity() {
     }
 
     /**
-     * App 已开着时点桌面组件走这里（singleTask 不重建 Activity，只回调 onNewIntent）。
-     * **必须与 onCreate 走同一处理函数**，否则「App 开着时点组件不加分」。
+     * App 已开着时被组件跨阶唤起走这里（singleTask 不重建 Activity，只回调 onNewIntent）。
+     * 必须与 onCreate 走同一处理函数，否则「App 开着时跨阶不弹自证」。
      */
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        handleWidgetDeedIntent(intent)
+        handleWidgetProofIntent(intent)
     }
 
     /**
-     * 统一处理桌面组件点击：取出 deed 名称登记到容器，并立刻清空 extra，
-     * 防止 Activity 重建（旋屏、被系统回收后恢复）时重复消费同一次点击。
+     * 统一处理组件跨阶带来的 Intent：取出加分前/后阶位登记补弹请求，并立刻清空 extra，
+     * 防止 Activity 重建（旋屏、被系统回收后恢复）时重复消费。
+     * 组件点击的写库（vis + 加分 + 历史）已由 DailyMustDoWidgetProvider 完成，这里只负责弹自证窗。
      */
-    private fun handleWidgetDeedIntent(intent: Intent?) {
-        val deedName = intent?.getStringExtra(DailyMustDoWidgetProvider.EXTRA_DEED_NAME) ?: return
-        intent.removeExtra(DailyMustDoWidgetProvider.EXTRA_DEED_NAME)
+    private fun handleWidgetProofIntent(intent: Intent?) {
+        if (intent == null) return
+        val oldLevel = intent.getIntExtra(DailyMustDoWidgetProvider.EXTRA_PROOF_FROM, INVALID_LEVEL)
+        val newLevel = intent.getIntExtra(DailyMustDoWidgetProvider.EXTRA_PROOF_TO, INVALID_LEVEL)
+        if (oldLevel == INVALID_LEVEL || newLevel == INVALID_LEVEL) return
+        intent.removeExtra(DailyMustDoWidgetProvider.EXTRA_PROOF_FROM)
+        intent.removeExtra(DailyMustDoWidgetProvider.EXTRA_PROOF_TO)
         setIntent(Intent())
-        (application as KarmaApplication).container.requestWidgetDeedCompletion(deedName)
+        (application as KarmaApplication).container.requestWidgetProof(oldLevel, newLevel)
+    }
+
+    private companion object {
+        /** Intent 中缺少阶位 extra 时的哨兵值。 */
+        const val INVALID_LEVEL = Int.MIN_VALUE
     }
 }

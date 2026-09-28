@@ -165,10 +165,6 @@ class MainViewModel(
     private var _proofBaselineReady = false
     /** 一次性豁免：自证结算自身的奖励加分不触发新的被动自证（避免无限连锁）。 */
     private var _suppressPassiveProofOnce = false
-    /** 桌面组件点击待处理的 deed 名称队列（v4.3）：等自证基线就绪后再写库（见 drainWidgetDeedQueue）。 */
-    private val widgetDeedQueue = ArrayDeque<String>()
-    /** 出队写库防重入：正在写库时新请求只入队，由循环续处理。 */
-    private var widgetDeedDraining = false
     /** 防重入：finishProof 同时被检查与超时协程触发时只执行一次。 */
     private var _proofFinishing = false
     /** 被动自证弹窗（加分跨入正阶位时置入，UI 处理后清空）。 */
@@ -272,12 +268,8 @@ class MainViewModel(
             }.collect { _uiState.value = it }
         }
         // 自证检测：每次 settings 变化时判定（跨阶触发/降级/达标/超时/开关关闭）
-        // 之后紧接着处理桌面组件请求：checkProof 已在首个发射建立基线，此时写库才能被正确判定为「本次加分」
         viewModelScope.launch {
-            repository.settings.collect { s ->
-                checkProof(s)
-                drainWidgetDeedQueue()
-            }
+            repository.settings.collect { s -> checkProof(s) }
         }
         // 自证超时兜底：settings 长时间不变时（无操作），每秒检查一次是否到结束时刻
         viewModelScope.launch {
@@ -560,50 +552,23 @@ class MainViewModel(
         }
     }
 
-    // ===== 桌面组件：点圆圈标记完成（v4.3）=====
+    // ===== 阶位自证 =====
 
     /**
-     * 桌面组件点击某行圆圈 → 完成该每日必做（标记 vis=1 + 按善业默认分加分 + 写历史）。
+     * 桌面组件点击加分跨阶后补弹被动自证（v4.3）。
      *
-     * 写库路径与首页 onConfirm 一致（先 markDeedDone 再 addHistoryEntry，同一协程顺序执行，
-     * 避免两个「读 settings→改→写」并发互相覆盖），因此自证由既有 checkProof 按「总分增加」正常判定。
+     * 组件点击的写库（vis + 加分 + 历史）已由组件广播接收器完成：App 进程未运行时，
+     * checkProof 的首个快照会把「已加分的总分」当作基线，从而漏判这次跨阶，
+     * 故由组件把加分前/后阶位一并带进来，这里直接置入询问窗。
+     *
+     * App 进程本来就活着时，checkProof 也会因 Room Flow 发射而置入同一个值；
+     * 这里用 null 判断兜底，保证只弹一次。
      */
-    fun completeDailyMustDoFromWidget(deedName: String) {
-        widgetDeedQueue.addLast(deedName)
-        drainWidgetDeedQueue()
-    }
-
-    /**
-     * 出队写库。**必须等 `_proofBaselineReady` 就绪**再执行：
-     * 组件点击常发生在冷启动瞬间，若抢在首个 settings 发射之前写库，
-     * 那一发会被当作基线（分数已加过），跨阶永远检测不到 → 不弹自证。
-     */
-    private fun drainWidgetDeedQueue() {
-        if (!_proofBaselineReady || widgetDeedDraining || widgetDeedQueue.isEmpty()) return
-        widgetDeedDraining = true
-        viewModelScope.launch {
-            try {
-                while (widgetDeedQueue.isNotEmpty()) {
-                    val deedName = widgetDeedQueue.removeFirst()
-                    val settings = repository.settings.first()
-                    val deed = settings.dailyMustDoDeeds.find { it.name == deedName }
-                    // 非每日必做 / 已完成 → 忽略：保证重复点击不重复加分（幂等）
-                    if (deed == null || deed.vis != 0) continue
-
-                    // 分数取该善业的默认分（每日必做与善业预设同步增删改，正常都能查到；查不到按 +1 兜底）
-                    val index = settings.goodDeedPresets.indexOf(deedName)
-                    val score = settings.goodDeedDefaultScores.getOrElse(index) { 1f }
-
-                    repository.markDeedDone(deedName)
-                    repository.addHistoryEntry(score, deedName, "record")
-                }
-            } finally {
-                widgetDeedDraining = false
-            }
+    fun showPendingPassiveProof(oldLevel: Int, newLevel: Int) {
+        if (_pendingPassiveProof.value == null) {
+            _pendingPassiveProof.value = PassiveProofPrompt(oldLevel, newLevel)
         }
     }
-
-    // ===== 阶位自证 =====
 
     /** 主动开启：距离下一正阶位 <10 分且未在自证中 → 弹设置窗。 */
     fun requestActiveProof() {
