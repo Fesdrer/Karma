@@ -122,16 +122,30 @@ fun AxisCanvas(
         label = "scoreAnim",
     )
 
-    // 自证特效：光晕粒子循环动画（进度 0→1 无限重复）
-    val glowTransition = rememberInfiniteTransition(label = "proofGlow")
-    val glowProgress by glowTransition.animateFloat(
-        initialValue = 0f,
-        targetValue = 1f,
-        animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 2600, easing = androidx.compose.animation.core.LinearEasing),
-        ),
-        label = "proofGlowProgress",
-    )
+    // 自证特效：光晕亮斑沿数轴向上流动（进度 0→1 无限重复）。
+    //
+    // 两点都不能改错：
+    // ① 只在自证进行中才创建这个无限动画。无限动画会一直向系统要帧（Choreographer 每帧被唤醒），
+    //    没在自证时它毫无用途，却让整个界面永远无法进入"无事可做"的空闲状态。
+    // ② 这里**不能**用 `by` 取值。`by` 会在组合阶段读值 → 动画每帧都让本组件重组一次；
+    //    而本组件那个 Canvas 很重（saveLayer 开整条离屏图层 + 每个阶位一条横向渐变 +
+    //    约 80 次 scoreToY + 每刻度一次原生 drawText），每帧重组一次是白烧。
+    //    保留 State 对象，改到下面绘制块的 `if (proofActive)` 分支里才读 .value：
+    //    这样失效范围只到"重绘这一张画布"，不进行自证时连读取都不会发生，
+    //    也就不会有任何重绘被触发。
+    val glowProgressState = if (proofActive) {
+        val glowTransition = rememberInfiniteTransition(label = "proofGlow")
+        glowTransition.animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(durationMillis = 2600, easing = androidx.compose.animation.core.LinearEasing),
+            ),
+            label = "proofGlowProgress",
+        )
+    } else {
+        null
+    }
     // 倒计时剩余毫秒（每秒更新，触发重绘）
     var remainingMs by remember { mutableLongStateOf(0L) }
     LaunchedEffect(proofActive, proofEndTime) {
@@ -339,7 +353,8 @@ fun AxisCanvas(
             val lineW = 4f * density
             val waves = 4f          // 整条线 4 个亮斑
             val samples = 96         // 渐变采样点（每帧构建一次 stops，成本可忽略）
-            val center = 1f - glowProgress
+            // 在绘制阶段读动画值：只失效"重绘"，不触发重组（见上方 glowProgressState 的说明）
+            val center = 1f - (glowProgressState?.value ?: 0f)
             val stops = ArrayList<Pair<Float, Color>>(samples + 2)
             stops.add(0f to lineColor)
             for (i in 1 until samples) {
