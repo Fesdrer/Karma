@@ -226,7 +226,8 @@
 - 未完成的每日必做会在业力衰减补扣时自动扣除设定分数，历史记录为"未完成：{事件名}"（v4.2 起衰减运行期间每 2 秒周期判定，跨过时刻即自动补扣并重置 vis，不必等重启）
 - 保存设置时若必做配置有变动，所有 vis 重置为 0（新的一天）
 - 导出/导入 JSON 时包含全部每日必做配置，导入后 vis 自动归零
-- **桌面组件**（v4.3）：手机桌面可添加 2×2 组件（EMUI 中叫「窗口小工具 / 服务卡片」），列出今日**未完成**的每日必做，每行前面一个圆圈；点圆圈即视为完成——组件直接写库（标记完成 + 按该善业的默认分加分 + 写一条历史记录），该行随即从组件消失，**不打开 App**；**仅当这次加分跨入更高正阶位时**才打开 App 弹自证窗；条目多时可上下滚动，全部完成时显示「今日必做已全部完成」
+- **桌面组件**（v4.3）：手机桌面可添加 2×2 组件（EMUI 中叫「窗口小工具 / 服务卡片」），列出今日**未完成**的每日必做，每行前面一个圆圈；条目多时可上下滚动，全部完成时显示「今日必做已全部完成」
+- 点圆圈按**固定顺序**处理：**① 标记完成（vis=1）→ ② 按该善业的默认分加分并写一条历史记录 → ③ 判断这次加分有没有跨入更高的正阶位**。①② 做完该行随即从组件消失，**全程不打开 App**；只有 ③ 判定跨阶、且当前**没有正在进行的自证**时，才打开 App 弹被动自证询问窗（自证进行中只加分不弹窗，避免把正在进行的那个自证顶掉）
 
 ### 计时记录（★ v3.4 新增，v3.7 内嵌改造，v3.8 崩溃恢复）
 
@@ -343,8 +344,9 @@
 右端 **导出 ▼** 下拉菜单（与视图模式同排）支持：
 
 - **CSV 导出** — 表格格式，可用 Excel 打开（仅历史记录）
-- **JSON 导出** — 结构化数据（**v2 格式**），**包含全部设置项**（颜色、字体、衰减参数、阶位配置、负阶配置、占卜次数、事件预设、事件默认分数、运气参数、乘法按钮、自证配置等）+ 历史记录
+- **JSON 导出** — 结构化数据（**v2 格式**），**包含全部设置项**（颜色、字体、衰减参数、阶位配置、负阶配置、占卜次数、气运测试冷却、事件预设、事件默认分数、运气参数、乘法按钮、自证配置等）+ 历史记录
 - **导入** — 恢复导出的 JSON 或 CSV 数据；JSON 校验 `version: 2`，**旧版本格式直接拒绝**（v3.11 起不兼容旧版 JSON）；v4.0 起对缺字段 JSON 逐字段兜底（乘法乘数、自证 14 个字段缺键时补默认值，不再导入失败）
+- v4.3 起新增的「气运测试冷却秒数」按**文件里到底有没有这个键**决定：老文件没这个键 → 落回默认 **1.5 秒**；有键 → 用文件里的值并收敛到 **0~10 秒**（0 表示不冷却）。因此 **v4.3 之前导出的文件可以直接导入**，不会被改成"不冷却"
 - v4.1 起 **AI 分析配置**（API 地址/Key/模型）存于本机 SharedPreferences（`ai_config`），**不随 JSON 导出**（换机/重装后需在设置页重新填写；JSON 格式与旧版本完全兼容）
 
 ---
@@ -388,7 +390,11 @@ Kotlin + Jetpack Compose
 - **冷却动画**（v4.3）：气运测试按钮用 `Animatable(1f)` 从 0 线性动画到 1，自绘 Box 灰底 + 金色覆盖层 `fillMaxWidth(progress)` 实现从左到右恢复；时长读设置（0~10 秒）
 - **跨阶自证触发统一为「总分增加」**（v4.3）：不再依赖「用户点确认/计时结算」白名单标记——只要 `totalScore` 相对上次观察值增加且跨入更高正阶位就弹被动窗（普通记录、计时结算、誓约了结加分、首页誓约到期结算一律覆盖）；自证奖励自身的加分做一次性豁免，避免"成功即再触发"的无限连锁；启动首个快照只建立基线，避免把既有总分误判为加分
 - **誓约到期结算**（v4.3）：`Bet.deadlineAt` 由纯文本改为时间戳，`getExpiredBets` 与衰减/每日必做共用一个 2 秒周期判定，首页弹窗强制「完成/未完成」结算
-- **每日必做桌面组件**（v4.3）：集合组件（`ListView` + `RemoteViewsService`/`RemoteViewsFactory`）只列 `vis == 0` 条目，行圆圈挂 fill-in intent、Provider 用 `setPendingIntentTemplate` + `getBroadcast` 模板；点击在 `AppWidgetProvider.onReceive` 里 `goAsync` + 协程直接写库（标记完成 + 加分 + 写历史），**不打开 App**；写库后用 `ProofEngine` 比较加分前后阶位，**只有跨入更高正阶位**才 `startActivity`（`singleTask`，`onCreate` 与 `onNewIntent` 共用同一处理函数）并把阶位差带进 App 补弹自证窗（App 未运行时 `checkProof` 首个快照会漏判，故绕开基线直接置入）
+- **每日必做桌面组件**（v4.3）：集合组件（`ListView` + `RemoteViewsService`/`RemoteViewsFactory`）只列 `vis == 0` 条目，行圆圈挂 fill-in intent、Provider 用 `setPendingIntentTemplate` + **`getActivity`** 模板指向全透明中转 Activity `WidgetClickActivity`
+- **为什么点击目标是 Activity 而不是广播接收器**：组件点击若要「条件性地」打开 App，广播接收器里 `startActivity()` 属于**后台启动 Activity**，Android 10+ 起被限制（`onReceive` 返回后更无任何豁免），华为/Android 12+ 上会被直接拦掉，表现为「分数加了、但自证窗不弹」；而桌面通过 `PendingIntent.getActivity` 拉起 Activity 是系统允许的。中转 Activity 全透明、不 `setContentView`（主题逐项消除可见痕迹，含 Android 12+ 强制启动画面的背景与图标透明），在前台再 `startActivity(MainActivity)`（`singleTask`，`onCreate` 与 `onNewIntent` 共用同一处理函数），不跨阶时 `finish()` 后用户看不到任何东西
+- **组件写库顺序固定**为 vis=1 → 加分 → 用**写库后重新读到的**总分算新阶位（不用加分前的旧快照）；跨阶信息随 Intent 带入 App 补弹自证窗（App 未运行时 `checkProof` 首个快照会把已加分的总分当基线从而漏判，故绕开基线直接置入）；`applyDecay` 与组件写库共用一把 `Mutex`，避免冷启动时刻两者并发整列覆盖、把刚写好的 vis=1 与加分一起回滚
+- **列表拖动性能修复**（v4.3）：主页面左栏分数栏拖动时，`MainScreen` 函数体里 `collect` 了 `effectiveScoreState`，分数每帧变化 → **整个主页面每帧重组**（Header / 三栏 / 事件列表含 3 个 `OutlinedTextField` / 计时按钮 / 页脚全部重来）。改为把 `StateFlow` 下推到真正需要它的最小作用域：`EventPanel` 收 `scoreFlow`（只有计时按钮那一行文字重组，点击开始计时改用 `scoreFlow.value` 取值而非组合期读取）、`ScorePanel` 面板顶层不再订阅（新增 `CurrentScoreText` 只管数字那一行）、分数轴改在 **Canvas 绘制块里读** `scoreState.value`，失效范围只到重绘
+- **常驻动画帧开销修复**（v4.3）：数轴自证的无限光晕动画原来用 `by` 在**组合阶段**读值，而这个动画永远在跑 → `AxisCanvas` 每帧重组一次，并顺着让整张重画布（`saveLayer` 开整条离屏图层 + 每阶位一条横向渐变 + 约 80 次坐标换算 + 每刻度一次原生 `drawText`）每帧重绘一次，与是否在自证无关。改为**只在 `proofActive` 时创建该动画**（不进行时连动画都不存在，不再向系统要帧），并保留 `State` 对象、改到绘制块的 `if (proofActive)` 分支里才读 `.value`
 
 ### 项目结构
 
@@ -409,6 +415,7 @@ app/src/main/java/com/example/karma/
 │   │   └── components/      # YarrowCanvas / YarrowResultPanel / XiaoLiuRen三件套
 │   ├── settings/            # 设置页 (分类入口页 + HSV+RGB取色器 / 轮盘选择器 / 正负阶位编辑 / 乘法/自证设置)
 │   ├── timer/               # 前台 Service（熄屏持续计时 + 通知栏）
+│   ├── widget/              # 每日必做桌面组件 (AppWidgetProvider + RemoteViewsService/Factory + 全透明中转 Activity)
 │   ├── navigation/          # NavGraph 路由 (全部页面 250ms 淡入淡出)
 │   ├── components/          # 通用组件 (BackButton / ChartTooltip / ScoreEditModal / PressFeedback / DialogEntrance / ScrollPicker)
 │   └── theme/               # 暗色主题 (Gold 配色 / 衬线字体 / 渐变背景)
@@ -430,7 +437,7 @@ app/src/main/java/com/example/karma/
 
 ## 📜 版本更新记录
 
-### v4.3 — 誓约到期结算 & 计时重启修复 & 交互细节
+### v4.3 — 誓约到期结算 & 每日必做桌面组件 & 性能与交互修复
 
 **誓约终止时间可选 + 到期结算（★ 功能升级）**
 - 新建誓约的「时间期限」由纯文本改为**滚轮选择终止时间**（第一行 年/月/日、第二行 时/分/秒，默认当前时间，仿业力衰减时间设置）；年月日不做联动（日固定 1~31），确定时校验合法性——如选择 2 月 30 日会提示错误且不关闭弹窗
@@ -447,12 +454,19 @@ app/src/main/java/com/example/karma/
 - 气运测试按钮 1.5 秒内只能触发一次：冷却期间按钮置灰不可点，底色由左到右逐渐恢复（`Animatable` + `fillMaxWidth(progress)` 自绘）
 - 冷却时长可在新增的「设置 → 占卜」分类中调整（0~10 秒，0 表示不冷却）
 - Room v27 新增 `luckTestCooldownSec` 列（默认 1.5）
+- 导出 JSON 自动带上该字段；**导入按「文件里有没有这个键」决定**：v4.3 之前导出的文件没有该键 → 落回默认 1.5 秒，有键 → 用文件里的值并收敛到 0~10 秒。原来写的 `gsonNullable(x) ?: 1.5f` 兜底恒不生效（`gsonNullable` 是恒等函数，`Float` 是 JVM 基本类型永不为 null），能得出 1.5 只是碰巧靠 Kotlin 默认值，已改为显式判断
 
 **每日必做桌面组件（★ 新功能）**
 - 桌面可添加 **2×2 组件**（AppWidget；EMUI 中为「窗口小工具 / 服务卡片」）：列出今日**未完成**的每日必做，每行前一个圆圈，条目多时可上下滚动，全部完成时显示「今日必做已全部完成」
-- **点圆圈 = 完成，且不打开 App**：组件在 `AppWidgetProvider.onReceive` 里 `goAsync` + 协程**直接写库**——标记 `vis=1`、按该善业默认分加分、写一条历史记录，随后组件刷新、该行消失
-- **只有跨阶才打开 App**：写库后用 `ProofEngine` 比较加分前后阶位，仅当**跨入更高正阶位**（且自证开关开启）才打开 App 弹被动自证询问窗；`MainActivity` 改 `singleTask`、`onCreate` 与 `onNewIntent` 走**同一处理函数**（保证 App 已开着时也生效），阶位差随 Intent 带入以绕开冷启动基线漏判
+- **点圆圈固定顺序：vis=1 → 加分 → 判断是否到达新阶位**：先标记 `vis=1`、再按该善业默认分加分并写一条历史记录，随后组件刷新、该行消失。**前三步全程不打开 App**
+- **只有跨入更高正阶位才打开 App**：用 `ProofEngine` 比较加分前后阶位（新阶位用写库后**重新读到的**总分计算，不用加分前的旧快照），仅当跨阶、自证开关开启、且**当前没有正在进行的自证**时才打开 App 弹被动自证询问窗；`MainActivity` 为 `singleTask`、`onCreate` 与 `onNewIntent` 走**同一处理函数**（保证 App 已开着时也生效），阶位差随 Intent 带入以绕开冷启动基线漏判
+- **点击目标是全透明的中转 Activity，不是广播接收器**：广播接收器里 `startActivity()` 属**后台启动 Activity**，Android 10+ 被限制、华为/Android 12+ 会被直接拦掉（症状是"分数加了，但自证窗不弹"）。改为行模板用 `PendingIntent.getActivity` 指向 `WidgetClickActivity`——它全透明、不 `setContentView`、主题里把启动预览/窗口动画/Android 12+ 启动画面都设成透明，不跨阶时写完库立刻 `finish()`，用户看不到任何东西
+- `applyDecay` 与组件写库共用一把 `Mutex` 串行化：冷启动点圆圈时两者天然并发，`applyDecay` 末尾是「用函数开头的旧快照整列覆盖」，会把刚写好的 `vis=1` 与加分一起回滚
 - 设计为**不可撤销**（点掉即视为已完成）；数据库结构不变（复用 `dailyMustDoDeeds.vis`）
+
+**性能修复（★ 卡顿根因）**
+- **左栏分数栏上下拖动很卡**：根因是 `MainScreen` 函数体里 `collect(effectiveScoreState)`——拖动时分数每帧都在变，于是**整个主页面每帧重组一次**（Header / 三栏 / 事件列表含 3 个 `OutlinedTextField` / 计时按钮 / 页脚全部重来）。改为把订阅下推到真正需要它的最小作用域：`EventPanel` 收 `StateFlow`（只有计时按钮那一行文字重组）、`ScorePanel` 在面板顶层不再订阅、分数轴改在 **Canvas 绘制块里读**值，失效范围只到重绘
+- **数轴自证光晕的无限动画**：`val x by animateFloat(infiniteRepeatable)` 在**组合阶段**读值，而这个动画永远在跑 → `AxisCanvas` 每帧重组一次，并顺着让整张重画布（`saveLayer` + 每阶位横向渐变 + 约 80 次坐标换算 + 每刻度原生 `drawText`）每帧重绘一次，与是否在自证无关。改为**只在 `proofActive` 时创建该动画**，并在绘制块的 `if (proofActive)` 分支里才读 `.value`
 
 **其他修复与调整**
 - **加分后不自动弹被动自证**：根因是触发条件依赖「用户普通记录」白名单标记，「每日必做」先写库发射 settings（总分未变）时标记就被消费，且誓约了结等加分路径根本不置标记；v4.3 改为**统一按「总分增加」判定**——任何让总分上升的加分（含誓约）跨入更高正阶位都会弹被动自证
