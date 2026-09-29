@@ -589,6 +589,9 @@ class KarmaRepository(
 
         // v2 格式：settings 键存在 → 整体替换全部设置
         val settingsElement = root.get("settings") ?: return false
+        if (!settingsElement.isJsonObject) return false
+        // 缺键判断直接看 JSON 本身：下面几个 v4.3 新增项要按「文件里到底有没有这个键」决定用文件值还是默认值
+        val settingsObject = settingsElement.asJsonObject
         val importedSettings = gson.fromJson(settingsElement, KarmaSettingsEntity::class.java)
         // 导入后重置所有每日必做 vis=0（导入是全新开始，不应保留旧的 vis 状态）
         val resetDeeds = gsonNullable(importedSettings.dailyMustDoDeeds)?.map { it.copy(vis = 0) } ?: emptyList()
@@ -624,8 +627,19 @@ class KarmaRepository(
             proofGuardLevel = gsonNullable(importedSettings.proofGuardLevel) ?: 0,
             proofReward = gsonNullable(importedSettings.proofReward) ?: 0f,
             proofPenalty = gsonNullable(importedSettings.proofPenalty) ?: 0f,
-            // v4.3：旧导出无此键，补默认 1.5
-            luckTestCooldownSec = gsonNullable(importedSettings.luckTestCooldownSec) ?: 1.5f,
+            // v4.3 新增「气运测试冷却秒数」：v4.3 之前导出的文件里没有这个键，导入时必须落回默认 1.5 秒。
+            // 这里刻意不写成 `gsonNullable(importedSettings.luckTestCooldownSec) ?: 1.5f`：
+            // Float 是 JVM 基本类型，永远不可能是 null，`?:` 一次都不会生效——哪怕 gson 真用 unsafe
+            // 分配绕过构造函数，缺键时拿到的也是 0f（听起来像"冷却 0 秒 = 不冷却"），而不是 null。
+            // 所以显式看 JSON 里有没有这个键。有键时照用文件里的值，并按设置页（SettingsViewModel）
+            // 同样的范围收敛到 0~10 秒，避免外部改过的文件把设置项顶到范围外。
+            luckTestCooldownSec = if (settingsObject.has("luckTestCooldownSec") &&
+                !settingsObject.get("luckTestCooldownSec").isJsonNull
+            ) {
+                importedSettings.luckTestCooldownSec.coerceIn(0f, 10f)
+            } else {
+                1.5f
+            },
         ))
 
         val historyArray = root.getAsJsonArray("history") ?: return false
