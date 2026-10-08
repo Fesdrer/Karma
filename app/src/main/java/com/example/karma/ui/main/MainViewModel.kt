@@ -600,13 +600,37 @@ class MainViewModel(
     fun onPassiveProofEscape() {
         val p = _pendingPassiveProof.value ?: return
         _pendingPassiveProof.value = null
+        escapeProof(p.newLevel)
+    }
+
+    /**
+     * 逃避自证的统一落库：把分数扣到 [newLevel] 阶位的阈值 -1，即退回上一阶位。
+     * 「被动询问窗的逃避按钮」与「设置窗的取消按钮（被动模式）」都走这里，
+     * 保证两条路退出代价一致。
+     */
+    private fun escapeProof(newLevel: Int) {
         viewModelScope.launch {
             val s = repository.settings.first()
-            val threshold = ProofEngine.thresholdOf(p.newLevel, s)
+            val threshold = ProofEngine.thresholdOf(newLevel, s)
             val targetScore = threshold - 1f
             val delta = (s.totalScore - targetScore).coerceAtLeast(0.1f)
             repository.addHistoryEntry(-delta, "逃避自证", "record")
         }
+    }
+
+    /**
+     * 关闭自证设置窗（v4.4）。
+     *
+     * 主动模式：用户自己点「自证」按钮进来的，什么都没发生，放弃不扣分。
+     * 被动模式：用户**已经跨阶**才被弹窗拦住，若在这里白退就等于零成本逃避，
+     * 与询问窗的「逃避自证（扣分退回）」代价不一致 —— 故同样按逃避处理。
+     */
+    fun cancelProofSetup() {
+        val setup = _proofSetup.value ?: return
+        _proofSetup.value = null
+        _pendingPassiveProof.value = null
+        if (setup.mode != ProofMode.PASSIVE) return
+        escapeProof(setup.target)
     }
 
     /** 设置窗确认：开始自证（时长/奖励/惩罚）。 */
@@ -627,12 +651,6 @@ class MainViewModel(
                 proofPenalty = penalty,
             ))
         }
-    }
-
-    /** 关闭设置窗（不开始）。 */
-    fun clearProofSetup() {
-        _proofSetup.value = null
-        _pendingPassiveProof.value = null
     }
 
     /** 关闭自证结果弹窗。 */

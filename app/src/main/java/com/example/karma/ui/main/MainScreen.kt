@@ -363,13 +363,12 @@ fun MainScreen(
     }
 
     // ---- 阶位自证弹窗 ----
-    // 被动询问：加分跨入正阶位时弹出；点弹窗外忽略（不扣分不开始）
+    // 被动询问：加分跨入正阶位时弹出；点弹窗外/返回键一律忽略（不扣分不开始），必须显式选一个按钮
     pendingPassiveProof?.let { p ->
         PassiveProofPromptDialog(
             prompt = p,
             onSetup = { viewModel.onPassiveProofSetup() },
             onEscape = { viewModel.onPassiveProofEscape() },
-            onDismiss = { viewModel.clearProofSetup() },
         )
     }
     // 自证设置：主动按钮或被动确认后弹出
@@ -380,7 +379,7 @@ fun MainScreen(
             onConfirm = { reward, penalty, durationMs ->
                 viewModel.startProof(reward, penalty, durationMs)
             },
-            onDismiss = { viewModel.clearProofSetup() },
+            onDismiss = { viewModel.cancelProofSetup() },
         )
     }
     // 自证结果：成功/失败

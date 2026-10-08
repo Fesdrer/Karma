@@ -41,17 +41,20 @@ import com.example.karma.ui.theme.TextSecondary
 
 /**
  * 被动自证询问弹窗：加分跨入正阶位时弹出。
- * 设置自证 / 取消（逃避，扣分退回）；点弹窗外忽略（不扣分不开始）。
+ * 设置自证 / 取消（逃避，扣分退回）；**点弹窗外与返回键一律忽略**（不扣分不开始）。
+ *
+ * v4.4 修复：原来 onDismissRequest 挂的是调用方的 onDismiss（= clearProofSetup()），
+ * 一点弹窗旁边就把整个询问窗清掉 —— 等于零成本逃避自证，与本函数注释写的
+ * 「点弹窗外忽略」正好相反。现在点外部/返回键不做任何事，必须显式点下面两个按钮之一。
  */
 @Composable
 fun PassiveProofPromptDialog(
     prompt: PassiveProofPrompt,
     onSetup: () -> Unit,
     onEscape: () -> Unit,
-    onDismiss: () -> Unit,
 ) {
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { },
         title = { Text("阶位自证", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Column {
@@ -105,7 +108,9 @@ fun ProofSetupDialog(
     var penaltyText by remember { mutableStateOf("") }
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        // v4.4：设置窗同样不能靠点外部/返回键关掉。否则「被动询问 → 设置自证 → 点外部」
+        // 依然能零成本逃掉这次自证。要放弃请点显式的「取消」按钮。
+        onDismissRequest = { },
         title = { Text("设置自证", fontFamily = FontFamily.Serif, color = Gold) },
         text = {
             Column {
@@ -236,7 +241,18 @@ fun ProofSetupDialog(
             ) { Text("开始自证", fontFamily = FontFamily.Serif) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary) }
+            // v4.4：被动模式下的「取消」= 逃避自证（同样扣分退回），否则跨阶后
+            // 只要点一下取消就能白嫖，与询问窗的逃避按钮代价不一致；
+            // 主动模式是用户自己点进来的，什么都没发生，取消不扣分。
+            if (setup.mode == ProofMode.PASSIVE) {
+                TextButton(onClick = onDismiss) {
+                    Text("逃避自证（扣分退回）", fontFamily = FontFamily.Serif, color = Color(0xFFff5252))
+                }
+            } else {
+                TextButton(onClick = onDismiss) {
+                    Text("取消", fontFamily = FontFamily.Serif, color = TextSecondary)
+                }
+            }
         },
         containerColor = Color(0xFF1A1A1A),
     )
