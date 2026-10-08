@@ -31,7 +31,17 @@ class KarmaRepository(
     private val settingsWriteMutex = Mutex()
 
     companion object {
-        private const val MAX_HISTORY = 2000
+        /**
+         * 历史记录条数上限。取 Int 的最大值 = 2147483647，等于「不限制」。
+         *
+         * 原来这里是 2000：每写一条新记录就调用下面的 trimOldest，把最旧的删掉。
+         * 删除是静默的（不提示、不备份、界面看不见），实测把用户 2026-02-07 至 06-04
+         * 的 117 条记录吃掉了，历史起点被推到 6 月 6 日。
+         *
+         * 改成 Int.MAX_VALUE 后，`count - MAX_HISTORY` 恒为负数（count 是 Int，
+         * 要真触发需要 21 亿条记录），`excess > 0` 永不成立，trimOldest 不再被调用。
+         */
+        private const val MAX_HISTORY = Int.MAX_VALUE
 
         /** 将时间戳格式化为 "yyyy-MM-dd"。供外部复用。 */
         fun formatDate(timestamp: Long): String {
@@ -181,6 +191,19 @@ class KarmaRepository(
         settingsWriteMutex.withLock { completeDailyMustDoFromWidgetLocked(deedName) }
 
     private suspend fun completeDailyMustDoFromWidgetLocked(deedName: String): Pair<Int, Int>? {
+        // ★ 先结算可能已经跨过的衰减日（v4.4 修复）。
+        // applyDecay 的 step 3 会把**所有** deed 的 vis 重置为 0（进入新的一天）。
+        // 这一步若发生在写 vis=1 **之后**，刚标记的 vis=1 会被一起重置，表现为：
+        // 「点了圆圈、分数也加了，但那一行又回到组件里，第二天还按未完成再扣一次」。
+        // 触发条件：App 进程在后台存活（ViewModel 的 2 秒轮询被系统冻结），
+        // 衰减时刻过后用户才点组件 —— 写库跑在轮询恢复之前。
+        //
+        // 本函数与 applyDecay 共用同一把 settingsWriteMutex，在这里先把该补的结算补掉：
+        // 之后轮询里的 applyDecay 因为 lastDecayDate 已推进而直接返回 0（幂等），
+        // 于是无论两者谁先拿到锁，vis=1 都不会再被覆盖。
+        applyDecayLocked()
+
+        // 补结算可能改了总分（衰减扣分 / 未完成扣分），必须重新读快照再算「加分前阶位」
         val settings = settingsDao.getSettingsOnce() ?: return null
         val deed = settings.dailyMustDoDeeds.find { it.name == deedName } ?: return null
         if (deed.vis != 0) return null
