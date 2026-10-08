@@ -121,8 +121,9 @@ class MainViewModel(
     private var _currentBadDeedPresets: List<String> = emptyList()
     private var _currentBadDeedDefaultScores: List<Float> = emptyList()
     private var _currentGoodResultDefaultScores: List<Float> = emptyList()
-    private var _currentScoreAxisRangeMin: Float = -6f
-    private var _currentScoreAxisRangeMax: Float = 6f
+    // v4.4：删除 _currentScoreAxisRangeMin/_currentScoreAxisRangeMax。
+    // 它们唯一的用途是把事件默认分夹到刻度范围内（见 selectEvent 的修复说明），
+    // 去掉夹取后已无读者，留着只会误导后来人以为分数真的受刻度限制。
 
     /** 独立的选择状态流：ScorePanel/EventPanel 直接读此流，绕过 combine 链。
      *  拖动滑条时不会触发 MainScreen 整体重组。 */
@@ -197,8 +198,6 @@ class MainViewModel(
                 _currentBadDeedPresets = settings.badDeedPresets
                 _currentBadDeedDefaultScores = settings.badDeedDefaultScores
                 _currentGoodResultDefaultScores = settings.goodResultDefaultScores
-                _currentScoreAxisRangeMin = settings.scoreAxisRangeMin
-                _currentScoreAxisRangeMax = settings.scoreAxisRangeMax
                 val rankKey = listOf(settings.rankThresholds, settings.rankNames, settings.rankColors)
                 if (rankKey != _cachedRankSettings) {
                     _cachedRankSettings = rankKey
@@ -380,13 +379,23 @@ class MainViewModel(
         _effectiveEventState.value = event
         // 事件默认分数联动：仅当当前分数为 0 时，才把左侧分数设为该事件的默认分数；
         // 否则保持用户已选的分数不变。自定义输入（不在预设列表）不联动。
+        //
+        // ★ v4.4 修复：原样填入事件默认分，不再用刻度范围夹取。
+        // 原代码是 score.coerceIn(scoreAxisRangeMin, scoreAxisRangeMax)，把
+        // 「左侧刻度画到哪」当成了「分数合法范围」：设显示范围为默认 -6~6 时，
+        // 一个默认分 10 的事件会被静默改成 6，最上面显示的数字也跟着变成 6。
+        // 二者本是两件事 —— 刻度是手指能点到的范围，分数是这一笔该记多少：
+        //   · 球的位置：ScorePanel.scoreToAxisY 内部已有 ratio.coerceIn(-1f, 1f)，
+        //     分数超过刻度时红球自动停在刻度顶端（10 分时停在 6 的位置），无需在此夹取；
+        //   · 最上面的数字：直接显示 _selectedScore，原样填 10 就显示 10；
+        //   · 历史图表：HistoryChartCanvas 用 points 的 min/max 自适应纵轴，不受此范围约束。
+        // 故此处只需原样赋值。刻度范围仍然只限制「在刻度上点击/拖动」能取到的分数。
         val currentScore = _customScore.value ?: _selectedScore.value
         if (currentScore == 0f) {
             defaultScoreFor(event)?.let { score ->
-                val clamped = score.coerceIn(_currentScoreAxisRangeMin, _currentScoreAxisRangeMax)
                 _customScore.value = null
-                _selectedScore.value = clamped
-                _effectiveScoreState.value = clamped
+                _selectedScore.value = score
+                _effectiveScoreState.value = score
             }
         }
         updateTimerEnabled()
